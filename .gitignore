@@ -16,3 +16,4 @@ apps/*/public/logos/
 
 .vercel
 .env*
+.cache

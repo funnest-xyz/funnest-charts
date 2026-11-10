@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Code, Demo, DocHeader, NextLinks, Props } from '../../../../components/docs';
 import { COMPONENT_DOCS } from '../../../../lib/component-docs';
+import { pageMeta } from '../../../../lib/meta';
 
 export const dynamicParams = false;
 
@@ -12,7 +13,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const doc = COMPONENT_DOCS.find((c) => c.slug === slug);
-  return { title: doc?.name ?? '컴포넌트' };
+  return doc ? pageMeta(`docs-components-${doc.slug}`, doc.name, `${doc.name}: ${doc.summary}. ${doc.body}`) : { title: '컴포넌트' };
 }
 
 export default async function ComponentPage({ params }: { params: Promise<{ slug: string }> }) {

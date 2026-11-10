@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import { pageMeta } from '../../../lib/meta';
 import { Callout, Code, DocHeader, NextLinks, P, Props } from '../../../components/docs';
 
-export const metadata: Metadata = { title: '트레이딩 차트' };
+export const metadata: Metadata = pageMeta('docs-trading-chart', '트레이딩 차트', '툴바, 심볼 검색, 지표, 그리기 도구까지 들어 있는 FnChart 트레이딩 차트 사용법.');
 
 export default function TradingChartDoc() {
   return (

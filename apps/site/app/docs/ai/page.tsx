@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import { pageMeta } from '../../../lib/meta';
 import { Callout, Code, DocHeader, H2, List, NextLinks, P, Props } from '../../../components/docs';
 import { asset } from '../../../lib/base';
 
-export const metadata: Metadata = { title: 'AI · CLI · MCP' };
+export const metadata: Metadata = pageMeta('docs-ai', 'AI · CLI · MCP', '차트 스펙 검사와 렌더, React 코드 생성, Claude Code·Cursor용 MCP 서버와 스킬.');
 
 export default function AiDoc() {
   return (
