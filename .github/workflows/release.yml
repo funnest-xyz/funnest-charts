@@ -1,0 +1,57 @@
+# Publishes every package to npm with npm Trusted Publishing (OIDC): no npm token,
+# no 2FA prompt, and a provenance badge on each package.
+#
+# One-time setup per package on npmjs.com → package → Settings → Trusted Publisher:
+#   GitHub Actions · organization funnest-xyz · repository funnest-charts · workflow release.yml
+#
+# Release: bump the versions in packages/*/package.json, commit, then
+#   git tag v0.1.1 && git push origin v0.1.1
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for npm Trusted Publishing
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # Trusted Publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+
+      - name: Tag matches package versions
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          node -e "
+            const tag = process.env.GITHUB_REF_NAME.slice(1);
+            const fs = require('fs');
+            const bad = ['core','ui','react','viz','cli','mcp']
+              .map((d) => JSON.parse(fs.readFileSync('packages/' + d + '/package.json', 'utf8')))
+              .filter((p) => p.version !== tag)
+              .map((p) => p.name + '@' + p.version);
+            if (bad.length) { console.error('Tag v' + tag + ' does not match: ' + bad.join(', ')); process.exit(1); }
+          "
+
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      # Builds, packs (workspace:* → real versions) and publishes in dependency order,
+      # skipping versions that are already on npm.
+      - run: node scripts/release.mjs
