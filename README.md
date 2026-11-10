@@ -61,9 +61,9 @@ import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 
 | Component | Use |
 |---|---|
-| `LineChart` · `AreaChart` · `BarChart` | Price history, composition (`stacked`), P&L and volume |
-| `PercentageBarChart` | Portfolio weights, buy/sell pressure |
-| `CartesianChart` | Compose your own from `Line`, `Area`, `BarPlot`, axes and annotations |
+| `LineChart` · `AreaChart` · `BarChart` | Price history, composition (`stacked`), P&L and volume, horizontal rankings (`layout="horizontal"`) |
+| `PercentageBarChart` | Portfolio weights, buy/sell pressure, several rows or vertical columns |
+| `CartesianChart` | Compose your own from `Line`, `Area`, `BarPlot`, axes and annotations; several y axes (`yAxisId`) and `[low, high]` ranges for bands and floating bars |
 | `XAxis` · `YAxis` · `Scrubber` · `PeriodSelector` | Axes, pointer tracking with value tooltips, period tabs |
 | `ReferenceLine` · `Point` · `Legend` | Average/target price lines, trade markers, legends |
 

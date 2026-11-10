@@ -63,9 +63,9 @@ import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 
 | 컴포넌트 | 용도 |
 |---|---|
-| `LineChart` · `AreaChart` · `BarChart` | 가격 흐름, 자산 구성(`stacked`), 손익과 거래량 |
-| `PercentageBarChart` | 포트폴리오 비중, 매수·매도 체결 강도 |
-| `CartesianChart` | `Line`, `Area`, `BarPlot`, 축, 표시를 직접 조합 |
+| `LineChart` · `AreaChart` · `BarChart` | 가격 흐름, 자산 구성(`stacked`), 손익과 거래량, 가로 막대 순위(`layout="horizontal"`) |
+| `PercentageBarChart` | 포트폴리오 비중, 매수·매도 체결 강도, 여러 줄·세로 막대 |
+| `CartesianChart` | `Line`, `Area`, `BarPlot`, 축, 표시를 직접 조합, y축 여러 개(`yAxisId`)와 `[low, high]` 범위(띠·떠 있는 막대) |
 | `XAxis` · `YAxis` · `Scrubber` · `PeriodSelector` | 축, 값 말풍선이 따라오는 포인터, 기간 탭 |
 | `ReferenceLine` · `Point` · `Legend` | 평단가·목표가 선, 매수·매도 표시, 범례 |
 

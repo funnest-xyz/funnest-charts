@@ -83,7 +83,11 @@ export function Scrubber({
   const rows = showValues
     ? list.flatMap((s) => {
         const v = s.data[i];
-        return v === null || v === undefined || !Number.isFinite(v) ? [] : [{ s, text: valueFormatter(v, s.id) }];
+        if (v === null || v === undefined || !Number.isFinite(v)) return [];
+        // Ranges read "low – high".
+        const lo = s.low?.[i];
+        const text = lo !== null && lo !== undefined && lo !== v ? `${valueFormatter(lo, s.id)} – ${valueFormatter(v, s.id)}` : valueFormatter(v, s.id);
+        return [{ s, text }];
       })
     : [];
   const tipW = Math.max(0, ...rows.map((r) => textWidth(r.text) + (rows.length > 1 || r.s.label ? textWidth(r.s.label ?? '') + 26 : 18))) + 16;

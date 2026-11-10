@@ -10,6 +10,7 @@ import {
   stack,
   stackedExtent,
   type StackedSeries,
+  type ValueScale,
 } from '@funnest/charts-viz';
 import {
   Children,
@@ -40,6 +41,8 @@ export interface XAxisConfig {
 }
 
 export interface YAxisConfig {
+  /** Axis id for `series[].yAxisId` when `yAxis` is an array. */
+  id?: string;
   /** Fix either end of the value range; the other end follows the data. */
   domain?: { min?: number; max?: number };
   /** Always include 0 (default for bar charts). */
@@ -67,8 +70,12 @@ export interface CartesianChartProps {
   /** Space between the SVG edge and the plot (axes add their own space). Default 8. */
   inset?: Inset;
   xAxis?: XAxisConfig;
-  yAxis?: YAxisConfig;
-  /** Stack the series (areas / bars). */
+  /**
+   * Value axis options. Pass an array for several y axes (e.g. price on the right, volume
+   * on the left) and point series at them with `yAxisId`; render a <YAxis axisId> for each.
+   */
+  yAxis?: YAxisConfig | readonly YAxisConfig[];
+  /** Stack the series (areas / bars), per y axis. */
   stacked?: boolean;
   /**
    * Track the pointer and expose the hovered index to <Scrubber>, legends and headers.
@@ -95,6 +102,7 @@ export interface CartesianChartProps {
 }
 
 const DEFAULT_HEIGHT = 240;
+const DEFAULT_AXIS = 'default';
 
 function resolveInset(inset: Inset | undefined) {
   const d = typeof inset === 'number' ? inset : 8;
@@ -189,12 +197,25 @@ export function CartesianChart({
 
   const legendCfg = normalizeLegend(legend);
 
+  const axes = useMemo(() => {
+    const list = Array.isArray(yAxis) ? (yAxis as readonly YAxisConfig[]) : [(yAxis ?? {}) as YAxisConfig];
+    return (list.length ? list : [{}]).map((a, i) => ({ ...a, id: a.id ?? (i === 0 ? DEFAULT_AXIS : `axis${i}`) }));
+  }, [yAxis]);
+  const firstAxis = axes[0]!.id;
+
   // Colors are assigned over every series so hiding one never repaints the others.
-  const all = useMemo<ResolvedSeries[]>(
-    () => series.map((s, index) => ({ ...s, index, color: s.color ?? seriesColor(index, palette), dimmed: false })),
-    [series, palette],
+  // Ranges ([low, high]) split into `data` (high) and `low`; the scale is attached below.
+  const all = useMemo(
+    () =>
+      series.map((s, index) => {
+        const hasRange = s.data.some((v) => Array.isArray(v));
+        const high = s.data.map((v) => (Array.isArray(v) ? Math.max(v[0], v[1]) : (v as number | null)));
+        const low = hasRange ? s.data.map((v) => (Array.isArray(v) ? Math.min(v[0], v[1]) : (v as number | null))) : null;
+        return { ...s, data: high, low, index, color: s.color ?? seriesColor(index, palette), dimmed: false, axisId: s.yAxisId ?? firstAxis };
+      }),
+    [series, palette, firstAxis],
   );
-  const resolved = useMemo<ResolvedSeries[]>(
+  const visible = useMemo(
     () => all.filter((s) => !hidden.includes(s.id)).map((s) => ({ ...s, dimmed: emphasis !== null && emphasis !== s.id })),
     [all, hidden, emphasis],
   );
@@ -219,23 +240,30 @@ export function CartesianChart({
     const xLinear = linearScale([0, Math.max(1, length - 1)], [left, right]);
     const x = band ? (i: number) => band.center(i) : (i: number) => (length <= 1 ? (left + right) / 2 : xLinear(i));
 
-    // The value range covers hidden series too, so toggling one doesn't rescale the rest.
-    let stackedMap: Map<string, StackedSeries> | null = null;
-    let [min, max] = extent(all) ?? [0, 1];
-    if (stacked) {
-      const st = stack(resolved);
-      stackedMap = new Map(st.map((s) => [s.id, s]));
-      [min, max] = stackedExtent(stack(all));
+    // One value scale per y axis. The range covers hidden series too, so toggling one
+    // doesn't rescale the rest; stacking happens within an axis.
+    let stackedMap: Map<string, StackedSeries> | null = stacked ? new Map() : null;
+    const yScales: Record<string, ValueScale> = {};
+    for (const axis of axes) {
+      const on = all.filter((s) => s.axisId === axis.id);
+      let [min, max] = extent([...on, ...on.flatMap((s) => (s.low ? [{ id: `${s.id}~low`, data: s.low }] : []))]) ?? [0, 1];
+      if (stacked) {
+        for (const st of stack(visible.filter((s) => s.axisId === axis.id))) stackedMap!.set(st.id, st);
+        if (on.length) [min, max] = stackedExtent(stack(on));
+      }
+      const log = axis.scaleType === 'log';
+      if (!log && (axis.includeZero ?? isBand)) {
+        min = Math.min(min, 0);
+        max = Math.max(max, 0);
+      }
+      if (axis.nice && !log) [min, max] = niceDomain(min, max, Math.max(2, Math.round(plot.height / 50)));
+      if (axis.domain?.min !== undefined) min = axis.domain.min;
+      if (axis.domain?.max !== undefined) max = axis.domain.max;
+      yScales[axis.id] = log ? logScale([Math.max(min, Number.MIN_VALUE), max], [bottom, top]) : linearScale([min, max], [bottom, top]);
     }
-    const log = yAxis?.scaleType === 'log';
-    if (!log && (yAxis?.includeZero ?? isBand)) {
-      min = Math.min(min, 0);
-      max = Math.max(max, 0);
-    }
-    if (yAxis?.nice && !log) [min, max] = niceDomain(min, max, Math.max(2, Math.round(plot.height / 50)));
-    if (yAxis?.domain?.min !== undefined) min = yAxis.domain.min;
-    if (yAxis?.domain?.max !== undefined) max = yAxis.domain.max;
-    const y = log ? logScale([Math.max(min, Number.MIN_VALUE), max], [bottom, top]) : linearScale([min, max], [bottom, top]);
+    if (stackedMap && stackedMap.size === 0) stackedMap = null;
+    const y = yScales[firstAxis]!;
+    const resolved: ResolvedSeries[] = visible.map(({ axisId, ...s }) => ({ ...s, scale: yScales[axisId] ?? y }));
 
     const xData = xAxis?.data;
     const xLabel = (i: number) => {
@@ -253,6 +281,7 @@ export function CartesianChart({
       x,
       band,
       y,
+      yScales,
       stacked: stackedMap,
       xLabel,
       xData,
@@ -260,7 +289,7 @@ export function CartesianChart({
       focused,
       animate: motion,
     };
-  }, [id, width, height, inset, axisSpace, all, resolved, xAxis, yAxis, stacked, scrubIndex, focused, motion]);
+  }, [id, width, height, inset, axisSpace, all, visible, axes, firstAxis, xAxis, stacked, scrubIndex, focused, motion]);
 
   const xsRef = useRef<number[]>([]);
   xsRef.current = useMemo(() => Array.from({ length: ctx.length }, (_, i) => ctx.x(i)), [ctx.length, ctx.x]);
@@ -305,7 +334,7 @@ export function CartesianChart({
   const a11yText = (i: number) =>
     getScrubberAccessibilityLabel
       ? getScrubberAccessibilityLabel(i)
-      : [ctx.xLabel(i), ...resolved.map((s) => `${s.label ?? s.id} ${s.data[i] === null || s.data[i] === undefined ? '—' : formatNumber(s.data[i]!)}`)].join(', ');
+      : [ctx.xLabel(i), ...ctx.series.map((s) => `${s.label ?? s.id} ${s.data[i] === null || s.data[i] === undefined ? '—' : formatNumber(s.data[i]!)}`)].join(', ');
 
   const legendEl = legendCfg && (
     <Legend

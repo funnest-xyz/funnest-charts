@@ -4,6 +4,10 @@ import {
   AreaChartDemo,
   BarChartDemo,
   CartesianDemo,
+  ConfidenceBandDemo,
+  HorizontalBarDemo,
+  PercentageRowsDemo,
+  RangeBarDemo,
   LegendDemo,
   LineChartDemo,
   PercentageBarDemo,
@@ -25,19 +29,21 @@ export interface ComponentDoc {
   body: string;
   demo: ReactNode;
   code: string;
+  /** More demos with their code, under the main one. */
+  examples?: { title: string; body?: string; demo: ReactNode; code: string }[];
   props: PropRow[];
 }
 
-const SERIES = 'readonly { id: string; data: (number | null)[]; label?: string; color?: string }[]';
+const SERIES = 'readonly { id: string; data: (number | [low, high] | null)[]; yAxisId?: string; label?: string; color?: string }[]';
 
 /** Props every preset chart (LineChart, AreaChart, BarChart) shares with CartesianChart. */
 const CHART_PROPS: PropRow[] = [
-  { name: 'series', type: SERIES, desc: '그릴 데이터. data[i]는 x 위치 i의 값이고 null은 빈 구간이에요.' },
+  { name: 'series', type: SERIES, desc: '그릴 데이터. data[i]는 x 위치 i의 값이고 null은 빈 구간이에요. [low, high]를 넣으면 범위(띠·떠 있는 막대)가 돼요.' },
   { name: 'height', type: 'number', def: '240', desc: '차트 높이(px).' },
   { name: 'width', type: 'number', desc: '비우면 부모 너비를 꽉 채워요(ResizeObserver).' },
   { name: 'inset', type: 'number | { top, right, bottom, left }', def: '8', desc: 'SVG 가장자리와 그림 영역 사이 여백.' },
   { name: 'xAxis', type: '{ data?, scaleType?, bandPadding? }', desc: 'x 라벨(날짜 등)과 축 종류.' },
-  { name: 'yAxis', type: '{ domain?: { min?, max? }, includeZero?, nice? }', desc: '값 범위를 고정하거나 0을 포함시켜요.' },
+  { name: 'yAxis', type: '{ id?, domain?: { min?, max? }, includeZero?, nice?, scaleType? } | 배열', desc: '값 범위를 고정하거나 0을 포함시켜요. 배열로 넘기면 y축이 여러 개가 되고, 계열은 series.yAxisId로 축을 골라요.' },
   { name: 'stacked', type: 'boolean', def: 'false', desc: '계열을 위로 쌓아요(양수는 위, 음수는 아래).' },
   { name: 'showXAxis / showYAxis', type: 'boolean | XAxisProps | YAxisProps', desc: '축 표시. 객체로 세부 옵션을 넘길 수 있어요.' },
   { name: 'scrubber', type: 'boolean | ScrubberProps', desc: '마우스·손가락을 따라가는 선과 값 말풍선.' },
@@ -140,6 +146,36 @@ import { BarChart, ReferenceLine } from '@funnest/charts-react';
       { name: 'stackGap', type: 'number', def: '0', desc: '쌓인 막대 조각 사이 간격(px).' },
       { name: 'roundBaseline', type: 'boolean', def: 'false', desc: '기준선 쪽 모서리도 둥글게(알약 모양).' },
       { name: 'barMinSize', type: 'number', def: '0', desc: '아주 작은 값도 보이게 하는 최소 길이(px).' },
+      { name: 'layout', type: "'vertical' | 'horizontal'", def: "'vertical'", desc: '가로 막대는 xAxis.data가 줄 이름이 돼요. 순위, 보유 종목, 업종별 수익률에 좋아요.' },
+    ],
+    examples: [
+      {
+        title: '범위 막대',
+        body: '값을 [low, high]로 넣으면 막대가 0이 아니라 low에서 시작해요. 일중 고가·저가나 목표가 범위를 그릴 때 써요.',
+        demo: <RangeBarDemo />,
+        code: `
+<BarChart
+  series={[{ id: 'range', label: '일중 고가–저가', data: [[69800, 71200], [70100, 72000], …] }]}
+  xAxis={{ data: dates }}
+  yAxis={{ includeZero: false, nice: true }}
+  showYAxis
+  scrubber={{ showValues: true }}
+/>`,
+      },
+      {
+        title: '가로 막대',
+        body: "layout='horizontal'이면 줄마다 막대가 왼쪽에서 오른쪽으로 뻗어요. 음수는 0 기준 왼쪽으로 그려요.",
+        demo: <HorizontalBarDemo />,
+        code: `
+<BarChart
+  layout="horizontal"
+  series={[{ id: 'ret', data: [12.4, 8.1, -3.2, 5.6, -1.4, 9.8] }]}
+  xAxis={{ data: ['반도체', '2차전지', '바이오', '자동차', '금융', '인터넷'] }}
+  getBarColor={(v) => (v >= 0 ? '#F04452' : '#3182F6')}
+  showYAxis={{ tickLabelFormatter: (v) => \`\${v}%\` }}
+  scrubber
+/>`,
+      },
     ],
   },
   {
@@ -160,13 +196,31 @@ import { PercentageBarChart } from '@funnest/charts-react';
 />`,
     props: [
       { name: 'data', type: '{ id, label, value, color? }[]', desc: '구간 목록. 음수는 0으로 봐요.' },
-      { name: 'barHeight', type: 'number', def: '10', desc: '막대 두께.' },
+      { name: 'rows', type: '{ id, label?, data }[]', desc: '막대 여러 개를 줄지어 비교해요(계좌별, 월별). 같은 id는 같은 색이고 범례는 하나만 그려요.' },
+      { name: 'layout', type: "'horizontal' | 'vertical'", def: "'horizontal'", desc: '세로면 아래에서 위로 쌓인 기둥이 돼요.' },
+      { name: 'barLength', type: 'number', def: '160', desc: '세로 막대의 길이(px).' },
+      { name: 'barHeight', type: 'number', def: '10 (세로 28)', desc: '막대 두께.' },
       { name: 'gap', type: 'number', def: '2', desc: '구간 사이 간격.' },
       { name: 'showLabels', type: 'boolean', def: 'true', desc: '아래 범례와 퍼센트.' },
       { name: 'formatLabel', type: '(item, fraction) => string', desc: '라벨 형식. 기본은 "62.4%".' },
       { name: 'radius', type: 'number', def: 'barHeight / 2', desc: '막대 양 끝 둥글기.' },
       { name: 'legendPosition', type: "'top' | 'bottom' | 'right'", def: "'bottom'", desc: '라벨 위치.' },
       { name: 'legendShape', type: "'circle' | 'square' | 'squircle' | 'pill' | 'line'", def: "'circle'", desc: '색 표시 모양.' },
+    ],
+    examples: [
+      {
+        title: '여러 줄 · 세로',
+        body: '계좌마다 자산 비중을 나란히 놓고 비교해요. 줄에 마우스를 올리면 범례에 그 줄의 퍼센트가 나와요.',
+        demo: <PercentageRowsDemo />,
+        code: `
+const rows = [
+  { id: 'a', label: '일반', data: [{ id: 'kr', label: '국내', value: 45 }, { id: 'us', label: '해외', value: 30 }, …] },
+  { id: 'b', label: 'ISA', data: [...] },
+];
+
+<PercentageBarChart rows={rows} />
+<PercentageBarChart rows={rows} layout="vertical" />`,
+      },
     ],
   },
   {
@@ -179,19 +233,42 @@ import { PercentageBarChart } from '@funnest/charts-react';
     code: `
 import { BarPlot, CartesianChart, Line, Scrubber, YAxis } from '@funnest/charts-react';
 
-<CartesianChart
+// 가격과 거래량을 각자의 y축에 그려요. <CartesianChart
   series={[
-    { id: 'vol', label: '거래량', data: volume, color: '#D1D6DB' },
-    { id: 'price', label: '가격', data: prices },
+    { id: 'vol', label: '거래량', data: volume, yAxisId: 'volume', color: '#D1D6DB' },
+    { id: 'price', label: '가격', data: prices, yAxisId: 'price' },
   ]}
   xAxis={{ scaleType: 'band', data: dates }}
+  yAxis={[{ id: 'price', includeZero: false }, { id: 'volume', domain: { min: 0, max: maxVolume * 4 } }]}
   enableScrubbing
 >
   <BarPlot seriesIds={['vol']} />
   <Line seriesId="price" />
-  <YAxis />
+  <YAxis axisId="price" />
   <Scrubber seriesIds={['price']} showValues />
 </CartesianChart>`,
+    examples: [
+      {
+        title: '신뢰 구간 띠',
+        body: '계열 값을 [low, high]로 넣고 Area로 그리면 두 값 사이가 채워져요. 예측선과 함께 불확실성 범위를 보여줄 때 써요.',
+        demo: <ConfidenceBandDemo />,
+        code: `
+<CartesianChart
+  series={[
+    { id: 'band', data: forecastRange },        // [[low, high], …]
+    { id: 'actual', data: prices },
+    { id: 'mean', data: forecast, lineStyle: 'dashed' },
+  ]}
+  enableScrubbing
+>
+  <Area seriesId="band" fill="solid" />
+  <Line seriesId="actual" />
+  <Line seriesId="mean" />
+  <YAxis />
+  <Scrubber showValues />
+</CartesianChart>`,
+      },
+    ],
     props: [
       ...CHART_PROPS.filter((p) => !['showXAxis / showYAxis', 'scrubber'].includes(p.name)),
       { name: 'enableScrubbing', type: 'boolean', def: 'false', desc: '포인터를 추적해 Scrubber와 onScrubberPositionChange에 전달해요.' },
@@ -288,6 +365,7 @@ const shown = prices[index ?? prices.length - 1];
 />`,
     props: [
       { name: 'position', type: "'left' | 'right'", def: "'right'", desc: '축 위치.' },
+      { name: 'axisId', type: 'string', desc: 'y축이 여러 개일 때 그릴 축(yAxis 배열의 id).' },
       { name: 'width', type: 'number', def: '48', desc: '라벨 영역 너비.' },
       { name: 'ticks', type: 'number[]', desc: '눈금 값을 직접 지정.' },
       { name: 'tickLabelFormatter', type: '(value) => string', desc: '라벨 형식. 기본은 10만 이상이면 1.2M처럼 줄여요.' },
@@ -346,6 +424,7 @@ const [period, setPeriod] = useState('3M');
     props: [
       { name: 'dataY', type: 'number', desc: '이 값에 가로선.' },
       { name: 'dataX', type: 'number', desc: '이 인덱스에 세로선.' },
+      { name: 'yAxisId', type: 'string', desc: 'y축이 여러 개일 때 dataY가 속한 축.' },
       { name: 'label', type: 'string', desc: '선 위 글자.' },
       { name: 'labelPosition', type: "'left' | 'right' | 'center' | 'top' | 'bottom'", def: "'right'", desc: '글자 위치.' },
       { name: 'color', type: 'string', desc: '선과 글자 색.' },
@@ -373,6 +452,7 @@ const [period, setPeriod] = useState('3M');
       { name: 'dataX', type: 'number', desc: 'x 인덱스.' },
       { name: 'dataY', type: 'number', desc: '값. 비우고 seriesId를 주면 그 계열 위에 찍혀요.' },
       { name: 'seriesId', type: 'string', desc: '붙을 계열.' },
+      { name: 'yAxisId', type: 'string', desc: 'seriesId 없이 dataY만 줄 때, 값이 속한 축.' },
       { name: 'label', type: 'string', desc: '점 옆 글자.' },
       { name: 'labelPosition', type: "'top' | 'bottom' | 'left' | 'right'", def: "'top'", desc: '글자 위치.' },
       { name: 'pulse', type: 'boolean', def: 'false', desc: '실시간 점처럼 퍼지는 애니메이션.' },

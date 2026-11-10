@@ -1,10 +1,12 @@
-import { formatNumber, useCartesianChart, VAR } from './context';
+import { formatNumber, scaleFor, useCartesianChart, VAR } from './context';
 
 export interface ReferenceLineProps {
   /** Horizontal line at this value (target price, average entry, 0%). */
   dataY?: number;
   /** Vertical line at this x index (event, earnings date). */
   dataX?: number;
+  /** For `dataY` with several y axes: which axis the value belongs to. */
+  yAxisId?: string;
   label?: string;
   /** Where the label sits along the line. Default 'right' (horizontal) / 'top' (vertical). */
   labelPosition?: 'left' | 'right' | 'center' | 'top' | 'bottom';
@@ -50,6 +52,7 @@ function LineLabel(props: { x: number; y: number; text: string; anchor: 'start' 
 export function ReferenceLine({
   dataY,
   dataX,
+  yAxisId,
   label,
   labelPosition,
   labelAlign = 'above',
@@ -64,7 +67,7 @@ export function ReferenceLine({
   const { plot } = ctx;
   const pill = labelStyle === 'pill';
   if (dataY !== undefined) {
-    const y = ctx.y(dataY);
+    const y = scaleFor(ctx, yAxisId)(dataY);
     if (y < plot.top - 0.5 || y > plot.bottom + 0.5) return null;
     const pos = labelPosition ?? 'right';
     const tx = pos === 'left' ? plot.left + 4 : pos === 'center' ? (plot.left + plot.right) / 2 : plot.right - 4;
@@ -106,6 +109,8 @@ export interface PointProps {
   /** Value. Omit with `seriesId` to sit on that series. */
   dataY?: number;
   seriesId?: string;
+  /** For `dataY` without `seriesId` and several y axes: the axis of the value. */
+  yAxisId?: string;
   color?: string;
   radius?: number;
   /** Text next to the point (e.g. "매수", "고점 12,400"). */
@@ -117,14 +122,14 @@ export interface PointProps {
 }
 
 /** A marker at a data position: trades on a price line, highs/lows, the latest value. */
-export function Point({ dataX, dataY, seriesId, color, radius = 4, label, labelPosition = 'top', pulse = false, onClick }: PointProps) {
+export function Point({ dataX, dataY, seriesId, yAxisId, color, radius = 4, label, labelPosition = 'top', pulse = false, onClick }: PointProps) {
   const ctx = useCartesianChart();
   const s = seriesId ? ctx.getSeries(seriesId) : undefined;
   const value = dataY ?? (s ? s.data[dataX] : undefined);
   if (value === null || value === undefined || !Number.isFinite(value)) return null;
   const st = s ? ctx.stacked?.get(s.id) : undefined;
   const x = ctx.x(dataX);
-  const y = ctx.y(st && dataY === undefined ? st.y1[dataX]! : value);
+  const y = (s?.scale ?? scaleFor(ctx, yAxisId))(st && dataY === undefined ? st.y1[dataX]! : value);
   const fill = color ?? s?.color ?? ctx.series[0]?.color ?? 'currentColor';
   const gap = radius + 6;
   const [lx, ly, anchor]: [number, number, 'start' | 'middle' | 'end'] =

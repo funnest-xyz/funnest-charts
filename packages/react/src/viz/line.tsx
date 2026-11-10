@@ -1,4 +1,4 @@
-import { areaPath, linePath, segments, type Curve, type XY } from '@funnest/charts-viz';
+import { areaPath, linePath, segments, type Curve, type ValueScale, type XY } from '@funnest/charts-viz';
 import type { ReactNode } from 'react';
 import { dashFor, DIM_OPACITY, useCartesianChart, VAR, type CartesianContextValue, type LineStyle, type ResolvedSeries } from './context';
 
@@ -17,11 +17,15 @@ export interface GradientStop {
   color?: string;
 }
 
-/** Pixel points of a series split at gaps (or joined across them with `connectNulls`). */
+/**
+ * Pixel points of a series split at gaps (or joined across them with `connectNulls`).
+ * `lower` is the bottom edge for stacked series and for ranges ([low, high] bands).
+ */
 export function seriesRuns(ctx: CartesianContextValue, s: ResolvedSeries, connectNulls = false) {
   const st = ctx.stacked?.get(s.id);
-  const top = (i: number, v: number) => ctx.y(st ? st.y1[i]! : v);
-  const bottom = (i: number) => (st ? ctx.y(st.y0[i]!) : null);
+  const y = s.scale;
+  const top = (i: number, v: number) => y(st ? st.y1[i]! : v);
+  const bottom = (i: number) => (st ? y(st.y0[i]!) : s.low ? y(s.low[i] ?? s.data[i]!) : null);
   const runs = connectNulls
     ? [{ start: 0, values: s.data.map((v, i) => (v === null ? null : i)).filter((i): i is number => i !== null) }]
     : segments(s.data).map((r) => ({ start: r.start, values: r.values.map((_, k) => r.start + k) }));
@@ -30,19 +34,19 @@ export function seriesRuns(ctx: CartesianContextValue, s: ResolvedSeries, connec
     .map((r) => {
       const idx = r.values;
       const upper: XY[] = idx.map((i) => ({ x: ctx.x(i), y: top(i, s.data[i]!) }));
-      const lower = st ? idx.map((i) => ({ x: ctx.x(i), y: bottom(i)! })) : null;
+      const lower = st || s.low ? idx.map((i) => ({ x: ctx.x(i), y: bottom(i)! })) : null;
       return { upper, lower };
     });
 }
 
 /** Baseline pixel: the given value, else the zero line when visible, else the plot bottom. */
-function baselineY(ctx: CartesianContextValue, baseline?: number) {
+function baselineY(ctx: CartesianContextValue, scale: ValueScale, baseline?: number) {
   const { top, bottom } = ctx.plot;
-  if (baseline !== undefined) return Math.min(bottom, Math.max(top, ctx.y(baseline)));
-  const [d0, d1] = ctx.y.domain;
+  if (baseline !== undefined) return Math.min(bottom, Math.max(top, scale(baseline)));
+  const [d0, d1] = scale.domain;
   const lo = Math.min(d0, d1);
   const hi = Math.max(d0, d1);
-  return ctx.y.kind === 'linear' && lo <= 0 && hi >= 0 ? ctx.y(0) : bottom;
+  return scale.kind === 'linear' && lo <= 0 && hi >= 0 ? scale(0) : bottom;
 }
 
 /** Clip rects for the part of the plot above / below a pixel y. */
@@ -83,7 +87,7 @@ export function Area({ seriesId, curve = 'monotone', fill = 'gradient', opacity,
   const s = ctx.getSeries(seriesId);
   if (!s) return null;
   const gid = `${ctx.id}-area-${s.index}`;
-  const base = baselineY(ctx, baseline);
+  const base = baselineY(ctx, s.scale, baseline);
   const alpha = opacity ?? (fill === 'gradient' ? 0.24 : fill === 'dotted' ? 0.5 : 0.16);
   const runs = seriesRuns(ctx, s, connectNulls);
   const dim = s.dimmed ? DIM_OPACITY : 1;
@@ -198,7 +202,7 @@ export function Line({
   const runs = seriesRuns(ctx, s, connectNulls);
   const split = splitColors && baseline !== undefined;
   const gid = `${ctx.id}-line-${s.index}`;
-  const baseY = baselineY(ctx, baseline);
+  const baseY = baselineY(ctx, s.scale, baseline);
   const strokeOpacity = (opacity ?? 1) * (s.dimmed ? DIM_OPACITY : 1);
 
   const strokes = (color: string, clip?: string) => (
@@ -232,7 +236,7 @@ export function Line({
       if (!spec) return;
       const p: LinePoint = spec === true ? {} : spec;
       const x = ctx.x(i);
-      const y = ctx.y(st ? st.y1[i]! : v);
+      const y = s.scale(st ? st.y1[i]! : v);
       const color = p.color ?? (split ? (v >= baseline! ? splitColors!.above : splitColors!.below) : s.color);
       const r = p.radius ?? Math.max(3, strokeWidth + 1);
       dots.push(

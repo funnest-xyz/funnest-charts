@@ -1,10 +1,15 @@
 import type { BandScale, StackedSeries, ValueScale } from '@funnest/charts-viz';
 import { createContext, useContext } from 'react';
 
+/** A low–high pair: confidence bands, high/low bars. */
+export type RangeValue = readonly [number, number];
+
 export interface ChartSeries {
   id: string;
-  /** Values per x position; null = gap. */
-  data: readonly (number | null)[];
+  /** Values per x position; null = gap; `[low, high]` for a range (band / floating bar). */
+  data: readonly (number | null | RangeValue)[];
+  /** Which y axis this series uses (see `yAxis` as an array). Default: the first axis. */
+  yAxisId?: string;
   label?: string;
   /** Any CSS color. Defaults to the palette. */
   color?: string;
@@ -16,12 +21,18 @@ export interface ChartSeries {
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
-/** A series with its resolved color. */
-export interface ResolvedSeries extends ChartSeries {
+/** A series ready to draw: resolved color, its value scale, ranges split into low/high. */
+export interface ResolvedSeries extends Omit<ChartSeries, 'data'> {
+  /** Values (the high end for ranges); null = gap. */
+  data: readonly (number | null)[];
+  /** Low ends when the series has ranges, else null. */
+  low: readonly (number | null)[] | null;
   color: string;
   index: number;
   /** Another series is emphasized (legend hover): draw this one faded. */
   dimmed: boolean;
+  /** The value scale of this series' y axis. */
+  scale: ValueScale;
 }
 
 export interface PlotRect {
@@ -47,8 +58,10 @@ export interface CartesianContextValue {
   x(i: number): number;
   /** Set when the x axis is categorical (bar charts). */
   band: BandScale | null;
-  /** Value scale (linear or log). */
+  /** Value scale of the first (default) y axis. */
   y: ValueScale;
+  /** Every y axis' scale by id. */
+  yScales: Readonly<Record<string, ValueScale>>;
   /** Stacked edges per series id when `stacked`. */
   stacked: Map<string, StackedSeries> | null;
   /** Label for x position `i` (from `xAxis.data`, else the index). */
@@ -102,8 +115,11 @@ export function seriesY(ctx: CartesianContextValue, s: ResolvedSeries, i: number
   const stacked = ctx.stacked?.get(s.id);
   if (stacked) {
     const raw = s.data[i];
-    return raw === null || raw === undefined ? null : ctx.y(stacked.y1[i]!);
+    return raw === null || raw === undefined ? null : s.scale(stacked.y1[i]!);
   }
   const v = s.data[i];
-  return v === null || v === undefined || !Number.isFinite(v) ? null : ctx.y(v);
+  return v === null || v === undefined || !Number.isFinite(v) ? null : s.scale(v);
 }
+
+/** Scale for an axis id (falls back to the first axis). */
+export const scaleFor = (ctx: CartesianContextValue, axisId?: string) => (axisId ? ctx.yScales[axisId] : undefined) ?? ctx.y;

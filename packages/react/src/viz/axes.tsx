@@ -1,5 +1,5 @@
 import { logTicks, sampleIndices, ticks as niceTicks } from '@funnest/charts-viz';
-import { formatNumber, useCartesianChart, VAR } from './context';
+import { formatNumber, scaleFor, useCartesianChart, VAR } from './context';
 
 export interface XAxisProps {
   position?: 'bottom' | 'top';
@@ -65,6 +65,8 @@ XAxis.axisSpace = (p: XAxisProps) => ({ side: p.position ?? 'bottom', size: p.he
 export interface YAxisProps {
   /** Right is the trading-chart convention. Default 'right'. */
   position?: 'left' | 'right';
+  /** Which y axis to draw when the chart has several (ids from the `yAxis` array). */
+  axisId?: string;
   /** Space reserved for labels. Default 48. */
   width?: number;
   /** Explicit tick values. Default: nice numbers, about one per 40px. */
@@ -82,12 +84,14 @@ export function YAxis({
   width = 48,
   ticks,
   tickLabelFormatter = formatNumber,
+  axisId,
   showGrid = true,
   showLine = false,
   minTickSpacing = 32,
 }: YAxisProps) {
   const ctx = useCartesianChart();
-  const { plot, y } = ctx;
+  const { plot } = ctx;
+  const y = scaleFor(ctx, axisId);
   const [d0, d1] = y.domain;
   const count = Math.max(2, Math.floor(plot.height / minTickSpacing));
   const values = (ticks ?? (y.kind === 'log' ? logTicks(d0, d1, count) : niceTicks(d0, d1, count))).filter(

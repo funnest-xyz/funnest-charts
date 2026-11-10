@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Code, Demo, DocHeader, NextLinks, Props } from '../../../../../components/docs';
+import { Code, Demo, DocHeader, NextLinks, Props, sentences } from '../../../../../components/docs';
 import { COMPONENT_DOCS } from '../../../../../lib/component-docs';
 import { pageMeta } from '../../../../../lib/meta';
 
@@ -30,6 +30,14 @@ export default async function ComponentPage({ params }: { params: Promise<{ slug
       <Demo>{doc.demo}</Demo>
       <h2>사용법</h2>
       <Code>{doc.code}</Code>
+      {doc.examples?.map((ex) => (
+        <section key={ex.title}>
+          <h2>{ex.title}</h2>
+          {ex.body && <p>{sentences(ex.body)}</p>}
+          <Demo>{ex.demo}</Demo>
+          <Code>{ex.code}</Code>
+        </section>
+      ))}
       <h2>속성</h2>
       <Props rows={doc.props} />
       <NextLinks

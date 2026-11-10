@@ -3,6 +3,7 @@
 import {
   AreaChart,
   BarChart,
+  Area,
   BarPlot,
   CartesianChart,
   Legend,
@@ -65,6 +66,9 @@ const S = {
     months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월'],
     periods: ['1주', '1개월', '3개월', '1년'],
     live: '실시간',
+    forecast: '예측', band: '80% 구간', dayRange: '일중 고가–저가',
+    sectors: ['반도체', '2차전지', '바이오', '자동차', '금융', '인터넷'],
+    accounts: ['일반', 'ISA', '연금'],
     won: (v: number) => `${fmt(v)}원`,
     man: (v: number) => `${fmt(v)}만`,
   },
@@ -76,6 +80,9 @@ const S = {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
     periods: ['1W', '1M', '3M', '1Y'],
     live: 'Live',
+    forecast: 'Forecast', band: '80% range', dayRange: 'Day low–high',
+    sectors: ['Chips', 'Batteries', 'Bio', 'Autos', 'Banks', 'Internet'],
+    accounts: ['Brokerage', 'ISA', 'Pension'],
     won: (v: number) => `₩${fmt(v)}`,
     // Values are in 10k KRW (만원): show millions of won.
     man: (v: number) => `₩${(v / 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`,
@@ -219,30 +226,30 @@ export function PercentageBarDemo() {
   );
 }
 
-/** Line + volume bars + axis composed by hand. */
+/** Price line + volume bars, each on its own y axis. */
 export function CartesianDemo() {
   const t = useT();
   const price = useMemo(() => walk(21, 30, 70_000, 0.03, 0.002).map(Math.round), []);
   const volume = useMemo(() => {
     const r = rng(8);
-    // Volume drawn in the bottom band of the price scale.
-    return price.map(() => Math.round(r() * 5_000 + 64_000));
+    return price.map(() => Math.round(r() * 8_000_000 + 2_000_000));
   }, [price]);
   return (
     <CartesianChart
       series={[
-        { id: 'vol', label: t.volume, data: volume, color: 'color-mix(in srgb, var(--text-3) 35%, transparent)' },
-        { id: 'price', label: t.price, data: price, color: VIOLET },
+        { id: 'vol', label: t.volume, data: volume, yAxisId: 'volume', color: 'color-mix(in srgb, var(--text-3) 35%, transparent)' },
+        { id: 'price', label: t.price, data: price, yAxisId: 'price', color: VIOLET },
       ]}
       xAxis={{ scaleType: 'band', bandPadding: 0.35, data: dayLabels(30) }}
-      yAxis={{ domain: { min: 64_000 } }}
+      // Volume gets 4× headroom so its bars stay in the bottom quarter.
+      yAxis={[{ id: 'price', includeZero: false }, { id: 'volume', domain: { min: 0, max: 40_000_000 } }]}
       height={H}
       inset={6}
       enableScrubbing
     >
       <BarPlot seriesIds={['vol']} radius={1} />
       <Line seriesId="price" strokeWidth={2} />
-      <YAxis width={40} tickLabelFormatter={(v) => `${Math.round(v / 1000)}k`} />
+      <YAxis axisId="price" width={40} tickLabelFormatter={(v) => `${Math.round(v / 1000)}k`} />
       <Scrubber seriesIds={['price']} showValues valueFormatter={(v) => t.won(v)} />
     </CartesianChart>
   );
@@ -432,4 +439,112 @@ export function LegendDemo() {
 
 export function PeriodSelectorDemo() {
   return <ScrubberDemo withPeriods />;
+}
+
+// ── Extra examples (docs) ─────────────
+
+/** Forecast line with an 80% range band: series data as [low, high]. */
+export function ConfidenceBandDemo() {
+  const t = useT();
+  const { actual, mean, band } = useMemo(() => {
+    const hist = walk(31, 24, 100, 0.03, 0.002);
+    const last = hist[hist.length - 1]!;
+    const n = 12;
+    const meanF = Array.from({ length: n }, (_, i) => Math.round(last * (1 + 0.004 * (i + 1)) * 100) / 100);
+    const pad = <T,>(v: T[], before: number, after: number) => [...Array(before).fill(null), ...v, ...Array(after).fill(null)];
+    return {
+      actual: pad(hist, 0, n),
+      mean: pad([last, ...meanF], hist.length - 1, 0),
+      band: pad(
+        [[last, last] as const, ...meanF.map((m, i) => [Math.round(m * (1 - 0.012 * Math.sqrt(i + 1) * 2) * 100) / 100, Math.round(m * (1 + 0.012 * Math.sqrt(i + 1) * 2) * 100) / 100] as const)],
+        hist.length - 1,
+        0,
+      ),
+    };
+  }, []);
+  return (
+    <CartesianChart
+      series={[
+        { id: 'band', label: t.band, data: band, color: VIOLET },
+        { id: 'actual', label: t.price, data: actual, color: 'var(--text)' },
+        { id: 'mean', label: t.forecast, data: mean, color: VIOLET, lineStyle: 'dashed' },
+      ]}
+      xAxis={{ data: dayLabels(36) }}
+      height={200}
+      inset={6}
+      enableScrubbing
+    >
+      <Area seriesId="band" fill="solid" opacity={0.18} />
+      <Line seriesId="actual" strokeWidth={2} />
+      <Line seriesId="mean" strokeWidth={2} />
+      <YAxis width={36} />
+      <Scrubber seriesIds={['actual', 'mean', 'band']} showValues valueFormatter={(v) => fmt(v, 2)} />
+    </CartesianChart>
+  );
+}
+
+/** Daily low–high as floating bars. */
+export function RangeBarDemo() {
+  const t = useT();
+  const data = useMemo(() => {
+    const r = rng(17);
+    return walk(41, 20, 70_000, 0.03).map((c) => {
+      const lo = Math.round(c * (1 - r() * 0.025));
+      const hi = Math.round(c * (1 + r() * 0.025));
+      return [lo, hi] as const;
+    });
+  }, []);
+  return (
+    <BarChart
+      series={[{ id: 'range', label: t.dayRange, data, color: VIOLET }]}
+      xAxis={{ data: dayLabels(20) }}
+      yAxis={{ includeZero: false, nice: true }}
+      height={200}
+      inset={6}
+      radius={4}
+      showYAxis={{ width: 40, tickLabelFormatter: (v) => `${Math.round(v / 1000)}k` }}
+      scrubber={{ showValues: true, valueFormatter: (v) => t.won(v) }}
+    />
+  );
+}
+
+/** Sector returns as horizontal bars. */
+export function HorizontalBarDemo() {
+  const t = useT();
+  const data = [12.4, 8.1, -3.2, 5.6, -1.4, 9.8];
+  return (
+    <BarChart
+      layout="horizontal"
+      series={[{ id: 'ret', label: t.pnl, data }]}
+      xAxis={{ data: t.sectors }}
+      getBarColor={(v) => (v >= 0 ? UP : DOWN)}
+      showYAxis={{ tickLabelFormatter: (v) => `${v}%` }}
+      scrubber
+    />
+  );
+}
+
+/** Several accounts compared, one legend; and the same as vertical columns. */
+export function PercentageRowsDemo() {
+  const t = useT();
+  const rows = [
+    [45, 30, 15, 10],
+    [60, 25, 0, 15],
+    [20, 55, 0, 25],
+  ].map((v, k) => ({
+    id: `acc${k}`,
+    label: t.accounts[k]!,
+    data: [
+      { id: 'kr', label: t.krShort, value: v[0]! },
+      { id: 'us', label: t.usShort, value: v[1]! },
+      { id: 'crypto', label: t.crypto, value: v[2]! },
+      { id: 'cash', label: t.cash, value: v[3]!, color: '#B0B8C1' },
+    ],
+  }));
+  return (
+    <div className="stack-gap">
+      <PercentageBarChart rows={rows} barHeight={12} />
+      <PercentageBarChart rows={rows} layout="vertical" barLength={140} />
+    </div>
+  );
 }

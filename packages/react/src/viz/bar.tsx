@@ -40,14 +40,19 @@ export function BarPlot({
   const list = seriesIds ? ctx.series.filter((s) => seriesIds.includes(s.id)) : ctx.series;
   const groups = ctx.stacked ? 1 : Math.max(1, list.length);
   const barW = Math.max(1, (band.bandwidth - groupGap * (groups - 1)) / groups);
-  const [d0, d1] = ctx.y.domain;
-  const zero = ctx.y(Math.min(Math.max(0, Math.min(d0, d1)), Math.max(d0, d1)));
+  // Each series draws against its own y axis.
+  const zeroOf = (scale: typeof ctx.y) => {
+    const [d0, d1] = scale.domain;
+    return scale(Math.min(Math.max(0, Math.min(d0, d1)), Math.max(d0, d1)));
+  };
   const dim = highlightScrubbed && ctx.scrubIndex !== null;
 
   return (
     <g>
       {list.map((s, k) => {
         const st = ctx.stacked?.get(s.id);
+        const y = s.scale;
+        const zero = zeroOf(y);
         const offset = ctx.stacked ? 0 : k * (barW + groupGap);
         // Only the outermost segment of a stack gets rounded corners.
         const isTopOfStack = (i: number, v: number) =>
@@ -61,11 +66,13 @@ export function BarPlot({
             {s.data.map((v, i) => {
               if (v === null || v === undefined || !Number.isFinite(v) || v === 0) return null;
               const x = band(i) + offset;
-              let y0 = st ? ctx.y(st.y0[i]!) : zero;
-              let y1 = st ? ctx.y(st.y1[i]!) : ctx.y(v);
+              // Ranges ([low, high]) float between their ends; others grow from zero.
+              const low = s.low?.[i];
+              let y0 = st ? y(st.y0[i]!) : low !== null && low !== undefined && s.low ? y(low) : zero;
+              let y1 = st ? y(st.y1[i]!) : y(v);
               const dir = Math.sign(y1 - y0) || -1;
               const top = isTopOfStack(i, v);
-              const atBase = Math.abs(y0 - zero) <= 0.5;
+              const atBase = Math.abs(y0 - zero) <= 0.5 || !!s.low;
               // Stack gaps: pull each segment in at the joins (never at the zero line).
               if (st && stackGap > 0) {
                 if (!atBase) y0 += (dir * stackGap) / 2;
@@ -78,7 +85,7 @@ export function BarPlot({
               return (
                 <path
                   key={i}
-                  d={barPath(x, barW, y0, y1, r, roundBaseline && atBase)}
+                  d={barPath(x, barW, y0, y1, s.low ? radius : r, (roundBaseline && atBase) || !!s.low)}
                   fillOpacity={dim && ctx.scrubIndex !== i ? 0.45 : 1}
                   style={{ fill: color }}
                 >
