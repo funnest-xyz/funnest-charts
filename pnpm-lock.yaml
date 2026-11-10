@@ -156,6 +156,7 @@ importers:
       '@funnest/charts':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
       preact:
         specifier: ^11.2.0
         version: 11.2.0

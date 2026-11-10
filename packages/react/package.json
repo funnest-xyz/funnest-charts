@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts-react",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "React bindings for Funnest Charts: the trading widget plus SVG line, area and bar charts",
   "keywords": [
     "react",
@@ -40,7 +40,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --clean --external react --external react-dom --external @funnest/charts-ui --external @funnest/charts --external @funnest/charts-viz && tsc -p tsconfig.build.json",

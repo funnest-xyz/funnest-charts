@@ -1,17 +1,40 @@
 {
   "name": "@funnest/charts-mcp",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "MCP server for Funnest Charts: chart list, JSON schemas, spec validation, PNG/SVG rendering with React code, chart suggestions, Datafeed templates",
-  "keywords": ["mcp", "model-context-protocol", "chart", "ai", "claude", "cursor", "funnest"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "chart",
+    "ai",
+    "claude",
+    "cursor",
+    "funnest"
+  ],
   "license": "Apache-2.0",
   "author": "Funnest",
   "homepage": "https://charts.funnest.xyz/docs/ai/",
-  "repository": { "type": "git", "url": "git+https://github.com/funnest-xyz/charts.git", "directory": "packages/mcp" },
-  "bugs": { "url": "https://github.com/funnest-xyz/charts/issues" },
-  "publishConfig": { "access": "public" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/funnest-xyz/charts.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/funnest-xyz/charts/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
-  "bin": { "funnest-charts-mcp": "./dist/server.js" },
-  "files": ["dist"],
+  "bin": {
+    "funnest-charts-mcp": "./dist/server.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json"

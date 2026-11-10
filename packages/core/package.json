@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Canvas charting engine for financial charts",
   "keywords": [
     "chart",
@@ -38,7 +38,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --clean && tsc -p tsconfig.build.json",
