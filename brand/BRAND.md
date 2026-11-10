@@ -7,6 +7,7 @@
   - `logo-mark.svg` — 기본 마크 (앱 아이콘, 파비콘, 차트 귀속 배지)
   - `logo-mark-mono.svg` — 단색(`currentColor`), 다크/라이트 어디서나
   - `logo-wordmark.svg` — 마크 + `funnest` 워드마크 (소문자, ExtraBold)
+  - `avatar.svg`, `avatar-512.png`, `avatar-1024.png` — 배경을 꽉 채운 프로필 사진용 (GitHub 조직, npm, Vercel, SNS)
 - 최소 크기: 마크 16px. 여백: 마크 높이의 25% 이상.
 
 ## 색상
