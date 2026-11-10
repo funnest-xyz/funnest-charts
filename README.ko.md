@@ -64,6 +64,9 @@ import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 | 컴포넌트 | 용도 |
 |---|---|
 | `LineChart` · `AreaChart` · `BarChart` | 가격 흐름, 자산 구성(`stacked`), 손익과 거래량, 가로 막대 순위(`layout="horizontal"`) |
+| `CandlestickChart` | 종목 카드와 대시보드에 넣는 작은 캔들 차트(거래량 포함) |
+| `DonutChart` | 자산 비중을 도넛(또는 파이)으로, 가운데에 합계 |
+| `TreemapChart` | 시가총액으로 크기, 등락률로 색을 정하는 마켓맵 |
 | `PercentageBarChart` | 포트폴리오 비중, 매수·매도 체결 강도, 여러 줄·세로 막대 |
 | `CartesianChart` | `Line`, `Area`, `BarPlot`, 축, 표시를 직접 조합, y축 여러 개(`yAxisId`)와 `[low, high]` 범위(띠·떠 있는 막대) |
 | `XAxis` · `YAxis` · `Scrubber` · `PeriodSelector` | 축, 값 말풍선이 따라오는 포인터, 기간 탭 |

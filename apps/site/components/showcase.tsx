@@ -5,7 +5,10 @@ import {
   BarChart,
   Area,
   BarPlot,
+  CandlestickChart,
   CartesianChart,
+  DonutChart,
+  TreemapChart,
   Legend,
   Line,
   LineChart,
@@ -69,6 +72,8 @@ const S = {
     forecast: '예측', band: '80% 구간', dayRange: '일중 고가–저가',
     sectors: ['반도체', '2차전지', '바이오', '자동차', '금융', '인터넷'],
     accounts: ['일반', 'ISA', '연금'],
+    totalAssets: '총 자산',
+    candle: { open: '시가', high: '고가', low: '저가', close: '종가', volume: '거래량' },
     won: (v: number) => `${fmt(v)}원`,
     man: (v: number) => `${fmt(v)}만`,
   },
@@ -83,6 +88,8 @@ const S = {
     forecast: 'Forecast', band: '80% range', dayRange: 'Day low–high',
     sectors: ['Chips', 'Batteries', 'Bio', 'Autos', 'Banks', 'Internet'],
     accounts: ['Brokerage', 'ISA', 'Pension'],
+    totalAssets: 'Total',
+    candle: { open: 'Open', high: 'High', low: 'Low', close: 'Close', volume: 'Volume' },
     won: (v: number) => `₩${fmt(v)}`,
     // Values are in 10k KRW (만원): show millions of won.
     man: (v: number) => `₩${(v / 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`,
@@ -548,4 +555,62 @@ export function PercentageRowsDemo() {
       <PercentageBarChart rows={rows} layout="vertical" barLength={140} />
     </div>
   );
+}
+
+/** Daily candles for a card: prices plus volume along the bottom. */
+export function CandlestickDemo() {
+  const t = useT();
+  const data = useMemo(() => {
+    const r = rng(77);
+    let prev = 71_000;
+    return Array.from({ length: 36 }, () => {
+      const open = Math.round(prev * (1 + (r() - 0.5) * 0.01));
+      const close = Math.round(open * (1 + (r() - 0.47) * 0.04));
+      const high = Math.round(Math.max(open, close) * (1 + r() * 0.012));
+      const low = Math.round(Math.min(open, close) * (1 - r() * 0.012));
+      prev = close;
+      return { open, high, low, close, volume: Math.round(4e6 + r() * 8e6) };
+    });
+  }, []);
+  return (
+    <CandlestickChart
+      data={data}
+      height={H}
+      inset={6}
+      xAxis={{ data: dayLabels(36) }}
+      labels={t.candle}
+      showYAxis={{ width: 40, tickLabelFormatter: (v) => `${Math.round(v / 1000)}k` }}
+      valueFormatter={(v) => fmt(v)}
+    />
+  );
+}
+
+/** Portfolio by asset class with the total in the hole. */
+export function DonutDemo() {
+  const t = useT();
+  return (
+    <DonutChart
+      size={150}
+      totalLabel={t.totalAssets}
+      valueFormatter={t.man}
+      data={[
+        { id: 'kr', label: t.kr, value: 4200 },
+        { id: 'us', label: t.us, value: 3100 },
+        { id: 'crypto', label: t.crypto, value: 1700 },
+        { id: 'cash', label: t.cash, value: 1000, color: '#B0B8C1' },
+      ]}
+    />
+  );
+}
+
+/** Market map: tile size = market cap, color = today's change. */
+export function TreemapDemo() {
+  const lang = useLang();
+  const names =
+    lang === 'ko'
+      ? ['삼성전자', 'SK하이닉스', 'LG에너지솔루션', '현대차', 'NAVER', '셀트리온', '카카오', 'KB금융', 'POSCO홀딩스', '기아', '삼성바이오', '한화에어로']
+      : ['Samsung', 'SK hynix', 'LG Energy', 'Hyundai', 'NAVER', 'Celltrion', 'Kakao', 'KB Fin.', 'POSCO', 'Kia', 'Samsung Bio', 'Hanwha Aero'];
+  const caps = [420, 130, 85, 48, 32, 40, 18, 30, 26, 38, 55, 22];
+  const changes = [1.84, 4.12, -2.31, 0.62, -0.88, 2.95, -3.4, 0.21, -1.25, 1.05, -0.4, 5.6];
+  return <TreemapChart height={H} data={names.map((label, i) => ({ id: `t${i}`, label, value: caps[i]!, change: changes[i]! }))} valueFormatter={(v) => (lang === 'ko' ? `${v}조` : `₩${v}T`)} />;
 }

@@ -72,7 +72,7 @@ for (const [name, viewport, colorScheme] of RUNS) {
 
   const html = await page.content();
   check(!html.includes('투자 권유') && !html.includes('Apache-2.0</span>') && !html.includes('만들고 싶은 화면'), `${name}: removed copy stays removed`);
-  check((await page.locator('.comp-card').count()) === 13, `${name}: component catalogue (${await page.locator('.comp-card').count()} cards)`);
+  check((await page.locator('.comp-card').count()) === 16, `${name}: component catalogue (${await page.locator('.comp-card').count()} cards)`);
 
   // Symbol logos must actually load (they are the "signboard" of each row).
   await page.evaluate(async () => {
@@ -194,7 +194,7 @@ for (const [name, viewport, colorScheme] of RUNS) {
   await page.waitForURL(/\/docs\/$/);
   check((await page.locator('.doc-header h1').textContent()) === '소개와 설치', 'docs: 문서 button opens the docs');
   const links = await page.locator('.docs-sidebar a').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-  check(links.length === 18, `docs: sidebar has ${links.length} pages`);
+  check(links.length === 21, `docs: sidebar has ${links.length} pages`);
   for (const href of links) {
     await page.goto(new URL(href, url).href, { waitUntil: 'networkidle' });
     const title = await page.locator('.doc-header h1').textContent();

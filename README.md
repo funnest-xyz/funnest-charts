@@ -62,6 +62,9 @@ import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 | Component | Use |
 |---|---|
 | `LineChart` · `AreaChart` · `BarChart` | Price history, composition (`stacked`), P&L and volume, horizontal rankings (`layout="horizontal"`) |
+| `CandlestickChart` | A small candlestick chart with volume for cards and dashboards |
+| `DonutChart` | Portfolio shares as a ring (or a pie), total in the middle |
+| `TreemapChart` | Market maps: tiles sized by market cap, colored by change |
 | `PercentageBarChart` | Portfolio weights, buy/sell pressure, several rows or vertical columns |
 | `CartesianChart` | Compose your own from `Line`, `Area`, `BarPlot`, axes and annotations; several y axes (`yAxisId`) and `[low, high]` ranges for bands and floating bars |
 | `XAxis` · `YAxis` · `Scrubber` · `PeriodSelector` | Axes, pointer tracking with value tooltips, period tabs |

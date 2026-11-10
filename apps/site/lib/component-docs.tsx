@@ -3,7 +3,10 @@ import type { PropRow } from '../components/docs';
 import {
   AreaChartDemo,
   BarChartDemo,
+  CandlestickDemo,
   CartesianDemo,
+  DonutDemo,
+  TreemapDemo,
   ConfidenceBandDemo,
   HorizontalBarDemo,
   PercentageRowsDemo,
@@ -176,6 +179,101 @@ import { BarChart, ReferenceLine } from '@funnest/charts-react';
   scrubber
 />`,
       },
+    ],
+  },
+  {
+    slug: 'candlestick-chart',
+    name: 'CandlestickChart',
+    group: '차트',
+    summary: '카드에 넣는 작은 캔들 차트',
+    body: '종목 카드나 대시보드에 넣는 가벼운 SVG 캔들 차트예요. 도구나 지표가 필요하면 FnChart를 쓰세요. volume이 있으면 아래쪽에 거래량 막대를 따로 축을 둬서 그려요. 마우스나 방향키로 시가·고가·저가·종가를 볼 수 있어요.',
+    demo: <CandlestickDemo />,
+    code: `
+import { CandlestickChart, ReferenceLine } from '@funnest/charts-react';
+
+<CandlestickChart
+  data={candles}                 // [{ open, high, low, close, volume? }, …]
+  xAxis={{ data: dates }}
+  showYAxis={{ tickLabelFormatter: (v) => \`\${Math.round(v / 1000)}k\` }}
+>
+  <ReferenceLine yAxisId="price" dataY={avgPrice} label="평단가" />
+</CandlestickChart>`,
+    props: [
+      { name: 'data', type: '({ open, high, low, close, volume? } | null)[]', desc: 'x 칸마다 캔들 하나. null은 빈 칸이에요.' },
+      { name: 'height', type: 'number', def: '240', desc: '차트 높이(px).' },
+      { name: 'xAxis', type: '{ data?, bandPadding? }', desc: '날짜 라벨. 축은 항상 칸(band)이에요.' },
+      { name: 'upColor / downColor', type: 'string', def: "'#F04452' / '#3182F6'", desc: '양봉·음봉 색.' },
+      { name: 'hollowUp', type: 'boolean', def: 'false', desc: '양봉 몸통을 비워서 그려요.' },
+      { name: 'bodyWidth', type: 'number', def: '0.7', desc: '칸 너비 대비 몸통 너비.' },
+      { name: 'showVolume', type: 'boolean', desc: '거래량 막대. 기본은 volume이 있으면 켜져요.' },
+      { name: 'volumeHeight', type: 'number', def: '0.22', desc: '거래량 막대가 쓰는 높이 비율.' },
+      { name: 'showYAxis / showXAxis', type: 'boolean | YAxisProps | XAxisProps', def: 'true / false', desc: '가격 축(오른쪽)과 날짜 축.' },
+      { name: 'tooltip', type: 'boolean', def: 'true', desc: '포인터 선과 시가·고가·저가·종가 말풍선.' },
+      { name: 'labels', type: '{ open, high, low, close, volume? }', def: '시가/고가/저가/종가', desc: '말풍선 이름. 영어 화면이면 바꿔 주세요.' },
+      { name: 'valueFormatter', type: '(v) => string', desc: '가격 표시 형식.' },
+      { name: 'children', type: 'ReactNode', desc: "ReferenceLine(yAxisId=\"price\"), Point 등을 위에 겹쳐요." },
+    ],
+  },
+  {
+    slug: 'donut-chart',
+    name: 'DonutChart',
+    group: '차트',
+    summary: '자산 비중을 도넛으로',
+    body: '자산군별 비중, 업종 비중, 계좌별 구성을 링으로 보여줘요. 가운데에는 합계가 나오고, 조각이나 범례에 마우스를 올리면 그 비중으로 바뀌어요. innerRadius를 0으로 하면 파이 차트가 돼요. 방향키로도 조각을 하나씩 살펴볼 수 있어요.',
+    demo: <DonutDemo />,
+    code: `
+import { DonutChart } from '@funnest/charts-react';
+
+<DonutChart
+  totalLabel="총 자산"
+  valueFormatter={(v) => \`\${v.toLocaleString()}만\`}
+  data={[
+    { id: 'kr', label: '국내주식', value: 4200 },
+    { id: 'us', label: '해외주식', value: 3100 },
+    { id: 'crypto', label: '코인', value: 1700 },
+    { id: 'cash', label: '현금', value: 1000, color: '#B0B8C1' },
+  ]}
+/>`,
+    props: [
+      { name: 'data', type: '{ id, label, value, color? }[]', desc: '조각 목록. 0 이하는 그리지 않아요.' },
+      { name: 'size', type: 'number', def: '180', desc: '지름(px).' },
+      { name: 'innerRadius', type: 'number', def: '0.68', desc: '구멍 크기(반지름 대비). 0이면 파이 차트.' },
+      { name: 'padAngle', type: 'number', def: '1.5', desc: '조각 사이 간격(도).' },
+      { name: 'cornerRadius', type: 'number', def: '3', desc: '조각 모서리 둥글기(px).' },
+      { name: 'totalLabel', type: 'string', desc: '가운데 합계 아래 작은 글씨.' },
+      { name: 'center', type: '(active, total) => { value, label? } | ReactNode | null', desc: '가운데 내용을 직접 정해요.' },
+      { name: 'valueFormatter', type: '(v) => string', desc: '합계와 값 표시 형식.' },
+      { name: 'showLegend / legendPosition', type: "boolean / 'right' | 'bottom'", def: "true / 'right'", desc: '범례와 위치.' },
+      { name: 'formatLabel', type: '(item, fraction) => string', desc: '범례 값. 기본은 "42%".' },
+      { name: 'activeId / onActiveChange', type: 'string | null / (id) => void', desc: '강조할 조각을 밖에서 제어해요(표와 연동 등).' },
+    ],
+  },
+  {
+    slug: 'treemap-chart',
+    name: 'TreemapChart',
+    group: '차트',
+    summary: '시가총액과 등락률로 그리는 마켓맵',
+    body: '타일 크기는 value(시가총액, 보유 금액), 색은 change(등락률)로 정해요. 오르면 빨강, 내리면 파랑이고 많이 움직일수록 진해져요. 글씨는 타일 크기에 맞춰 커지고, 들어가지 않으면 숨겨요. 방향키로 타일을 이동하고 Enter로 onItemClick을 부를 수 있어요.',
+    demo: <TreemapDemo />,
+    code: `
+import { TreemapChart } from '@funnest/charts-react';
+
+<TreemapChart
+  height={320}
+  data={stocks.map((s) => ({ id: s.code, label: s.name, value: s.marketCap, change: s.changePercent }))}
+  valueFormatter={(v) => \`\${v}조\`}
+  onItemClick={(item) => router.push(\`/stocks/\${item.id}\`)}
+/>`,
+    props: [
+      { name: 'data', type: '{ id, label, value, change?, color?, sublabel? }[]', desc: 'value는 크기, change는 색(%).' },
+      { name: 'height', type: 'number', def: '280', desc: '높이(px). 너비는 부모를 채워요.' },
+      { name: 'maxChange', type: 'number', def: '5', desc: '이 등락률 이상이면 가장 진한 색이에요.' },
+      { name: 'upColor / downColor / flatColor', type: 'string', def: "'#F04452' / '#3182F6' / '#8B95A1'", desc: '상승·하락·보합 색.' },
+      { name: 'getColor', type: '(item, index) => string | undefined', desc: '타일 색을 직접 정해요.' },
+      { name: 'gap / radius', type: 'number', def: '2 / 4', desc: '타일 간격과 모서리.' },
+      { name: 'changeFormatter', type: '(change) => string', def: '"+2.31%"', desc: '등락률 표시 형식.' },
+      { name: 'valueFormatter', type: '(v) => string', desc: '말풍선의 값 형식.' },
+      { name: 'onItemClick', type: '(item) => void', desc: '타일 클릭(또는 Enter).' },
     ],
   },
   {

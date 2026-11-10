@@ -5,6 +5,9 @@ import { YAxis } from './axes';
 import { CartesianChart } from './cartesian-chart';
 import { BarChart, LineChart, PercentageBarChart } from './charts';
 import { useCartesianChart } from './context';
+import { CandlestickChart } from './candles';
+import { DonutChart } from './donut';
+import { TreemapChart } from './treemap';
 
 const render = (el: ReturnType<typeof h>) => renderToStaticMarkup(el);
 
@@ -85,5 +88,50 @@ describe('horizontal bars and percentage rows', () => {
     expect(html).toContain('1월');
     expect(html).toContain('X 25%');
     expect(html).toContain('X 50%');
+  });
+});
+
+describe('donut, treemap, candles', () => {
+  const items = [
+    { id: 'kr', label: '국내', value: 60 },
+    { id: 'us', label: '해외', value: 30 },
+    { id: 'cash', label: '현금', value: 10 },
+  ];
+  it('draws a segment per positive item and the total in the hole', () => {
+    const html = render(h(DonutChart, { data: [...items, { id: 'z', label: 'Z', value: 0 }], totalLabel: '총 자산' }));
+    expect((html.match(/<path/g) ?? []).length).toBe(3);
+    expect(html).toContain('>100<');
+    expect(html).toContain('총 자산');
+    expect(html).toContain('60%');
+  });
+  it('lays out treemap tiles colored by change', () => {
+    const html = render(
+      h(TreemapChart, {
+        width: 400,
+        height: 200,
+        data: [
+          { id: 'a', label: '삼성전자', value: 400, change: 2.5 },
+          { id: 'b', label: 'SK하이닉스', value: 150, change: -6 },
+          { id: 'c', label: 'NAVER', value: 50, change: 0 },
+        ],
+      }),
+    );
+    expect((html.match(/<rect/g) ?? []).length).toBe(3);
+    expect(html).toContain('삼성전자');
+    expect(html).toContain('+2.50%');
+    expect(html).toContain('#3182f6'); // full down color at |change| >= maxChange
+    expect(html).toContain('#8B95A1'); // flat
+  });
+  it('draws a wick and body per candle plus volume bars', () => {
+    const data = [
+      { open: 100, high: 110, low: 95, close: 108, volume: 1000 },
+      { open: 108, high: 112, low: 101, close: 102, volume: 1500 },
+      null,
+    ];
+    const html = render(h(CandlestickChart, { data, width: 300, height: 200 }));
+    expect((html.match(/<line/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('#F04452');
+    expect(html).toContain('#3182F6');
+    expect((html.match(/<path/g) ?? []).length).toBe(2); // volume bars
   });
 });

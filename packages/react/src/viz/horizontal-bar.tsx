@@ -1,5 +1,5 @@
 import { bandScale, barPath, extent, linearScale, seriesColor, stack, stackedExtent, ticks as niceTicks } from '@funnest/charts-viz';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { DIM_OPACITY, formatNumber, VAR, type ChartSeries } from './context';
 import { Legend, type LegendShape } from './legend';
 
@@ -61,6 +61,7 @@ export function HorizontalBarChart({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState(fixedWidth ?? 0);
   const [hover, setHover] = useState<number | null>(null);
+  const [focused, setFocused] = useState(false);
   useEffect(() => {
     if (fixedWidth !== undefined) return setMeasured(fixedWidth);
     const el = wrapRef.current;
@@ -109,6 +110,21 @@ export function HorizontalBarChart({
     setHover(band.invert(e.clientY - r.top));
   };
 
+  // Keyboard: ↑↓ move between rows, Home/End, Esc clears.
+  const onKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
+    const last = rows - 1;
+    if (last < 0) return;
+    let next: number | null | undefined;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = hover === null ? 0 : Math.min(last, hover + 1);
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = hover === null ? last : Math.max(0, hover - 1);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    else if (e.key === 'Escape') next = null;
+    if (next === undefined) return;
+    e.preventDefault();
+    setHover(next);
+  };
+
   // Tooltip for the hovered row.
   const tipRows =
     hover === null
@@ -137,9 +153,20 @@ export function HorizontalBarChart({
         height={h}
         role="img"
         aria-label={ariaLabel}
-        style={{ display: 'block', overflow: 'visible', userSelect: 'none' }}
+        tabIndex={enableScrubbing ? 0 : undefined}
+        style={{ display: 'block', overflow: 'visible', userSelect: 'none', outline: 'none', borderRadius: 6, boxShadow: focused ? `0 0 0 2px ${VAR.accentRing}` : undefined }}
         onPointerMove={enableScrubbing ? onMove : undefined}
-        onPointerLeave={enableScrubbing ? () => setHover(null) : undefined}
+        onPointerLeave={enableScrubbing ? () => !focused && setHover(null) : undefined}
+        onKeyDown={enableScrubbing ? onKeyDown : undefined}
+        onFocus={enableScrubbing ? () => setFocused(true) : undefined}
+        onBlur={
+          enableScrubbing
+            ? () => {
+                setFocused(false);
+                setHover(null);
+              }
+            : undefined
+        }
       >
         {w > 0 && (
           <>
@@ -211,6 +238,11 @@ export function HorizontalBarChart({
           </>
         )}
       </svg>
+      {enableScrubbing && (
+        <span aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+          {focused && hover !== null ? [categories?.[hover] ?? String(hover), ...tipRows.map((r) => `${r.s.label ?? r.s.id} ${r.text}`)].join(', ') : ''}
+        </span>
+      )}
     </div>
   );
 }

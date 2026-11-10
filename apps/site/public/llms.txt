@@ -5,7 +5,7 @@
 Install: `npm i @funnest/charts-react`
 
 ## Packages
-- @funnest/charts-react: `<FnChart />` trading chart + SVG components (LineChart, AreaChart, BarChart, PercentageBarChart, CartesianChart, XAxis, YAxis, Scrubber, ReferenceLine, Point, Legend, PeriodSelector)
+- @funnest/charts-react: `<FnChart />` trading chart + SVG components (LineChart, AreaChart, BarChart, CandlestickChart, DonutChart, TreemapChart, PercentageBarChart, CartesianChart, XAxis, YAxis, Scrubber, ReferenceLine, Point, Legend, PeriodSelector)
 - @funnest/charts-ui: framework-free trading widget, `createTradingChart(el, options)`
 - @funnest/charts: canvas engine, indicators, realtime helpers (ReconnectingWebSocket, TickAggregator, combineDatafeeds)
 - @funnest/charts-viz: platform-neutral chart math (web + React Native)
@@ -19,6 +19,7 @@ Install: `npm i @funnest/charts-react`
 - SVG components: `series=[{ id, data, label?, color?, yAxisId? }]`, `scrubber={{ showValues: true }}`, `onScrubberPositionChange`.
 - Data points may be `[low, high]` ranges: Area draws a band, BarPlot draws floating bars.
 - Several y axes: `yAxis=[{ id: 'price' }, { id: 'volume' }]` with `series[].yAxisId` and `<YAxis axisId />`.
+- `CandlestickChart data=[{ open, high, low, close, volume? }]` (small SVG candles with volume); `DonutChart data=[{ id, label, value }] totalLabel`; `TreemapChart data=[{ id, label, value, change }]` (market map, red up / blue down).
 - `BarChart layout="horizontal"`; `PercentageBarChart rows=[…]` and `layout="vertical"`.
 
 ## Docs

@@ -76,6 +76,9 @@ import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 ```
 
 - `AreaChart stacked` for composition; `BarChart getBarColor={(v) => v >= 0 ? up : down}` for P&L.
+- `CandlestickChart data={[{ open, high, low, close, volume? }]}` for a small candle chart in a card (use `FnChart` for a full trading screen).
+- `DonutChart data={[{ id, label, value }]} totalLabel="총 자산"` for portfolio mix (`innerRadius={0}` = pie).
+- `TreemapChart data={[{ id, label, value: marketCap, change: pct }]}` for market maps (`onItemClick` to open a stock).
 - `BarChart layout="horizontal"` for rankings / sector returns (categories from `xAxis.data`).
 - Ranges: a data point can be `[low, high]` → `Area` draws a band (forecast range), bars float (day low–high).
 - Several y axes: `yAxis={[{ id: 'price' }, { id: 'volume' }]}` + `series[].yAxisId`; `<YAxis axisId="price" />`.

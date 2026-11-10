@@ -132,3 +132,30 @@ describe('bar path ends', () => {
     expect(barPath(0, 10, 100, 40, 4).match(/Q/g)?.length).toBe(2);
   });
 });
+
+import { arcPath, arcs, treemap } from './shapes';
+
+describe('shapes', () => {
+  it('splits a circle by value and pads between segments', () => {
+    const a = arcs([{ id: 'a', value: 3 }, { id: 'b', value: 1 }, { id: 'c', value: -2 }]);
+    expect(a.map((s) => s.fraction)).toEqual([0.75, 0.25, 0]);
+    expect(a[1]!.endAngle).toBeCloseTo(Math.PI * 2);
+    const p = arcs([{ id: 'a', value: 1 }, { id: 'b', value: 1 }], 0.1);
+    expect(p[0]!.endAngle - p[0]!.startAngle).toBeCloseTo(Math.PI - 0.1);
+  });
+  it('draws ring, pie, rounded and full-circle paths', () => {
+    expect(arcPath(50, 50, 30, 40, 0, Math.PI / 2)).toMatch(/^M50,10A40,40 0 0 1 90,50L80,50A30,30 0 0 0 50,20Z$/);
+    expect(arcPath(50, 50, 0, 40, 0, Math.PI / 2)).toContain('L50,50Z');
+    expect(arcPath(50, 50, 30, 40, 0, 1, 3).match(/A/g)!.length).toBe(6);
+    expect(arcPath(50, 50, 30, 40, 0, Math.PI * 2).match(/Z/g)!.length).toBe(2);
+  });
+  it('lays out a squarified treemap that fills the area', () => {
+    const r = treemap([{ id: 'a', value: 6 }, { id: 'b', value: 6 }, { id: 'c', value: 4 }, { id: 'd', value: 3 }, { id: 'e', value: 2 }, { id: 'z', value: 0 }], 600, 400);
+    expect(r.map((x) => x.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    const area = r.reduce((t, x) => t + x.width * x.height, 0);
+    expect(area).toBeCloseTo(240000);
+    for (const x of r) expect(Math.max(x.width / x.height, x.height / x.width)).toBeLessThan(3);
+    const g = treemap([{ id: 'a', value: 1 }, { id: 'b', value: 1 }], 100, 50, 4);
+    expect(g[0]!.width + g[1]!.width).toBeCloseTo(96);
+  });
+});

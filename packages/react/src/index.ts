@@ -7,7 +7,8 @@
  * </FnChart>
  * ```
  *
- * Plus SVG chart components (LineChart, AreaChart, BarChart, PercentageBarChart, CartesianChart
+ * Plus SVG chart components (LineChart, AreaChart, BarChart, CandlestickChart, DonutChart, TreemapChart,
+ * PercentageBarChart, CartesianChart
  * and its parts) built on the platform-neutral math in @funnest/charts-viz.
  */
 export { FnChart, FnChartSlot, useChartEvent, useFnChart } from './fn-chart';

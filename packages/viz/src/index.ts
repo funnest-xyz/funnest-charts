@@ -20,3 +20,4 @@ export {
   type PercentageSegment,
 } from './data';
 export { DEFAULT_PALETTE, seriesColor } from './palette';
+export { arcs, arcPath, arcCentroid, treemap, type ArcSegment, type TreemapRect } from './shapes';
