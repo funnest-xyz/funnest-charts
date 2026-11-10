@@ -13,6 +13,8 @@ export interface ChartSettings {
   gridVertical: boolean;
   /** Volume pane under the price pane. */
   volume: boolean;
+  /** Zoom/scroll buttons at the bottom center of the chart (@funnest/charts-ui). */
+  navigationButtons: boolean;
   /** Up/down candle colors; null follows the theme. */
   upColor: string | null;
   downColor: string | null;
@@ -24,6 +26,7 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   gridHorizontal: true,
   gridVertical: true,
   volume: true,
+  navigationButtons: true,
   upColor: null,
   downColor: null,
 };

@@ -22,7 +22,7 @@ export default defineConfig({
       'react/jsx-dev-runtime',
     ],
   },
-  // Two pages: the vanilla widget demo and the React wrapper demo.
-  build: { rollupOptions: { input: { main: 'index.html', react: 'react.html' } } },
+  // Pages: the vanilla widget demo, the React wrapper demo and the multi-chart (split) demo.
+  build: { rollupOptions: { input: { main: 'index.html', react: 'react.html', multi: 'multi.html' } } },
   server: { host: true },
 });

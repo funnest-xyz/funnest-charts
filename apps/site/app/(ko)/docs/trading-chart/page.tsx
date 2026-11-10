@@ -66,7 +66,8 @@ widget.destroy();`}</Code>
           { name: 'toolbar', type: 'HTMLElement', desc: '툴바에서 봉 단위 버튼 바로 뒤(시세 정보 등).' },
           { name: 'toolbarEnd', type: 'HTMLElement', desc: '툴바 오른쪽 끝, 설정(톱니바퀴) 옆. 아이콘 버튼용.' },
           { name: 'belowToolbar', type: 'HTMLElement', desc: '툴바 아래 한 줄 전체.' },
-          { name: 'footer', type: 'HTMLElement', desc: '차트 아래 한 줄 전체(연결 상태 등).' },
+          { name: 'bottom', type: 'HTMLElement', desc: '차트 바로 아래, 그리기 도구 막대 오른쪽(잔고·포지션 패널 등). 높이는 직접 정해요.' },
+          { name: 'footer', type: 'HTMLElement', desc: '맨 아래 한 줄 전체(연결 상태 등).' },
         ]}
       />
       <Code title="이 사이트 첫 화면의 라이트/다크 버튼">{`
@@ -91,6 +92,51 @@ const ref = useRef<TradingChart>(null);
 
 const state = ref.current!.save();    // JSON으로 저장
 await ref.current!.load(state);       // 그대로 복원`}</Code>
+
+      <h2>분할 화면 (여러 차트)</h2>
+      <P>
+        차트 1~8개를 한 화면에 나눠 보여줘요.
+        툴바와 그리기 도구는 하나이고, 마지막으로 누른 칸(활성 칸)을 조작해요.
+        사용자는 툴바의 분할 버튼으로 모양을 바꾸고, 칸 사이 경계를 끌어 크기를 바꿔요.
+      </P>
+      <Code>{`
+import { FnMultiChart } from '@funnest/charts-react';
+
+<FnMultiChart
+  datafeed={myDatafeed}
+  layout="4-grid"
+  panes={[
+    { symbol: '005930', resolution: '1D' },
+    { symbol: '000660', resolution: '1D' },
+    { symbol: 'KRW-BTC', resolution: '60' },
+    { symbol: 'KRW-ETH', resolution: '60' },
+  ]}
+  sync={{ crosshair: true }}
+  style={{ height: 720 }}
+/>`}</Code>
+      <P>
+        React 없이 쓸 때는 <code>createMultiChart(element, options)</code>를 써요.
+        <code>FnChart</code>의 옵션과 슬롯을 모두 그대로 쓸 수 있어요.
+      </P>
+      <Props
+        rows={[
+          { name: 'panes', type: 'PaneSpec[]', desc: '칸마다 처음 열 종목과 봉 단위. 분할 모양이 칸을 더 필요로 하면 활성 칸의 종목으로 채워요.' },
+          { name: 'layout', type: 'LayoutId', def: "'1'", desc: "'2-cols', '3-left', '4-grid', '6-grid', '8-grid' 등 12가지." },
+          { name: 'sync', type: 'Partial<LayoutSync>', def: '{ crosshair: true }', desc: '칸 동기화: crosshair(십자선), time(시간 범위), symbol(종목), interval(봉 단위).' },
+          { name: 'narrowWidth', type: 'number', def: '640', desc: '이보다 좁으면 활성 칸만 보여주고 위에 칸 탭을 띄워요.' },
+        ]}
+      />
+      <P>
+        시간 범위 동기화는 봉 단위가 같은 칸끼리만 맞춰요.
+        <code>Alt+1</code>~<code>Alt+8</code>로 칸을 옮기고, <code>Alt+Enter</code>로 활성 칸을 크게 봐요.
+      </P>
+      <Code title="분할 화면 저장과 복원">{`
+const ref = useRef<MultiChart>(null);
+
+<FnMultiChart ref={ref} datafeed={feed} panes={[{ symbol: '005930' }]}
+  onReady={(w) => w.on('stateChange', () => save(w.save()))} />
+
+await ref.current!.load(saved);   // 분할 모양, 크기, 동기화, 칸마다의 차트까지`}</Code>
 
       <h2>이벤트</h2>
       <Code>{`

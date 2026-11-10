@@ -14,6 +14,8 @@ import {
 import { createPortal } from 'react-dom';
 
 const WidgetContext = createContext<TradingChart | null>(null);
+/** Slots of the surrounding <FnChart> or <FnMultiChart>, for <FnChartSlot>. */
+export const SlotsContext = createContext<TradingChartSlots | null>(null);
 
 export interface FnChartProps extends TradingChartOptions {
   className?: string;
@@ -79,7 +81,9 @@ export const FnChart = forwardRef<TradingChart | null, FnChartProps>(function Fn
 
   return (
     <div ref={hostRef} className={className} style={{ width: '100%', height: '100%', ...style }}>
-      <WidgetContext.Provider value={widget}>{children}</WidgetContext.Provider>
+      <WidgetContext.Provider value={widget}>
+        <SlotsContext.Provider value={widget?.slots ?? null}>{children}</SlotsContext.Provider>
+      </WidgetContext.Provider>
     </div>
   );
 });
@@ -98,10 +102,10 @@ export function useChartEvent<K extends keyof ChartEvents>(event: K, handler: (p
 }
 
 /**
- * Renders React children into one of the widget's slots ('toolbar', 'belowToolbar', 'footer')
+ * Renders React children into one of the widget's slots ('toolbar', 'toolbarEnd', 'belowToolbar', 'bottom', 'footer')
  * — e.g. a market stats bar or account info — styled with the widget's `--fnc-*` variables.
  */
 export function FnChartSlot({ name, children }: { name: keyof TradingChartSlots; children: ReactNode }) {
-  const widget = useFnChart();
-  return widget ? createPortal(children, widget.slots[name]) : null;
+  const slots = useContext(SlotsContext);
+  return slots ? createPortal(children, slots[name]) : null;
 }

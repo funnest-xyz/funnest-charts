@@ -9,6 +9,10 @@ export {
   DEFAULT_INTERVAL_GROUPS,
   DEFAULT_SEARCH_CATEGORIES,
 } from './trading-chart';
-export type { IntervalGroup, SearchCategory } from './context';
+export { createMultiChart } from './multi-chart';
+export type { MultiChart, MultiChartEvents, MultiChartOptions, MultiChartState, PaneSpec } from './multi-chart';
+export { LAYOUT_GROUPS, LAYOUTS, MAX_PANES, paneCount } from './layouts';
+export type { LayoutId, SplitNode, SplitSizes } from './layouts';
+export type { IntervalGroup, LayoutSync, SearchCategory } from './context';
 export type { ColorScheme, TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart';
 export { resolutionLabel } from './i18n';

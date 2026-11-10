@@ -10,6 +10,7 @@ Open-source (Apache-2.0) financial charts. Two layers:
 | Need | Use |
 |---|---|
 | A full trading screen: candles, toolbar, symbol search, indicators, drawings, positions/orders | `<FnChart />` from `@funnest/charts-react` (or `createTradingChart` from `@funnest/charts-ui` without React) |
+| Several charts side by side (2–8 panes, one toolbar, synced crosshair/time/symbol/interval) | `<FnMultiChart panes={[{ symbol }, …]} layout="4-grid" />` from `@funnest/charts-react` (or `createMultiChart`) |
 | Dashboard pieces: return cards, watchlists, P&L bars, portfolio weights | SVG components from `@funnest/charts-react`: `LineChart`, `AreaChart`, `BarChart`, `PercentageBarChart`, `CartesianChart` + parts |
 | A chart image or quick look at data (no app) | `npx @funnest/charts-cli render spec.json --out chart.png`, or the MCP tool `render_chart` |
 

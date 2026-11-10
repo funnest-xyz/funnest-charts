@@ -71,7 +71,8 @@ export interface CrosshairInfo {
   pane: PaneId;
   x: number;
   y: number;
-  source: 'mouse' | 'touch';
+  /** 'sync': mirrored from a linked chart (setSyncedCrosshair) — time only, `y` is -1. */
+  source: 'mouse' | 'touch' | 'sync';
 }
 
 /** Fill details shown next to an execution marker. */
@@ -486,6 +487,21 @@ export function drawOverlay(layer: CanvasLayer, m: RenderModel, ch: CrosshairInf
   if (!ch) return;
 
   p.vLine(ch.x, 0, f.panesHeight, pal.crosshair, DASH);
+  if (ch.source !== 'sync') drawCrosshairValue(p, m, ch);
+
+  // Time badge on the time axis
+  const timeLabel = m.formatCrosshairTime(ch.time);
+  const w = p.measure(timeLabel) + 16;
+  const cx = Math.min(f.plotWidth - w / 2, Math.max(w / 2, ch.x));
+  p.roundRect(cx - w / 2, f.panesHeight + 4, w, f.timeAxisHeight - 8, 4, pal.text);
+  p.text(timeLabel, cx, f.panesHeight + f.timeAxisHeight / 2, pal.background, 'center');
+}
+
+/** Horizontal line, touch dot and price-axis badge of a pointer crosshair. */
+function drawCrosshairValue(p: Painter, m: RenderModel, ch: CrosshairInfo): void {
+  const f = m.frame;
+  const pal = f.palette;
+  const ctx = p.ctx;
   p.hLine(ch.y, 0, f.plotWidth, pal.crosshair, DASH);
 
   if (ch.source === 'touch') {
@@ -505,11 +521,4 @@ export function drawOverlay(layer: CanvasLayer, m: RenderModel, ch: CrosshairInf
   const by = Math.min(f.panesHeight - BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, ch.y));
   p.roundRect(f.plotWidth + 2, by - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, pal.text);
   p.text(valueLabel, f.plotWidth + 8, by, pal.background);
-
-  // Time badge on the time axis
-  const timeLabel = m.formatCrosshairTime(ch.time);
-  const w = p.measure(timeLabel) + 16;
-  const cx = Math.min(f.plotWidth - w / 2, Math.max(w / 2, ch.x));
-  p.roundRect(cx - w / 2, f.panesHeight + 4, w, f.timeAxisHeight - 8, 4, pal.text);
-  p.text(timeLabel, cx, f.panesHeight + f.timeAxisHeight / 2, pal.background, 'center');
 }

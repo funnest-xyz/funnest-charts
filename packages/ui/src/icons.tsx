@@ -246,3 +246,22 @@ export const FunnestMark = () => (
     <circle cx="24.6" cy="8.6" r="2.9" fill="#FFD43B" />
   </svg>
 );
+
+export const LinkIcon = () => (
+  <Icon>
+    <path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1" />
+    <path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l1-1" />
+  </Icon>
+);
+
+export const MaximizeIcon = () => (
+  <Icon size={16}>
+    <path d="M11 4h5v5M9 16H4v-5M16 4l-5 5M4 16l5-5" />
+  </Icon>
+);
+
+export const RestoreIcon = () => (
+  <Icon size={16}>
+    <path d="M15 9h-4V5M5 11h4v4M11 9l5-5M9 11l-5 5" />
+  </Icon>
+);

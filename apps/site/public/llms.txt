@@ -5,8 +5,8 @@
 Install: `npm i @funnest/charts-react`
 
 ## Packages
-- @funnest/charts-react: `<FnChart />` trading chart + SVG components (LineChart, AreaChart, BarChart, CandlestickChart, DonutChart, TreemapChart, PercentageBarChart, CartesianChart, XAxis, YAxis, Scrubber, ReferenceLine, Point, Legend, PeriodSelector)
-- @funnest/charts-ui: framework-free trading widget, `createTradingChart(el, options)`
+- @funnest/charts-react: `<FnChart />` trading chart, `<FnMultiChart />` split screen of 1–8 linked charts (layouts, active pane, crosshair/time/symbol/interval sync) + SVG components (LineChart, AreaChart, BarChart, CandlestickChart, DonutChart, TreemapChart, PercentageBarChart, CartesianChart, XAxis, YAxis, Scrubber, ReferenceLine, Point, Legend, PeriodSelector)
+- @funnest/charts-ui: framework-free trading widget, `createTradingChart(el, options)`; split screen `createMultiChart(el, { panes, layout, sync })`
 - @funnest/charts: canvas engine, indicators, realtime helpers (ReconnectingWebSocket, TickAggregator, combineDatafeeds)
 - @funnest/charts-viz: platform-neutral chart math (web + React Native)
 - @funnest/charts-cli: `funnest-charts` command — validate JSON chart specs (line, area, bar, candlestick, donut, treemap, percentage-bar, sparkline), render SVG/PNG/HTML, suggest charts, emit React code

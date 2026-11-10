@@ -10,6 +10,7 @@ import type {
   Resolution,
   SymbolInfo,
 } from '@funnest/charts';
+import type { LayoutId } from './layouts';
 import type { WidgetStorage } from './storage';
 import type { Store } from './store';
 
@@ -74,4 +75,37 @@ export interface WidgetContext {
   setSearchOpen(open: boolean): void;
   screenshot(): void;
   toggleFullscreen(): void;
+  /** Present in the multi-chart widget: split layout and sync controls for the toolbar. */
+  multi?: MultiControls | undefined;
+}
+
+/** What linked panes share in the multi-chart widget. */
+export interface LayoutSync {
+  /** Mirror the crosshair's time in every pane. */
+  crosshair: boolean;
+  /** Scroll/zoom every pane to the same time span. */
+  time: boolean;
+  /** Changing the symbol changes it in every pane. */
+  symbol: boolean;
+  /** Changing the interval changes it in every pane. */
+  interval: boolean;
+}
+
+export interface MultiState {
+  layout: LayoutId;
+  sync: LayoutSync;
+  /** Index of the pane the toolbar and drawing bar act on. */
+  active: number;
+  /** A pane temporarily filling the whole grid. */
+  maximized: number | null;
+  /** The container is too narrow to split: only the active pane shows, with pane tabs. */
+  narrow: boolean;
+}
+
+export interface MultiControls {
+  store: Store<MultiState>;
+  setLayout(layout: LayoutId): void;
+  setSync(patch: Partial<LayoutSync>): void;
+  activate(index: number): void;
+  toggleMaximize(index?: number): void;
 }

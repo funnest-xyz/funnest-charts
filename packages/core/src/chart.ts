@@ -203,6 +203,8 @@ export class Chart {
   private priceAxisWidth = MIN_PRICE_AXIS_WIDTH;
   private frame: Frame | null = null;
   private crosshair: { x: number; y: number; source: 'mouse' | 'touch' } | null = null;
+  /** Time (UTC ms) of a crosshair mirrored from a linked chart; see setSyncedCrosshair(). */
+  private syncedTime: number | null = null;
   private lastCrosshairKey = '';
   private lastRangeKey = '';
   private lastLayoutKey = '';
@@ -456,6 +458,67 @@ export class Chart {
   /** True when the newest bar is visible. */
   isAtRealtime(): boolean {
     return this.store.length === 0 || this.timeScale.visibleRange().to >= this.store.length - 1;
+  }
+
+  /**
+   * Mirrors another chart's crosshair: a vertical line at `time` (UTC ms) on the bar that
+   * contains it, with the time badge but no price line. `crosshairMove` fires with
+   * `source: 'sync'`, so legends follow along. A pointer on this chart takes precedence.
+   * Pass null to clear.
+   */
+  setSyncedCrosshair(time: number | null): void {
+    if (time === this.syncedTime) return;
+    this.syncedTime = time;
+    this.invalidate(false);
+  }
+
+  /**
+   * The time span (UTC ms) between the plot's left and right edges. Edges past the data
+   * (the empty space right of the last bar) are extrapolated by the bar interval.
+   */
+  getVisibleTimeRange(): { from: number; to: number } | null {
+    const ts = this.timeScale;
+    if (this.store.length === 0 || ts.width <= 0) return null;
+    return { from: this.indexToTime(ts.xToIndexFloat(0)), to: this.indexToTime(ts.xToIndexFloat(ts.width)) };
+  }
+
+  /** Scrolls and zooms so the plot spans `from`…`to` (UTC ms), e.g. to match a linked chart. */
+  setVisibleTimeRange(range: { from: number; to: number }): void {
+    const ts = this.timeScale;
+    if (this.store.length === 0 || ts.width <= 0 || !(range.to > range.from)) return;
+    const from = this.timeToIndex(range.from);
+    const to = this.timeToIndex(range.to);
+    if (!(to > from)) return;
+    // Solve xToIndexFloat(0) = from and xToIndexFloat(width) = to.
+    ts.barSpacing = ts.width / (to - from);
+    ts.rightOffset = to - 0.5 - (this.store.length - 1);
+    ts.clamp();
+    this.invalidate();
+  }
+
+  /** Fractional bar index → time, interpolating between bars and extrapolating past either end. */
+  private indexToTime(index: number): number {
+    const bars = this.store.bars;
+    const last = bars.length - 1;
+    const step = this.barInterval();
+    if (index <= 0) return bars[0]!.time + index * step;
+    if (index >= last) return bars[last]!.time + (index - last) * step;
+    const i = Math.floor(index);
+    const a = bars[i]!.time;
+    return a + (bars[i + 1]!.time - a) * (index - i);
+  }
+
+  /** Inverse of indexToTime(). */
+  private timeToIndex(time: number): number {
+    const bars = this.store.bars;
+    const last = bars.length - 1;
+    const step = this.barInterval();
+    if (time <= bars[0]!.time) return (time - bars[0]!.time) / step;
+    if (time >= bars[last]!.time) return last + (time - bars[last]!.time) / step;
+    const i = this.store.indexAtOrBefore(time);
+    const a = bars[i]!.time;
+    const b = bars[i + 1]!.time;
+    return i + (b > a ? (time - a) / (b - a) : 0);
   }
 
   /** Snapshot of the chart (without the crosshair) at device resolution. */
@@ -1171,8 +1234,9 @@ export class Chart {
   private resolveCrosshair(frame: Frame): CrosshairInfo | null {
     const ch = this.crosshair;
     const bars = this.store.bars;
-    if (!ch || bars.length === 0) return null;
-    if (ch.source === 'mouse' && (ch.x < 0 || ch.x > frame.plotWidth || ch.y < 0 || ch.y > frame.panesHeight)) return null;
+    if (bars.length === 0) return null;
+    const outside = ch?.source === 'mouse' && (ch.x < 0 || ch.x > frame.plotWidth || ch.y < 0 || ch.y > frame.panesHeight);
+    if (!ch || outside) return this.syncedTime === null ? null : this.resolveSyncedCrosshair(this.syncedTime);
 
     const index = Math.min(bars.length - 1, Math.max(0, this.timeScale.xToIndex(ch.x)));
     const bar = bars[index]!;
@@ -1183,6 +1247,19 @@ export class Chart {
     const raw = pane.scale.yToPrice(y - pane.top);
     const value = pane.kind === 'main' ? roundToTick(raw, this.tickSize) : raw;
     return { index, time: bar.time, bar, value, pane: pane.id, x, y, source: ch.source };
+  }
+
+  /** The bar containing `time`, as a crosshair without a price (nothing when it's off the data). */
+  private resolveSyncedCrosshair(time: number): CrosshairInfo | null {
+    const bars = this.store.bars;
+    const last = bars[bars.length - 1]!;
+    if (time < bars[0]!.time || time >= last.time + this.barInterval()) return null;
+    const index = this.store.indexAtOrBefore(time);
+    const bar = bars[index];
+    if (!bar) return null;
+    const x = this.timeScale.indexToX(index);
+    if (x < 0 || x > this.timeScale.width) return null;
+    return { index, time: bar.time, bar, value: bar.close, pane: 'main', x, y: -1, source: 'sync' };
   }
 
   private paneAt(frame: Frame, y: number): PaneFrame {

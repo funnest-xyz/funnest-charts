@@ -24,6 +24,7 @@ const SECTIONS: { title: keyof Strings; toggles: { key: Toggle; label: keyof Str
       { key: 'highLowMarkers', label: 'settingHighLow' },
       { key: 'lastPriceLine', label: 'settingLastPrice' },
       { key: 'volume', label: 'settingVolume' },
+      { key: 'navigationButtons', label: 'settingNavButtons' },
     ],
   },
   {

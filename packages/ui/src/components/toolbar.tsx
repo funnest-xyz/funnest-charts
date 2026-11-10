@@ -6,6 +6,7 @@ import { useStore } from '../store';
 import { ChartTypeMenu } from './chart-type-menu';
 import { Dialogs } from './indicator-dialogs';
 import { IntervalPicker } from './interval-picker';
+import { LayoutMenu } from './layout-menu';
 import { Slot } from './slot';
 import { SymbolAvatar } from './symbol-avatar';
 import { SymbolSearch } from './symbol-search';
@@ -59,6 +60,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
         <IndicatorIcon />
         <span>{t.indicators}</span>
       </button>
+      {ctx.multi && <LayoutMenu ctx={ctx} multi={ctx.multi} />}
 
       <div class="fnc-spacer" />
 

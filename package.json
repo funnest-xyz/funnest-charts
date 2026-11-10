@@ -9,7 +9,7 @@
     "build": "pnpm --filter \"./packages/**\" build",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
-    "test:visual": "node scripts/screenshots.mjs && node scripts/screenshots-market.mjs && node scripts/screenshots-search.mjs && node scripts/screenshots-layout.mjs",
+    "test:visual": "node scripts/screenshots.mjs && node scripts/screenshots-market.mjs && node scripts/screenshots-search.mjs && node scripts/screenshots-layout.mjs && node scripts/screenshots-multi.mjs",
     "bench": "node scripts/perf.mjs",
     "site": "pnpm --filter site dev",
     "test:site": "pnpm --filter site build && node scripts/screenshots-site.mjs",

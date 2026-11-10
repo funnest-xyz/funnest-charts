@@ -2,7 +2,7 @@
 import { formatCompact, formatPrice, type Bar, type IndicatorLegendItem } from '@funnest/charts';
 import type { JSX } from 'preact';
 import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
-import type { WidgetContext } from '../context';
+import type { MultiControls, WidgetContext } from '../context';
 import { resolutionLabel, STRINGS } from '../i18n';
 import {
   ChevronLeftIcon,
@@ -12,9 +12,11 @@ import {
   EyeOffIcon,
   FunnestMark,
   GearIcon,
+  MaximizeIcon,
   MinusIcon,
   PlusIcon,
   ResetIcon,
+  RestoreIcon,
   SmallCloseIcon,
   ToRealtimeIcon,
 } from '../icons';
@@ -198,6 +200,9 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
 function NavControls({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = STRINGS[s.locale];
+  // Chart settings → "확대·이동 버튼" hides the zoom/scroll group (the jump-to-latest button stays).
+  const [showButtons, setShowButtons] = useState(ctx.chart.settings.navigationButtons);
+  useEffect(() => ctx.chart.on('settingsChange', (settings) => setShowButtons(settings.navigationButtons)), [ctx.chart]);
   const { plotWidth, panesHeight } = s.layout;
   if (plotWidth <= 0) return null;
   const top = panesHeight - CONTROL_OFFSET;
@@ -211,6 +216,7 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
 
   return (
     <>
+      {showButtons && (
       <div class="fnc-nav" style={{ left: `${plotWidth / 2}px`, top: `${top}px` }}>
         {button(t.zoomOut, () => ctx.chart.zoom(1 / ZOOM_STEP), <MinusIcon />)}
         {button(t.zoomIn, () => ctx.chart.zoom(ZOOM_STEP), <PlusIcon />)}
@@ -218,6 +224,7 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
         {button(t.scrollForward, () => ctx.chart.scrollBars(page()), <ChevronRightIcon />)}
         {button(t.resetView, () => ctx.chart.resetView(), <ResetIcon />)}
       </div>
+      )}
       {!s.atRealtime && (
         <button
           class="fnc-realtime"
@@ -257,6 +264,35 @@ function Attribution({ ctx }: { ctx: WidgetContext }) {
   );
 }
 
+/** Multi-chart: maximize/restore button at the pane's top-right corner (left of the price axis). */
+function PaneTools({ ctx }: { ctx: WidgetContext }) {
+  return ctx.multi ? <PaneMaximize ctx={ctx} multi={ctx.multi} /> : null;
+}
+
+function PaneMaximize({ ctx, multi }: { ctx: WidgetContext; multi: MultiControls }) {
+  const s = useStore(ctx.store);
+  const m = useStore(multi.store);
+  if (s.layout.plotWidth <= 0 || m.narrow || (m.layout === '1' && m.maximized === null)) return null;
+  const t = STRINGS[s.locale];
+  const maximized = m.maximized !== null;
+  const label = maximized ? t.restorePane : t.maximizePane;
+  return (
+    <button
+      class="fnc-btn fnc-pane-max"
+      style={{ left: `${s.layout.plotWidth - 36}px` }}
+      title={`${label} (Alt+Enter)`}
+      aria-label={label}
+      aria-pressed={maximized}
+      onClick={() => {
+        const index = multi.store.get().active;
+        multi.toggleMaximize(index);
+      }}
+    >
+      {maximized ? <RestoreIcon /> : <MaximizeIcon />}
+    </button>
+  );
+}
+
 export function Overlay({ ctx }: { ctx: WidgetContext }) {
   return (
     <>
@@ -264,6 +300,7 @@ export function Overlay({ ctx }: { ctx: WidgetContext }) {
       <Legend ctx={ctx} />
       <NavControls ctx={ctx} />
       <SelectionBar ctx={ctx} />
+      <PaneTools ctx={ctx} />
     </>
   );
 }

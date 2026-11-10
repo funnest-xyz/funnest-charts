@@ -13,5 +13,18 @@
  */
 export { FnChart, FnChartSlot, useChartEvent, useFnChart } from './fn-chart';
 export type { FnChartProps } from './fn-chart';
-export type { TradingChart, TradingChartOptions, TradingChartSlots } from '@funnest/charts-ui';
+export { FnMultiChart, useFnMultiChart } from './fn-multi-chart';
+export type { FnMultiChartProps } from './fn-multi-chart';
+export type {
+  LayoutId,
+  LayoutSync,
+  MultiChart,
+  MultiChartEvents,
+  MultiChartOptions,
+  MultiChartState,
+  PaneSpec,
+  TradingChart,
+  TradingChartOptions,
+  TradingChartSlots,
+} from '@funnest/charts-ui';
 export * from './viz';

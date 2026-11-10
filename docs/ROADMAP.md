@@ -24,7 +24,8 @@
 | 종목 검색 OpenMarket식 개편(거래소 사이드바, ★즐겨찾기, 가격·등락·스파크라인, Ctrl/⌘+K) | 라이브러리 | 범용 UI. 가격·스파크라인은 `searchSymbols` 결과에 있을 때만 표시 |
 | 그리기 도구 바 접기·펼치기 | 라이브러리 | 순수 UI |
 | 최고·최저 표시 → 차트 설정 또는 지표로 이동 | 라이브러리 (다음 단계) | "차트 설정" 창을 만들 때 함께 이동 |
-| 관심종목, 알림, 레이아웃 서버 저장, 다중 차트 | 사이트 | 계정·서버가 필요 |
+| 관심종목, 알림, 레이아웃 서버 저장 | 사이트 | 계정·서버가 필요 |
+| 다중 차트(분할 화면) — 2026-11-11 재분류 | 라이브러리 (0.5 `createMultiChart`/`FnMultiChart`) | 화면 분할·동기화는 서버 없이 동작하는 범용 UI. 서버 저장만 사이트 |
 
 ## 3. WebGL2 전환에 대한 판단
 
@@ -46,6 +47,9 @@
   3. 글자, 오버레이, 그리기 도구는 Canvas2D를 유지한다(하이브리드).
 
 ## 4. 진행 중 / 보류
+
+- ✅ 0.5: 분할 화면(1~8칸, 12가지 모양, 활성 칸, 경계 끌기, 크게 보기, 좁은 화면은 칸 탭). 동기화는 십자선·시간 범위·종목·주기. 엔진 `setSyncedCrosshair`·`getVisibleTimeRange`·`setVisibleTimeRange`. 슬롯 `bottom`(그리기 도구 오른쪽, 차트 아래). 차트 설정 '확대·이동 버튼'.
+- 다음: 칸 사이 그리기 공유, 색 링크 그룹(일부 칸만 묶기).
 
 - ✅ `@funnest/charts-viz` + React SVG 차트 컴포넌트 12종 (CartesianChart, XAxis, YAxis, LineChart, AreaChart, BarChart, PercentageBarChart, Scrubber, ReferenceLine, Point, Legend, PeriodSelector). Sparkline은 작은 LineChart로 대체.
 - ✅ 문서: 사이트 안 `/docs` (시작하기 4쪽 + 컴포넌트 13쪽, 라이브 데모·코드·속성 표). GitBook 대신 사이트 내장 — 예제가 실제로 동작해야 해서.
