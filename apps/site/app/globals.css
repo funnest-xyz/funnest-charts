@@ -974,3 +974,59 @@ h3 {
     padding: 4px 8px;
   }
 }
+
+/* "App" → funnest.xyz (the product), the strongest button in the bar. */
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--violet);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  transition: background 0.15s, transform 0.15s;
+}
+.app-btn:hover {
+  background: var(--violet-deep);
+}
+.app-btn:active {
+  transform: scale(0.97);
+}
+.app-btn:focus-visible {
+  outline: 3px solid #8b6cff;
+  outline-offset: 3px;
+}
+.nav-inner .nav-actions {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .app-btn {
+    height: 36px;
+    padding: 0 14px;
+  }
+  /* Not enough room on phones: GitHub stays in the footer, docs shows its icon only. */
+  .nav-actions .gh-btn,
+  .docs-label {
+    display: none;
+  }
+  .docs-btn {
+    width: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+}
+@media (max-width: 760px) {
+  .nav-inner {
+    gap: 12px;
+  }
+  .nav-actions {
+    gap: 6px;
+  }
+}
+@media (max-width: 430px) {
+  .nav .logo-suffix {
+    display: none;
+  }
+}

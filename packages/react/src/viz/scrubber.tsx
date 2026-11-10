@@ -14,6 +14,8 @@ export interface ScrubberProps {
 }
 
 const TIP_FONT = 12;
+const ROW = 18;
+const TIP_PAD = 7;
 const textWidth = (t: string) => [...t].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? TIP_FONT : TIP_FONT * 0.6), 0);
 
 /**
@@ -38,8 +40,9 @@ export function Scrubber({ label, seriesIds, dimFuture = true, showValues = fals
         return v === null || v === undefined || !Number.isFinite(v) ? [] : [{ s, text: valueFormatter(v, s.id) }];
       })
     : [];
-  const tipW = Math.max(0, ...rows.map((r) => textWidth(r.text) + (rows.length > 1 || r.s.label ? textWidth(r.s.label ?? '') + 26 : 18))) + 12;
-  const tipH = rows.length * 18 + 10;
+  const tipW = Math.max(0, ...rows.map((r) => textWidth(r.text) + (rows.length > 1 || r.s.label ? textWidth(r.s.label ?? '') + 26 : 18))) + 16;
+  // Each row is ROW px tall and centered on its own middle line; equal padding all round.
+  const tipH = rows.length * ROW + TIP_PAD * 2;
   const tipRight = x + 12 + tipW <= plot.right;
   const tipX = tipRight ? x + 12 : x - 12 - tipW;
   const tipY = plot.top + 4;
@@ -70,14 +73,14 @@ export function Scrubber({ label, seriesIds, dimFuture = true, showValues = fals
         <g transform={`translate(${tipX},${tipY})`}>
           <rect width={tipW} height={tipH} rx={8} style={{ fill: VAR.bg, stroke: VAR.grid }} strokeWidth={1} />
           {rows.map((r, k) => (
-            <g key={r.s.id} transform={`translate(8,${14 + k * 18})`}>
-              <circle cx={3} cy={-4} r={3} style={{ fill: r.s.color }} />
+            <g key={r.s.id} transform={`translate(10,${TIP_PAD + ROW / 2 + k * ROW})`}>
+              <circle cx={3} cy={0} r={3} style={{ fill: r.s.color }} />
               {(rows.length > 1 || r.s.label) && (
-                <text x={12} fontSize={TIP_FONT} style={{ fill: VAR.text }}>
+                <text x={12} dominantBaseline="central" fontSize={TIP_FONT} style={{ fill: VAR.text }}>
                   {r.s.label ?? r.s.id}
                 </text>
               )}
-              <text x={tipW - 16} textAnchor="end" fontSize={TIP_FONT} fontWeight={700} style={{ fill: VAR.textStrong, fontVariantNumeric: 'tabular-nums' }}>
+              <text x={tipW - 20} textAnchor="end" dominantBaseline="central" fontSize={TIP_FONT} fontWeight={700} style={{ fill: VAR.textStrong, fontVariantNumeric: 'tabular-nums' }}>
                 {r.text}
               </text>
             </g>
