@@ -112,6 +112,9 @@ pnpm typecheck
 pnpm build
 ```
 
+Releases are published from GitHub Actions with npm Trusted Publishing.\
+Bump the versions in `packages/*/package.json`, commit, then push a tag such as `git tag v0.1.1 && git push origin v0.1.1`.
+
 ## License
 
 Code is [Apache-2.0](LICENSE).\

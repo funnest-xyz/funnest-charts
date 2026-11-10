@@ -114,6 +114,9 @@ pnpm typecheck
 pnpm build
 ```
 
+배포는 GitHub Actions가 npm Trusted Publishing으로 해요.\
+`packages/*/package.json`의 버전을 올려 커밋한 뒤, `git tag v0.1.1 && git push origin v0.1.1`처럼 태그를 올리면 돼요.
+
 ## 라이선스
 
 코드는 [Apache-2.0](LICENSE)이에요.\
