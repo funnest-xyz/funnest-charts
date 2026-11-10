@@ -184,7 +184,7 @@ function card({ width = 1200, height = 630, category, title, subtitle, hero = fa
 // ── Pages ───────────────────────────────────────────────────────────────
 async function pages() {
   const list = [
-    { slug: 'default', hero: true, title: 'Funnest Charts', subtitle: '투자 서비스를 위한 오픈소스 차트' },
+    { slug: 'default', hero: true, title: 'Funnest Charts', subtitle: '투자 서비스를 위한 차트' },
     { slug: 'docs', category: '문서', title: '소개와 설치', subtitle: 'npm i @funnest/charts-react 한 줄로 시작해요' },
     { slug: 'docs-trading-chart', category: '문서', title: '트레이딩 차트', subtitle: '툴바, 심볼 검색, 지표, 그리기 도구까지 컴포넌트 하나로' },
     { slug: 'docs-datafeed', category: '문서', title: '데이터 연결', subtitle: 'Datafeed 하나로 어떤 거래소·증권사 데이터든' },

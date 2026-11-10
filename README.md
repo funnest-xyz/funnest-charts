@@ -1,6 +1,6 @@
 # Funnest Charts
 
-TradingView Pro 수준의 UI/UX를 내 서비스에 그대로 녹여 쓸 수 있는 오픈소스 금융 차트 라이브러리.
+투자 서비스를 위한 차트. 프로 수준의 트레이딩 차트와 대시보드 차트를 내 서비스에 그대로.
 
 - 같은 DOM에서 동작 (iframe 아님). 디자인 토큰 하나로 배경, 폰트, 상승·하락 색을 서비스에 맞춤
 - 평단가, 주문 라인, 체결 마커 같은 매매 연동 API 기본 제공
@@ -35,7 +35,7 @@ const state = chartRef.current.save();
 await chartRef.current.load(state);
 ```
 
-라이브러리에는 특정 거래소·증권사 연결 코드가 없습니다. `Datafeed` 인터페이스를 구현해 연결하세요 ([docs/REALTIME.md](docs/REALTIME.md), 예시: `apps/playground/src/datafeeds/`).
+Funnest Charts에는 특정 거래소·증권사 연결 코드가 없습니다. `Datafeed` 인터페이스를 구현해 연결하세요 ([docs/REALTIME.md](docs/REALTIME.md), 예시: `apps/playground/src/datafeeds/`).
 
 ## 차트 컴포넌트 (SVG)
 
@@ -92,7 +92,7 @@ SVG 차트 컴포넌트는 페이지의 `color-scheme`을 따르고, `--fnv-*` C
 ```bash
 pnpm install
 pnpm dev        # playground (http://localhost:5173)
-pnpm site       # 소개 사이트 + 문서 (http://localhost:3100, /docs). 개발 중엔 라이브러리 소스를 바로 읽음
+pnpm site       # 소개 사이트 + 문서 (http://localhost:3100, /docs). 개발 중엔 패키지 소스를 바로 읽음
 pnpm test:site  # 소개 사이트 빌드 + 화면 테스트
 # 하위 경로에 배포할 때: BASE_PATH=/charts pnpm --filter site build  (funnest.xyz/charts)
 pnpm test

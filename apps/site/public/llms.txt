@@ -1,6 +1,6 @@
 # Funnest Charts
 
-> Open-source (Apache-2.0) financial chart library for investment apps: a full trading chart widget (candles, toolbar, symbol search, indicators, drawing tools, positions/orders) and lightweight SVG dashboard charts. Korean defaults (KST, KRX sessions, red-up/blue-down), mobile gestures, light/dark following the OS.
+> Financial charts for investment apps (Apache-2.0): a full trading chart widget (candles, toolbar, symbol search, indicators, drawing tools, positions/orders) and lightweight SVG dashboard charts. Korean defaults (KST, KRX sessions, red-up/blue-down), mobile gestures, light/dark following the OS.
 
 Install: `npm i @funnest/charts-react`
 

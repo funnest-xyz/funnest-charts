@@ -11,7 +11,7 @@ export default function DocsHome() {
       <DocHeader
         category="시작하기"
         title="소개와 설치"
-        lead="Funnest Charts는 투자 서비스를 위한 오픈소스(Apache-2.0) 차트 라이브러리예요. 거래소 수준의 트레이딩 차트와, 대시보드에 쓰는 가벼운 SVG 차트 컴포넌트를 함께 제공해요."
+        lead="Funnest Charts는 투자 서비스를 위한 차트예요. 거래소 수준의 트레이딩 차트와, 대시보드에 쓰는 가벼운 SVG 차트 컴포넌트를 함께 제공해요."
       />
 
       <h2>설치</h2>
@@ -66,7 +66,7 @@ import { LineChart } from '@funnest/charts-react';
 />`}</Code>
 
       <Callout>
-        라이브러리에는 특정 거래소·증권사 연결 코드가 들어 있지 않아요. 바이낸스, 업비트, 증권사 API는 Datafeed 인터페이스로 직접 연결해요.
+        Funnest Charts에는 특정 거래소·증권사 연결 코드가 들어 있지 않아요. 바이낸스, 업비트, 증권사 API는 Datafeed 인터페이스로 직접 연결해요.
       </Callout>
 
       <NextLinks
