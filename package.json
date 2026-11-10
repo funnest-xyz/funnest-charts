@@ -14,7 +14,8 @@
     "site": "pnpm --filter site dev",
     "test:site": "pnpm --filter site build && node scripts/screenshots-site.mjs",
     "release": "node scripts/release.mjs",
-    "og": "node scripts/og.mjs"
+    "og": "node scripts/og.mjs",
+    "readme:media": "node scripts/readme-media.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

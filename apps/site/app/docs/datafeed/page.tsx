@@ -82,7 +82,7 @@ export const myDatafeed: Datafeed = {
       />
 
       <Callout>
-        Funnest Charts에는 바이낸스·업비트 같은 실제 거래소 연결 코드가 들어 있지 않아요. 저장소의 <code>apps/playground/src/datafeeds/</code>에 예시가
+        라이브러리는 바이낸스·업비트 같은 실제 거래소 연결 코드를 넣지 않아요. 저장소의 <code>apps/playground/src/datafeeds/</code>에 예시가
         있으니 참고해서 직접 만드세요.
       </Callout>
 

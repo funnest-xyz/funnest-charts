@@ -1,101 +1,118 @@
+<div align="center">
+
+<img src="brand/logo-mark.svg" width="72" height="72" alt="Funnest">
+
 # Funnest Charts
 
-투자 서비스를 위한 차트. 프로 수준의 트레이딩 차트와 대시보드 차트를 내 서비스에 그대로.
+Open-source financial charts for investment apps.\
+A pro-grade trading chart and lightweight dashboard charts, with your data and your design.
 
-- 같은 DOM에서 동작 (iframe 아님). 디자인 토큰 하나로 배경, 폰트, 상승·하락 색을 서비스에 맞춤
-- 평단가, 주문 라인, 체결 마커 같은 매매 연동 API 기본 제공
-- 데스크톱과 모바일 제스처 기본 지원
-- 국내 주식, 해외 주식, 코인 (Datafeed 어댑터)
-- Apache-2.0
+[![npm](https://img.shields.io/npm/v/@funnest/charts-react?color=6C4DFF&label=npm)](https://www.npmjs.com/package/@funnest/charts-react)
+[![License](https://img.shields.io/badge/license-Apache--2.0-6C4DFF)](LICENSE)
 
-> 🚧 개발 초기 단계입니다. 설계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)를 참고하세요.
+[Website](https://charts.funnest.xyz) · [Docs](https://charts.funnest.xyz/docs/) · **English** | [한국어](README.ko.md)
 
-## 패키지
+</div>
 
-| 패키지 | 설명 |
-|---|---|
-| `@funnest/charts` | Canvas 엔진 (의존성 0) |
-| `@funnest/charts-ui` | 툴바, 그리기 도구, 설정 UI (프레임워크 무관) |
-| `@funnest/charts-react` | React 래퍼 (`<FnChart />`, `<FnChartSlot />`, `useChartEvent`) + SVG 차트 컴포넌트 |
-| `@funnest/charts-viz` | 플랫폼 중립 차트 계산 (스케일, 눈금, SVG 경로). 웹과 React Native가 공유 |
-| `@funnest/charts-cli` | `funnest-charts` 명령: JSON 차트 스펙 검사, SVG·PNG·HTML 렌더, 차트 추천, React 코드 생성 |
-| `@funnest/charts-mcp` | AI 도구용 MCP 서버 (Claude Code, Cursor 등) |
+![Trading chart: crosshair, intervals, light/dark and candle colors](docs/media/trading-chart.gif)
 
-## React
+## Why
 
-```tsx
-import { FnChart, FnChartSlot } from '@funnest/charts-react';
+- Runs in your page, not an iframe.\
+  Background, fonts and up/down colors follow your design tokens.
+- Positions, open orders and fills on the chart, with drag-to-modify orders.
+- Mouse and touch: pinch zoom, long-press crosshair, inertial scrolling.
+- Korean market defaults: KST, KRX sessions and tick sizes, red-up / blue-down.
+- No exchange code inside.\
+  Connect any exchange or broker through one `Datafeed` interface.
 
-<FnChart ref={chartRef} datafeed={myDatafeed} symbol="005930" resolution="1D" style={{ height: 600 }}>
-  <FnChartSlot name="toolbar"><MyMarketStats /></FnChartSlot>
-</FnChart>;
+## Quick start
 
-// 레이아웃 저장/복원
-const state = chartRef.current.save();
-await chartRef.current.load(state);
+```bash
+npm i @funnest/charts-react
 ```
 
-Funnest Charts에는 특정 거래소·증권사 연결 코드가 없습니다. `Datafeed` 인터페이스를 구현해 연결하세요 ([docs/REALTIME.md](docs/REALTIME.md), 예시: `apps/playground/src/datafeeds/`).
+```tsx
+import { FnChart } from '@funnest/charts-react';
 
-## 차트 컴포넌트 (SVG)
+<div style={{ height: 600 }}>
+  <FnChart datafeed={myDatafeed} symbol="005930" resolution="1D" />
+</div>
+```
 
-대시보드, 수익률 카드, 관심종목처럼 트레이딩 차트까지는 필요 없는 곳에 씁니다. SSR에 안전합니다.
+One package is enough for React.\
+It brings in the engine, the trading UI and the chart math automatically.
+
+## Dashboard charts
+
+![Chart components following the pointer](docs/media/components.gif)
+
+For return cards, watchlists and portfolios that don't need a full trading screen.\
+They are SVG and safe for server rendering.
 
 ```tsx
-import { LineChart, BarChart, AreaChart, PercentageBarChart, PeriodSelector, ReferenceLine, Point } from '@funnest/charts-react';
+import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 
-<LineChart series={[{ id: 'price', data: prices }]} area="gradient" scrubber onScrubberPositionChange={setIndex}>
-  <ReferenceLine dataY={avgPrice} label="평단가" />
+<LineChart series={[{ id: 'price', data: prices }]} area="gradient" scrubber={{ showValues: true }}>
+  <ReferenceLine dataY={avgPrice} label="Avg. price" />
   <Point seriesId="price" dataX={prices.length - 1} pulse />
 </LineChart>
-
-// 스파크라인 = 축 없는 작은 LineChart
-<LineChart series={[{ id: 's', data }]} width={96} height={32} inset={2} />
 ```
 
-| 컴포넌트 | 용도 |
+| Component | Use |
 |---|---|
-| `CartesianChart` | 모든 x/y 차트의 기반. 아래 부품을 조합해 직접 구성 |
-| `LineChart` · `AreaChart` · `BarChart` | 자주 쓰는 구성 (`stacked`, `legend`, `scrubber`, `showXAxis`, `showYAxis`) |
-| `PercentageBarChart` | 비중 막대 (포트폴리오 비중, 매수/매도 체결 강도) |
-| `XAxis` · `YAxis` | 축과 격자 |
-| `Line` · `Area` · `BarPlot` | 계열 그리기 |
-| `Scrubber` | 포인터를 따라가는 선과 점. `onScrubberPositionChange`로 헤더 연동 |
-| `ReferenceLine` · `Point` | 평단가·목표가 선, 매수·매도 표시, 실시간 점 (`pulse`) |
-| `Legend` · `PeriodSelector` | 범례, 기간 탭 (1주·1개월·3개월…) |
+| `LineChart` · `AreaChart` · `BarChart` | Price history, composition (`stacked`), P&L and volume |
+| `PercentageBarChart` | Portfolio weights, buy/sell pressure |
+| `CartesianChart` | Compose your own from `Line`, `Area`, `BarPlot`, axes and annotations |
+| `XAxis` · `YAxis` · `Scrubber` · `PeriodSelector` | Axes, pointer tracking with value tooltips, period tabs |
+| `ReferenceLine` · `Point` · `Legend` | Average/target price lines, trade markers, legends |
 
-색은 CSS 변수로 바꿉니다: `--fnv-text`, `--fnv-text-muted`, `--fnv-grid`, `--fnv-bg`, `--fnv-accent`.
+## Packages
+
+| Package | What it is |
+|---|---|
+| [`@funnest/charts-react`](packages/react) | React: the `<FnChart />` trading chart and the SVG chart components |
+| [`@funnest/charts-ui`](packages/ui) | Trading chart widget for any framework (`createTradingChart`) |
+| [`@funnest/charts`](packages/core) | Canvas engine, indicators and realtime helpers |
+| [`@funnest/charts-viz`](packages/viz) | Platform-neutral chart math shared by web and React Native |
+| [`@funnest/charts-cli`](packages/cli) | `funnest-charts` command: validate specs, render SVG/PNG/HTML, generate React code |
+| [`@funnest/charts-mcp`](packages/mcp) | MCP server for AI tools such as Claude Code and Cursor |
 
 ## AI · CLI · MCP
 
 ```bash
-npx @funnest/charts-cli render spec.json --out chart.png     # 스펙 → PNG / SVG / HTML / React 코드
-claude mcp add funnest-charts -- npx -y @funnest/charts-mcp  # Claude Code에 MCP 서버 추가
+npx @funnest/charts-cli render spec.json --out chart.png      # spec → PNG / SVG / HTML / React code
+claude mcp add funnest-charts -- npx -y @funnest/charts-mcp   # add the MCP server to Claude Code
 ```
 
-에이전트용 스킬은 [`skills/funnest-charts/SKILL.md`](skills/funnest-charts/SKILL.md), 요약은 사이트의 `/llms.txt`에 있습니다.
-자세한 내용: 문서의 "AI · CLI · MCP".
+The agent skill is in [`skills/funnest-charts`](skills/funnest-charts/SKILL.md).\
+A summary for LLMs is at [`/llms.txt`](https://charts.funnest.xyz/llms.txt).
 
-## 테마
+## Theme
 
-트레이딩 위젯은 기본으로 OS의 라이트/다크 설정을 따르고 바뀌면 즉시 전환합니다 (`colorScheme: 'system'`).
-`'light'`·`'dark'`로 고정하거나, `theme`으로 색을 덮어쓸 수 있습니다 (덮어쓴 값은 라이트/다크 전환 후에도 유지).
-SVG 차트 컴포넌트는 페이지의 `color-scheme`을 따르고, `--fnv-*` CSS 변수로 바꿀 수 있습니다.
+The trading chart follows the OS light/dark setting by default and switches live (`colorScheme: 'system'`).\
+Pin it with `'light'` or `'dark'`, or override colors with `theme`.\
+The SVG components follow the page's `color-scheme` and the `--fnv-*` CSS variables.
 
-## 차트 로고 (Attribution)
+## Logo badge
 
-트레이딩 위젯은 차트 왼쪽 아래에 작은 Funnest 로고를 표시합니다 (charts.funnest.xyz 링크).
-`attribution: false`로 끌 수 있습니다. 무료로 쓰신다면 켜두시는 것이 프로젝트에 가장 큰 응원이 됩니다.
+The trading chart shows a small Funnest logo in its bottom-left corner.\
+Turn it off with `attribution: false`.\
+If you use Funnest Charts for free, keeping it on is the best way to support the project.
 
-## 개발
+## Development
 
 ```bash
 pnpm install
-pnpm dev        # playground (http://localhost:5173)
-pnpm site       # 소개 사이트 + 문서 (http://localhost:3100, /docs). 개발 중엔 패키지 소스를 바로 읽음
-pnpm test:site  # 소개 사이트 빌드 + 화면 테스트
-# 하위 경로에 배포할 때: BASE_PATH=/charts pnpm --filter site build  (funnest.xyz/charts)
-pnpm test
+pnpm dev          # playground (http://localhost:5173)
+pnpm site         # website and docs (http://localhost:3100)
+pnpm test         # unit tests
+pnpm test:site    # build the website and run browser checks
 pnpm typecheck
 pnpm build
 ```
+
+## License
+
+Code is [Apache-2.0](LICENSE).\
+The Funnest name and logos are trademarks and are not covered by the license ([NOTICE](NOTICE)).

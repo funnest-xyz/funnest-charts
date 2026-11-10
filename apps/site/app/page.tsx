@@ -131,7 +131,7 @@ export default function Home() {
           <div className="container center">
             <Reveal>
               <h2>지금 바로 시작해보세요</h2>
-              <p className="sub">누구나 무료로 쓸 수 있어요</p>
+              <p className="sub">오픈소스라 누구나 무료로 쓸 수 있어요</p>
               <div className="cta-actions">
                 <GitHubButton large label="GitHub에서 보기" />
                 <a className="pill-btn pill-lg pill-ghost" href={NPM}>

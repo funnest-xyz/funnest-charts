@@ -5,7 +5,7 @@ description: Build financial charts with Funnest Charts (@funnest/charts-*). Use
 
 # Funnest Charts
 
-Financial charts for investment apps (Apache-2.0). Two layers:
+Open-source (Apache-2.0) financial charts. Two layers:
 
 | Need | Use |
 |---|---|
