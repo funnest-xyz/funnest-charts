@@ -1,0 +1,68 @@
+/*
+ * SITE STYLES (not part of the library). These elements live inside the widget's slots,
+ * so they can use the widget theme variables (--fnc-bg, --fnc-text, --fnc-up …).
+ */
+
+/* ── Market stats ───────────────────────────────────── */
+.site-market {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.site-market::-webkit-scrollbar { display: none; }
+
+/* Inline in the toolbar row: shrinks first, scrolls sideways, fades at the edge. */
+.site-market-inline {
+  min-width: 0;
+  height: 100%;
+  padding: 0 20px 0 4px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+}
+.site-market-row {
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--fnc-border);
+}
+
+.site-mb-price { display: flex; flex-direction: column; line-height: 1.2; }
+.site-mb-price b { font-size: 15px; font-weight: 700; }
+.site-mb-price span { font-size: 11px; font-weight: 600; }
+.site-mb-item { display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
+.site-mb-item span { font-size: 10px; color: var(--fnc-text-2); }
+.site-mb-item b { font-size: 12px; font-weight: 600; color: var(--fnc-text); }
+.site-up, .site-mb-item b.site-up { color: var(--fnc-up); }
+.site-down, .site-mb-item b.site-down { color: var(--fnc-down); }
+
+/* ── Status line: everything grouped on the right ───── */
+.site-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  height: 28px;
+  padding: 0 12px;
+  border-top: 1px solid var(--fnc-border);
+  font-size: 12px;
+  color: var(--fnc-text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.site-session, .site-clock, .site-conn { display: inline-flex; align-items: center; gap: 6px; }
+.site-session i { width: 6px; height: 6px; border-radius: 50%; background: var(--fnc-text-2); opacity: 0.6; }
+.site-session.is-open i { background: #12b886; opacity: 1; box-shadow: 0 0 0 3px rgb(18 184 134 / 0.18); }
+.site-divider { width: 1px; height: 12px; background: var(--fnc-border); }
+.site-conn-good { color: #12b886; }
+.site-conn-ok { color: #ff9f0a; }
+.site-conn-bad { color: #f04452; }
+
+@media (max-width: 640px) {
+  .site-status { gap: 10px; padding: 0 10px; font-size: 11px; }
+  .site-clock svg { display: none; }
+}

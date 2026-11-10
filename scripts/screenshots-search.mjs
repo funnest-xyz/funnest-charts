@@ -1,0 +1,50 @@
+// Visual check: toolbar/footer slots (site UI), drawing-bar fold, Ctrl+K search with sidebar/favorites, mobile.
+// Usage: node scripts/screenshots-search.mjs   (dev server on :5173)
+import { chromium, devices } from 'playwright';
+const out = 'test-results/screens';
+const errors = [];
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 760 }, deviceScaleFactor: 2 });
+const page = await ctx.newPage();
+page.on('pageerror', (e) => errors.push(e.message));
+await page.goto('http://localhost:5173/');
+await page.waitForFunction(() => window.chart?.bars.length > 50 && window.chart.quote, null, { timeout: 20000 });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${out}/s-desktop.png` });
+await page.screenshot({ path: `${out}/s-footer.png`, clip: { x: 640, y: 720, width: 640, height: 40 } });
+// fold drawbar
+await page.click('.fnc-drawbar-collapse');
+await page.waitForTimeout(200);
+console.log('stage x after fold:', (await page.locator('.fnc-stage').boundingBox()).x);
+await page.screenshot({ path: `${out}/s-folded.png`, clip: { x: 0, y: 50, width: 400, height: 400 } });
+await page.click('.fnc-drawbar-tab');
+console.log('stage x after unfold:', (await page.locator('.fnc-stage').boundingBox()).x);
+// Ctrl+K search
+await page.mouse.click(600, 400);
+await page.keyboard.press('Control+k');
+await page.waitForSelector('.fnc-sr-row');
+await page.waitForTimeout(500);
+await page.click('.fnc-sr-row >> nth=1 >> .fnc-sr-star');
+await page.click('.fnc-sr-row >> nth=3 >> .fnc-sr-star');
+await page.screenshot({ path: `${out}/s-search.png` });
+await page.click('.fnc-sr-side-item:has-text("Upbit")');
+await page.keyboard.type('이더');
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${out}/s-search-upbit.png` });
+await page.click('.fnc-sr-side-item:has-text("즐겨찾기")');
+await page.waitForTimeout(200);
+await page.screenshot({ path: `${out}/s-search-fav.png` });
+await ctx.close();
+const m = await browser.newContext({ ...devices['iPhone 13'] });
+const mp = await m.newPage();
+mp.on('pageerror', (e) => errors.push(e.message));
+await mp.goto('http://localhost:5173/');
+await mp.waitForFunction(() => window.chart?.bars.length > 50 && window.chart.quote, null, { timeout: 20000 });
+await mp.waitForTimeout(1500);
+await mp.screenshot({ path: `${out}/s-mobile.png` });
+await mp.tap('.fnc-symbol');
+await mp.waitForSelector('.fnc-sr-row');
+await mp.waitForTimeout(400);
+await mp.screenshot({ path: `${out}/s-mobile-search.png` });
+await browser.close();
+console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');

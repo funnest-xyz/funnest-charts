@@ -1,0 +1,92 @@
+/* Host-page theme. The widget reads these through `var(--…)` theme tokens. */
+:root {
+  --bg: #ffffff;
+  --surface: #f2f4f6;
+  --text: #191f28;
+  --text-2: #8b95a1;
+  --grid: #f2f4f6;
+  --border: #e5e8eb;
+  --up: #f04452;
+  --down: #3182f6;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #17171c;
+  --surface: #2c2c35;
+  --text: #e4e4e5;
+  --text-2: #7e7e87;
+  --grid: #202027;
+  --border: #2c2c35;
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.devbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--surface);
+  font-size: 12px;
+  flex: none;
+}
+
+.devbar-title {
+  margin-right: auto;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.devbar button {
+  font: inherit;
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.devbar button:hover {
+  color: var(--text);
+}
+
+.chart {
+  flex: 1;
+  min-height: 0;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 12px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #191f28;
+  color: #fff;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 10;
+}
+.toast[data-show="true"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

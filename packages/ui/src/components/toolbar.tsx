@@ -1,0 +1,101 @@
+/** @jsxImportSource preact */
+import type { WidgetContext } from '../context';
+import { STRINGS } from '../i18n';
+import { CameraIcon, ChevronDownIcon, CollapseIcon, ExpandIcon, IndicatorIcon, PencilIcon, SearchIcon, SettingsIcon } from '../icons';
+import { useStore } from '../store';
+import { ChartTypeMenu } from './chart-type-menu';
+import { Dialogs } from './indicator-dialogs';
+import { IntervalPicker } from './interval-picker';
+import { Slot } from './slot';
+import { SymbolAvatar } from './symbol-avatar';
+import { SymbolSearch } from './symbol-search';
+
+export function Toolbar({ ctx }: { ctx: WidgetContext }) {
+  const s = useStore(ctx.store);
+  const t = STRINGS[s.locale];
+  const canSearch = typeof ctx.datafeed.searchSymbols === 'function';
+
+  return (
+    <div class="fnc-toolbar" role="toolbar">
+      <button
+        class="fnc-symbol"
+        disabled={!canSearch}
+        title={canSearch ? t.searchSymbol : undefined}
+        aria-haspopup="dialog"
+        onClick={() => ctx.setSearchOpen(true)}
+      >
+        {ctx.showLogo && s.symbol ? (
+          <SymbolAvatar info={s.symbol} size={24} />
+        ) : (
+          canSearch && (
+            <span class="fnc-icon">
+              <SearchIcon />
+            </span>
+          )
+        )}
+        <span class="fnc-symbol-name">{s.symbol?.name ?? '—'}</span>
+        {canSearch && ctx.showLogo && (
+          <span class="fnc-icon">
+            <ChevronDownIcon />
+          </span>
+        )}
+      </button>
+
+      <div class="fnc-sep" />
+
+      <IntervalPicker ctx={ctx} />
+
+      <Slot el={ctx.slots.toolbar} />
+
+      <div class="fnc-sep" />
+      <ChartTypeMenu ctx={ctx} />
+      <button
+        class="fnc-btn fnc-btn-wide fnc-btn-label"
+        title={t.addIndicator}
+        aria-label={t.addIndicator}
+        aria-haspopup="dialog"
+        onClick={() => ctx.store.set({ dialog: { kind: 'indicators' } })}
+      >
+        <IndicatorIcon />
+        <span>{t.indicators}</span>
+      </button>
+
+      <div class="fnc-spacer" />
+
+      {ctx.drawingToolbar && (
+        <button
+          class="fnc-btn fnc-btn-drawbar"
+          title={t.drawingTools}
+          aria-label={t.drawingTools}
+          aria-pressed={s.drawbarOpen || s.drawingTool !== null}
+          onClick={() => ctx.store.set({ drawbarOpen: !s.drawbarOpen })}
+        >
+          <PencilIcon />
+        </button>
+      )}
+      <button
+        class="fnc-btn"
+        title={t.chartSettings}
+        aria-label={t.chartSettings}
+        aria-haspopup="dialog"
+        onClick={() => ctx.store.set({ dialog: { kind: 'chartSettings' } })}
+      >
+        <SettingsIcon />
+      </button>
+      <button class="fnc-btn fnc-btn-screenshot" title={t.screenshot} aria-label={t.screenshot} onClick={ctx.screenshot}>
+        <CameraIcon />
+      </button>
+      <button
+        class="fnc-btn"
+        title={s.fullscreen ? t.exitFullscreen : t.fullscreen}
+        aria-label={s.fullscreen ? t.exitFullscreen : t.fullscreen}
+        onClick={ctx.toggleFullscreen}
+      >
+        {s.fullscreen ? <CollapseIcon /> : <ExpandIcon />}
+      </button>
+
+      {s.searchOpen && canSearch && <SymbolSearch ctx={ctx} />}
+      <Dialogs ctx={ctx} />
+    </div>
+  );
+}

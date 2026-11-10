@@ -1,0 +1,57 @@
+{
+  "name": "@funnest/charts-react",
+  "version": "0.0.0",
+  "description": "React bindings for Funnest Charts",
+  "keywords": [
+    "react",
+    "chart",
+    "trading",
+    "candlestick",
+    "financial"
+  ],
+  "license": "Apache-2.0",
+  "author": "Funnest",
+  "homepage": "https://charts.funnest.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/funnest-xyz/charts.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/funnest-xyz/charts/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "funnest-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean --external react --external react-dom --external @funnest/charts-ui --external @funnest/charts && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@funnest/charts": "workspace:*",
+    "@funnest/charts-ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

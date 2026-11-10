@@ -1,0 +1,41 @@
+{
+  "name": "@funnest/charts-viz",
+  "version": "0.0.0",
+  "description": "Platform-neutral chart math (scales, ticks, paths, scrubbing) shared by Funnest Charts web and React Native components",
+  "keywords": [
+    "chart",
+    "svg",
+    "react-native",
+    "sparkline"
+  ],
+  "license": "Apache-2.0",
+  "author": "Funnest",
+  "homepage": "https://charts.funnest.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/funnest-xyz/charts.git",
+    "directory": "packages/viz"
+  },
+  "bugs": {
+    "url": "https://github.com/funnest-xyz/charts/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "funnest-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "private": true
+}

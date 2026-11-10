@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Funnest Charts playground</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Demo-only controls. Not part of the widget. -->
+    <nav class="devbar" aria-label="playground">
+      <span class="devbar-title">Funnest Charts playground</span>
+      <button id="trading">매매 데모</button>
+      <button id="direction">상승 빨강</button>
+      <button id="locale">한국어</button>
+      <button id="theme">다크</button>
+    </nav>
+    <main id="chart" class="chart"></main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

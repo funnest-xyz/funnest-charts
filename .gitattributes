@@ -1,0 +1,5 @@
+# Keep LF in the repository for every contributor (Windows checkouts included).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

@@ -1,0 +1,26 @@
+{
+  "name": "funnest-charts",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@10.10.0",
+  "scripts": {
+    "dev": "pnpm --filter playground dev",
+    "build": "pnpm --filter \"./packages/**\" build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:visual": "node scripts/screenshots.mjs && node scripts/screenshots-market.mjs && node scripts/screenshots-search.mjs && node scripts/screenshots-layout.mjs",
+    "bench": "node scripts/perf.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "playwright": "^1.65.0",
+    "tsup": "^9.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/funnest-xyz/charts.git"
+  }
+}
