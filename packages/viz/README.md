@@ -20,5 +20,5 @@ const d = linePath(values.map((v, i) => ({ x: i * 10, y: y(v) })), 'monotone');
 ## 링크
 
 - 문서: https://charts.funnest.xyz/docs/
-- GitHub: https://github.com/funnest-xyz/charts
+- GitHub: https://github.com/funnest-xyz/funnest-charts
 - 라이선스: Apache-2.0

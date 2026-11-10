@@ -12,7 +12,8 @@
     "test:visual": "node scripts/screenshots.mjs && node scripts/screenshots-market.mjs && node scripts/screenshots-search.mjs && node scripts/screenshots-layout.mjs",
     "bench": "node scripts/perf.mjs",
     "site": "pnpm --filter site dev",
-    "test:site": "pnpm --filter site build && node scripts/screenshots-site.mjs"
+    "test:site": "pnpm --filter site build && node scripts/screenshots-site.mjs",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -23,6 +24,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/funnest-xyz/charts.git"
+    "url": "git+https://github.com/funnest-xyz/funnest-charts.git"
   }
 }

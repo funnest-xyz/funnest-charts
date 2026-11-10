@@ -25,4 +25,4 @@ Install: `npm i @funnest/charts-react`
 - [Theming](https://charts.funnest.xyz/docs/theming/)
 - [AI · CLI · MCP](https://charts.funnest.xyz/docs/ai/)
 - [Components](https://charts.funnest.xyz/docs/components/line-chart/)
-- [Agent skill](https://github.com/funnest-xyz/charts/tree/main/skills/funnest-charts)
+- [Agent skill](https://github.com/funnest-xyz/funnest-charts/tree/main/skills/funnest-charts)

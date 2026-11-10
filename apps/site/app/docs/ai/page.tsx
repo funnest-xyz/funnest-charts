@@ -134,7 +134,7 @@ npx @funnest/charts-cli validate spec.json --locale en    # 영어 메시지`}</
         ]}
       />
       <Code lang="bash" title="터미널">{`
-npx degit funnest-xyz/charts/skills/funnest-charts .claude/skills/funnest-charts`}</Code>
+npx degit funnest-xyz/funnest-charts/skills/funnest-charts .claude/skills/funnest-charts`}</Code>
 
       <Callout>추천 흐름: get_chart_schema로 스펙 형식을 보고, validate_spec으로 검사하고, render_chart로 그림을 확인한 뒤, 함께 나온 React 코드를 앱에 붙여 넣어요.</Callout>
 

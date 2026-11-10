@@ -26,5 +26,5 @@ const widget = createTradingChart(document.getElementById('chart')!, {
 ## 링크
 
 - 문서: https://charts.funnest.xyz/docs/
-- GitHub: https://github.com/funnest-xyz/charts
+- GitHub: https://github.com/funnest-xyz/funnest-charts
 - 라이선스: Apache-2.0

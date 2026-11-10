@@ -1,4 +1,4 @@
-export const GITHUB_URL = 'https://github.com/funnest-xyz/charts';
+export const GITHUB_URL = 'https://github.com/funnest-xyz/funnest-charts';
 
 /** GitHub mark (Octicons "mark-github", MIT). */
 export function GitHubIcon({ size = 20 }: { size?: number }) {

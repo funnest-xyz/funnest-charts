@@ -13,11 +13,11 @@
   "homepage": "https://charts.funnest.xyz",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/funnest-xyz/charts.git",
+    "url": "git+https://github.com/funnest-xyz/funnest-charts.git",
     "directory": "packages/viz"
   },
   "bugs": {
-    "url": "https://github.com/funnest-xyz/charts/issues"
+    "url": "https://github.com/funnest-xyz/funnest-charts/issues"
   },
   "type": "module",
   "sideEffects": false,

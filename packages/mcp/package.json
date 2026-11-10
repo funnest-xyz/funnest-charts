@@ -16,11 +16,11 @@
   "homepage": "https://charts.funnest.xyz/docs/ai/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/funnest-xyz/charts.git",
+    "url": "git+https://github.com/funnest-xyz/funnest-charts.git",
     "directory": "packages/mcp"
   },
   "bugs": {
-    "url": "https://github.com/funnest-xyz/charts/issues"
+    "url": "https://github.com/funnest-xyz/funnest-charts/issues"
   },
   "publishConfig": {
     "access": "public"
