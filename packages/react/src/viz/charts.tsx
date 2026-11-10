@@ -138,7 +138,7 @@ export function AreaChart({
             seriesId={s.id}
             curve={curve}
             fill={own}
-            {...defined({ baseline, splitColors, gradientStops, opacity: fillOpacity ?? (chart.stacked && own === 'solid' ? 0.55 : undefined) })}
+            {...defined({ baseline, splitColors, gradientStops, opacity: fillOpacity ?? (chart.stacked && own === 'solid' ? 0.3 : undefined) })}
           />
         ) : null;
       })}

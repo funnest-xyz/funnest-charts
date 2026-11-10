@@ -72,7 +72,18 @@ export interface CartesianContextValue {
   /** The chart has keyboard focus (scrubbing with arrow keys). */
   focused: boolean;
   animate: boolean;
+  /**
+   * `mask` value for series marks while a Scrubber dims the future (right of the pointer);
+   * undefined otherwise. Lines and areas apply it, so the fade works on any background.
+   */
+  futureMask: string | undefined;
+  /** Scrubber turns future dimming on/off. */
+  setDimFuture(on: boolean): void;
 }
+
+/** Hide labels the scrubber line would run through. */
+export const nearScrub = (ctx: CartesianContextValue, x: number, within = 56) =>
+  ctx.scrubIndex !== null && Math.abs(ctx.x(ctx.scrubIndex) - x) < within;
 
 export const CartesianContext = createContext<CartesianContextValue | null>(null);
 

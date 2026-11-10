@@ -1,4 +1,4 @@
-import { formatNumber, scaleFor, useCartesianChart, VAR } from './context';
+import { formatNumber, nearScrub, scaleFor, useCartesianChart, VAR } from './context';
 
 export interface ReferenceLineProps {
   /** Horizontal line at this value (target price, average entry, 0%). */
@@ -150,7 +150,7 @@ export function Point({ dataX, dataY, seriesId, yAxisId, color, radius = 4, labe
       )}
       <circle cx={x} cy={y} r={radius} strokeWidth={2} style={{ fill: fill, stroke: VAR.bg }} />
       {label !== undefined && (
-        <text x={lx} y={ly} textAnchor={anchor} fontSize={11} fontWeight={600} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke" style={{ stroke: VAR.bg, fill: fill }}>
+        <text opacity={nearScrub(ctx, x) ? 0 : 1} x={lx} y={ly} textAnchor={anchor} fontSize={11} fontWeight={600} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke" style={{ stroke: VAR.bg, fill: fill }}>
           {label}
         </text>
       )}

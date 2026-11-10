@@ -193,6 +193,7 @@ export function CartesianChart({
   const [motion, setMotion] = useState(false);
   const [hidden, setHidden] = useState<readonly string[]>([]);
   const [emphasis, setEmphasis] = useState<string | null>(null);
+  const [dimFuture, setDimFuture] = useState(false);
   useEffect(() => setMotion(animate && !prefersReducedMotion()), [animate]);
 
   const legendCfg = normalizeLegend(legend);
@@ -288,8 +289,10 @@ export function CartesianChart({
       scrubIndex,
       focused,
       animate: motion,
+      futureMask: dimFuture && !band && scrubIndex !== null && scrubIndex < length ? `url(#${id}-future)` : undefined,
+      setDimFuture,
     };
-  }, [id, width, height, inset, axisSpace, all, visible, axes, firstAxis, xAxis, stacked, scrubIndex, focused, motion]);
+  }, [id, width, height, inset, axisSpace, all, visible, axes, firstAxis, xAxis, stacked, scrubIndex, focused, motion, dimFuture]);
 
   const xsRef = useRef<number[]>([]);
   xsRef.current = useMemo(() => Array.from({ length: ctx.length }, (_, i) => ctx.x(i)), [ctx.length, ctx.x]);
@@ -391,6 +394,13 @@ export function CartesianChart({
           : undefined
       }
     >
+      {ctx.futureMask && (
+        // Fade everything right of the scrubber to 35% (luminance mask: works on any background).
+        <mask id={`${id}-future`} maskUnits="userSpaceOnUse" x={-width} y={-height} width={width * 3} height={height * 3}>
+          <rect x={-width} y={-height} width={width + ctx.x(scrubIndex!)} height={height * 3} fill="#fff" />
+          <rect x={ctx.x(scrubIndex!)} y={-height} width={width * 2} height={height * 3} fill="#fff" fillOpacity={0.35} />
+        </mask>
+      )}
       {width > 0 && hasData && <CartesianContext.Provider value={ctx}>{children}</CartesianContext.Provider>}
       {width > 0 && !hasData && (
         <text x={width / 2} y={height / 2} textAnchor="middle" dominantBaseline="central" fontSize={13} style={{ fill: VAR.text, fontFamily: VAR.font }}>

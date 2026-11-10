@@ -157,25 +157,26 @@ export function SparklineDemo() {
 
 export function AreaChartDemo() {
   const t = useT();
+  const n = 40;
   const series = useMemo(
     () => [
-      { id: 'kr', label: t.kr, data: walk(3, 11, 400, 0.08, 0.02).map(Math.round) },
-      { id: 'us', label: t.us, data: walk(9, 11, 300, 0.08, 0.03).map(Math.round) },
-      { id: 'crypto', label: t.crypto, data: walk(13, 11, 150, 0.2, 0.03).map(Math.round) },
+      { id: 'kr', label: t.kr, data: walk(3, n, 380, 0.05, 0.006).map(Math.round) },
+      { id: 'us', label: t.us, data: walk(9, n, 240, 0.06, 0.012).map(Math.round) },
+      { id: 'crypto', label: t.crypto, data: walk(13, n, 110, 0.14, 0.01).map(Math.round) },
     ],
     [],
   );
-  const months = t.months;
   return (
     <AreaChart
       series={series}
       stacked
       height={H - 28}
       inset={6}
-      strokeWidth={1.5}
-      xAxis={{ data: months }}
+      strokeWidth={2}
+      xAxis={{ data: dayLabels(n) }}
       legend={{ position: 'bottom', interactive: true, shape: 'pill' }}
-      scrubber={{ showValues: true, valueFormatter: t.man, dimFuture: false }}
+      legendValueFormatter={t.man}
+      scrubber={{ showValues: true, valueFormatter: t.man }}
     />
   );
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { formatNumber, seriesY, useCartesianChart, VAR } from './context';
 
 export interface ScrubberProps {
@@ -44,6 +45,12 @@ export function Scrubber({
 }: ScrubberProps) {
   const ctx = useCartesianChart();
   const i = ctx.scrubIndex;
+  const { setDimFuture } = ctx;
+  const fade = dimFuture && !hideOverlay;
+  useEffect(() => {
+    setDimFuture(fade);
+    return () => setDimFuture(false);
+  }, [fade, setDimFuture]);
   const pick = seriesIds ? ctx.series.filter((s) => seriesIds.includes(s.id)) : ctx.series;
   const colorOf = (s: (typeof pick)[number], v: number) => beaconColor?.(v, s.id) ?? s.color;
 
@@ -99,9 +106,6 @@ export function Scrubber({
 
   return (
     <g pointerEvents="none">
-      {dimFuture && !hideOverlay && !ctx.band && (
-        <rect x={x} y={plot.top} width={Math.max(0, plot.right - x + 2)} height={plot.height} fillOpacity={0.55} style={{ fill: VAR.bg }} />
-      )}
       <line x1={x} x2={x} y1={plot.top} y2={plot.bottom} strokeWidth={1} shapeRendering="crispEdges" style={{ stroke: VAR.line }} />
       {text && (
         <text x={textX} y={Math.max(11, plot.top - 2)} textAnchor="middle" fontSize={11} fontWeight={600} strokeWidth={3} strokeLinejoin="round" paintOrder="stroke" style={{ stroke: VAR.bg, fill: VAR.textStrong }}>

@@ -1,6 +1,6 @@
 import { areaPath, linePath, segments, type Curve, type ValueScale, type XY } from '@funnest/charts-viz';
 import type { ReactNode } from 'react';
-import { dashFor, DIM_OPACITY, useCartesianChart, VAR, type CartesianContextValue, type LineStyle, type ResolvedSeries } from './context';
+import { dashFor, DIM_OPACITY, nearScrub, useCartesianChart, VAR, type CartesianContextValue, type LineStyle, type ResolvedSeries } from './context';
 
 export type AreaFill = 'gradient' | 'solid' | 'dotted' | 'none';
 
@@ -133,14 +133,14 @@ export function Area({ seriesId, curve = 'monotone', fill = 'gradient', opacity,
 
   if (splitColors && baseline !== undefined && !run0IsStacked(ctx, s)) {
     return (
-      <g>
+      <g mask={ctx.futureMask}>
         <SplitClips id={gid} y={base} ctx={ctx} />
         {paint('above', splitColors.above, ctx.plot.top, `${gid}-above`)}
         {paint('below', splitColors.below, ctx.plot.bottom, `${gid}-below`)}
       </g>
     );
   }
-  return <g>{paint('fill', s.color, ctx.plot.top)}</g>;
+  return <g mask={ctx.futureMask}>{paint('fill', s.color, ctx.plot.top)}</g>;
 }
 
 const run0IsStacked = (ctx: CartesianContextValue, s: ResolvedSeries) => !!ctx.stacked?.get(s.id);
@@ -206,7 +206,7 @@ export function Line({
   const strokeOpacity = (opacity ?? 1) * (s.dimmed ? DIM_OPACITY : 1);
 
   const strokes = (color: string, clip?: string) => (
-    <g clipPath={clip ? `url(#${clip})` : undefined}>
+    <g clipPath={clip ? `url(#${clip})` : undefined} mask={ctx.futureMask}>
       {runs.map((run, k) => (
         <path
           key={k}
@@ -244,6 +244,7 @@ export function Line({
           <circle cx={x} cy={y} r={r} strokeWidth={2} style={{ fill: color, stroke: VAR.bg }} />
           {p.label && (
             <text
+              opacity={nearScrub(ctx, x) ? 0 : 1}
               x={x}
               y={p.labelPosition === 'bottom' ? y + r + 13 : y - r - 6}
               textAnchor="middle"
