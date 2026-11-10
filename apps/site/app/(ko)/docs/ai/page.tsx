@@ -68,7 +68,10 @@ npx @funnest/charts-cli validate spec.json --locale en    # 영어 메시지`}</
         rows={[
           { name: 'line', type: 'LineChart', desc: '가격 흐름, 수익률 추이.' },
           { name: 'area', type: 'AreaChart', desc: '자산 구성 변화. stacked로 쌓아요.' },
-          { name: 'bar', type: 'BarChart', desc: '일별 손익, 거래량. colorBySign으로 빨강/파랑.' },
+          { name: 'bar', type: 'BarChart', desc: '일별 손익, 거래량. colorBySign으로 빨강/파랑, layout: horizontal로 가로 막대.' },
+          { name: 'candlestick', type: 'CandlestickChart', desc: '일봉 캔들. open, high, low, close(, volume) 열을 정해요.' },
+          { name: 'donut', type: 'DonutChart', desc: '자산 비중을 도넛으로. label, value 열과 totalLabel.' },
+          { name: 'treemap', type: 'TreemapChart', desc: '마켓맵. label, value(크기), change(등락률) 열을 정해요.' },
           { name: 'percentage-bar', type: 'PercentageBarChart', desc: '포트폴리오 비중, 체결 강도. label, value 열을 정해요.' },
           { name: 'sparkline', type: 'LineChart', desc: '관심종목 목록의 작은 선.' },
         ]}

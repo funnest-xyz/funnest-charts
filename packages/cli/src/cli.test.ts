@@ -63,6 +63,21 @@ describe('render', () => {
     expect(code).toContain("import { BarChart, ReferenceLine } from '@funnest/charts-react'");
     expect(code).toContain('getBarColor');
   });
+  it('suggests candles for OHLC columns and a market map for size + change', () => {
+    const ohlc = suggestCharts([
+      { date: '2026-11-03', 시가: 100, 고가: 110, 저가: 95, 종가: 108, 거래량: 1000 },
+      { date: '2026-11-04', 시가: 108, 고가: 112, 저가: 101, 종가: 102, 거래량: 1500 },
+    ]);
+    expect(ohlc[0]!.spec).toMatchObject({ type: 'candlestick', open: '시가', close: '종가', volume: '거래량', x: 'date' });
+    const market = suggestCharts(['A', 'B', 'C', 'D'].map((name, i) => ({ name, cap: 10 + i, pct: i % 2 ? -1.5 : 2 })));
+    expect(market.map((s) => s.spec.type)).toContain('treemap');
+    expect(market.map((s) => s.spec.type)).toContain('donut');
+  });
+  it('generates React code for candles, donut and treemap', () => {
+    expect(reactCode(exampleSpec('candlestick'))).toContain('<CandlestickChart');
+    expect(reactCode(exampleSpec('donut'))).toContain('totalLabel="총 자산"');
+    expect(reactCode(exampleSpec('treemap'))).toContain('change: d["pct"]');
+  });
   it('renders horizontal bars (one row per category)', () => {
     const spec = { type: 'bar' as const, layout: 'horizontal' as const, data: [{ s: 'A', r: 3 }, { s: 'B', r: -1 }], x: 's', y: 'r' };
     expect(validateSpec(spec)).toEqual([]);

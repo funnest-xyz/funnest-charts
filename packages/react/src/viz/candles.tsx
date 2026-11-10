@@ -33,6 +33,14 @@ export interface CandlePlotProps {
 
 const KO = { open: '시가', high: '고가', low: '저가', close: '종가', volume: '거래량' };
 
+/** Translucent version of a color: rgba() for #rrggbb (works in PNG renderers too), color-mix otherwise. */
+const fade = (color: string, a: number) => {
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;
+  const n = parseInt(m[1]!, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
+
 /** Candles (wick + body) for each x slot. Needs a band x axis and a y axis that covers low–high. */
 export function CandlePlot({
   data,
@@ -207,7 +215,7 @@ export function CandlestickChart({
           highlightScrubbed={false}
           getBarColor={(_v, i) => {
             const d = data[i];
-            return d ? `color-mix(in srgb, ${d.close >= d.open ? upColor : downColor} 30%, transparent)` : undefined;
+            return d ? fade(d.close >= d.open ? upColor : downColor, 0.3) : undefined;
           }}
         />
       )}

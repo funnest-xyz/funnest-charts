@@ -9,7 +9,7 @@ Install: `npm i @funnest/charts-react`
 - @funnest/charts-ui: framework-free trading widget, `createTradingChart(el, options)`
 - @funnest/charts: canvas engine, indicators, realtime helpers (ReconnectingWebSocket, TickAggregator, combineDatafeeds)
 - @funnest/charts-viz: platform-neutral chart math (web + React Native)
-- @funnest/charts-cli: `funnest-charts` command — validate JSON chart specs, render SVG/PNG/HTML, suggest charts, emit React code
+- @funnest/charts-cli: `funnest-charts` command — validate JSON chart specs (line, area, bar, candlestick, donut, treemap, percentage-bar, sparkline), render SVG/PNG/HTML, suggest charts, emit React code
 - @funnest/charts-mcp: MCP server — list_charts, get_chart_schema, validate_spec, render_chart, suggest_chart, get_datafeed_template
 
 ## Key facts

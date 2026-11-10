@@ -1,4 +1,4 @@
-import { AreaChart, BarChart, LineChart, Point, ReferenceLine, type ChartSeries } from '@funnest/charts-react';
+import { AreaChart, BarChart, CandlestickChart, DonutChart, LineChart, Point, ReferenceLine, TreemapChart, type ChartSeries } from '@funnest/charts-react';
 import { percentages, seriesColor } from '@funnest/charts-viz';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -102,6 +102,57 @@ function element(spec: ChartSpec, width: number, height: number): ReactElement {
   ];
 
   switch (spec.type) {
+    case 'candlestick': {
+      const candles = spec.data.map((r) => {
+        const o = num(r[spec.open!]);
+        const h = num(r[spec.high!]);
+        const l = num(r[spec.low!]);
+        const c = num(r[spec.close!]);
+        if (o === null || h === null || l === null || c === null) return null;
+        const v = spec.volume ? num(r[spec.volume]) : null;
+        return { open: o, high: h, low: l, close: c, ...(v !== null ? { volume: v } : {}) };
+      });
+      return (
+        <CandlestickChart
+          data={candles}
+          width={width}
+          height={height}
+          animate={false}
+          tooltip={false}
+          valueFormatter={fmt}
+          {...(xAxis ? { xAxis } : {})}
+          showXAxis={spec.showXAxis ?? !!spec.x}
+          showYAxis={spec.showYAxis === false ? false : { tickLabelFormatter: fmt, width: 64 }}
+        >
+          {(spec.referenceLines ?? []).map((r, i) => (
+            <ReferenceLine
+              key={`r${i}`}
+              yAxisId="price"
+              {...(r.y !== undefined ? { dataY: r.y } : {})}
+              {...(r.x !== undefined ? { dataX: indexOf(spec, r.x) } : {})}
+              {...(r.label !== undefined ? { label: r.label } : {})}
+              {...(r.color ? { color: r.color } : {})}
+            />
+          ))}
+        </CandlestickChart>
+      );
+    }
+    case 'treemap':
+      return (
+        <TreemapChart
+          width={width}
+          height={height}
+          enableTooltip={false}
+          valueFormatter={fmt}
+          {...(spec.maxChange !== undefined ? { maxChange: spec.maxChange } : {})}
+          data={spec.data.map((r, i) => {
+            const label = String(r[spec.label!] ?? i);
+            const change = spec.change ? num(r[spec.change]) : null;
+            const color = spec.colors?.[label];
+            return { id: `${i}`, label, value: num(r[spec.value!]) ?? 0, ...(change !== null ? { change } : {}), ...(color ? { color } : {}) };
+          })}
+        />
+      );
     case 'area':
       return <AreaChart {...common} stacked={spec.stacked ?? false} {...(spec.curve ? { curve: spec.curve } : {})}>{extras}</AreaChart>;
     case 'bar':
@@ -197,12 +248,45 @@ export interface RenderOptions {
   theme?: 'light' | 'dark';
 }
 
+/** Donut on the left, labels with shares on the right (all SVG, no HTML legend). */
+const donutSvg = (spec: ChartSpec, width: number, height: number, p: Palette) => {
+  const fmt = valueFormatter(spec);
+  const items = spec.data.map((r, i) => {
+    const label = String(r[spec.label!] ?? i);
+    return { id: `${i}`, label, value: num(r[spec.value!]) ?? 0, color: spec.colors?.[label] ?? seriesColor(i) };
+  });
+  const size = Math.max(60, Math.min(height, width * 0.5));
+  const markup = renderToStaticMarkup(
+    <DonutChart
+      data={items}
+      size={size}
+      showLegend={false}
+      valueFormatter={fmt}
+      {...(spec.totalLabel ? { totalLabel: spec.totalLabel } : {})}
+      {...(spec.innerRadius !== undefined ? { innerRadius: spec.innerRadius } : {})}
+    />,
+  );
+  const svg = markup.slice(markup.indexOf('<svg'), markup.indexOf('</svg>') + 6).replace('<svg', `<svg x="0" y="${(height - size) / 2}"`);
+  const segs = percentages(items);
+  const lx = size + 28;
+  const rowH = 24;
+  const top = height / 2 - (items.length * rowH) / 2 + rowH / 2;
+  const labels = items
+    .map((it, i) => {
+      const y = top + i * rowH;
+      const pct = `${(Math.round(segs[i]!.fraction * 1000) / 10).toString()}%`;
+      return `<circle cx="${lx + 4}" cy="${y}" r="4" fill="${it.color}"/><text x="${lx + 14}" y="${y}" dominant-baseline="central" font-size="13" fill="${p.muted}">${esc(it.label)} <tspan fill="${p.text}" font-weight="700">${pct}</tspan> <tspan fill="${p.muted}">${esc(fmt(it.value))}</tspan></text>`;
+    })
+    .join('');
+  return svg + labels;
+};
+
 /** Render a (validated) spec to a standalone SVG document. */
 export function renderSvg(spec: ChartSpec, options: RenderOptions = {}): string {
   const theme = THEMES[options.theme ?? spec.theme ?? 'light'];
   const isSpark = spec.type === 'sparkline';
   const width = spec.width ?? (isSpark ? 120 : 640);
-  const height = spec.height ?? (isSpark ? 36 : spec.type === 'percentage-bar' ? 96 : 320);
+  const height = spec.height ?? (isSpark ? 36 : spec.type === 'percentage-bar' ? 96 : spec.type === 'donut' ? 220 : 320);
   const pad = isSpark ? 0 : 16;
   const innerW = width - pad * 2;
   let y = pad;
@@ -217,6 +301,8 @@ export function renderSvg(spec: ChartSpec, options: RenderOptions = {}): string 
   if (spec.type === 'percentage-bar') {
     body = percentBarSvg(spec, innerW, 0, theme);
     body = `<g transform="translate(${pad},${y})">${body}</g>`;
+  } else if (spec.type === 'donut') {
+    body = `<g transform="translate(${pad},${y})">${donutSvg(spec, innerW, Math.max(60, height - y - pad), theme)}</g>`;
   } else {
     const series = seriesOf(spec);
     const legend = !isSpark && (spec.legend ?? series.length > 1);
@@ -305,6 +391,58 @@ export function Chart() {
   return (
     <PercentageBarChart
       data={data.map((d) => ({ id: String(d[${lit(spec.label)}]), label: String(d[${lit(spec.label)}]), value: d[${lit(spec.value)}]${spec.colors ? `, color: (${lit(spec.colors)} as Record<string, string>)[String(d[${lit(spec.label)}])]` : ''} }))}
+    />
+  );
+}
+`;
+  }
+
+  if (spec.type === 'candlestick') {
+    const vol = spec.volume ? `, volume: d[${lit(spec.volume)}]` : '';
+    return `import { CandlestickChart${spec.referenceLines?.length ? ', ReferenceLine' : ''} } from '@funnest/charts-react';
+
+${dataLine}
+${fmt}
+export function Chart() {
+  return (
+    <CandlestickChart
+      data={data.map((d) => ({ open: d[${lit(spec.open)}], high: d[${lit(spec.high)}], low: d[${lit(spec.low)}], close: d[${lit(spec.close)}]${vol} }))}
+      height={${spec.height ?? 320}}${spec.x ? `
+      xAxis={{ data: data.map((d) => d[${lit(spec.x)}]) }}` : ''}${fmt ? '\n      valueFormatter={fmt}' : ''}
+    >${(spec.referenceLines ?? []).map((r) => `
+      <ReferenceLine yAxisId="price"${r.y !== undefined ? ` dataY={${r.y}}` : ''}${r.label ? ` label=${lit(r.label)}` : ''} />`).join('')}
+    </CandlestickChart>
+  );
+}
+`;
+  }
+  if (spec.type === 'donut') {
+    return `import { DonutChart } from '@funnest/charts-react';
+
+${dataLine}
+${fmt}
+export function Chart() {
+  return (
+    <DonutChart
+      data={data.map((d) => ({ id: String(d[${lit(spec.label)}]), label: String(d[${lit(spec.label)}]), value: d[${lit(spec.value)}]${spec.colors ? `, color: (${lit(spec.colors)} as Record<string, string>)[String(d[${lit(spec.label)}])]` : ''} }))}${spec.totalLabel ? `
+      totalLabel=${lit(spec.totalLabel)}` : ''}${spec.innerRadius !== undefined ? `
+      innerRadius={${spec.innerRadius}}` : ''}${fmt ? '\n      valueFormatter={fmt}' : ''}
+    />
+  );
+}
+`;
+  }
+  if (spec.type === 'treemap') {
+    return `import { TreemapChart } from '@funnest/charts-react';
+
+${dataLine}
+${fmt}
+export function Chart() {
+  return (
+    <TreemapChart
+      height={${spec.height ?? 320}}
+      data={data.map((d, i) => ({ id: String(i), label: String(d[${lit(spec.label)}]), value: d[${lit(spec.value)}]${spec.change ? `, change: d[${lit(spec.change)}]` : ''} }))}${spec.maxChange !== undefined ? `
+      maxChange={${spec.maxChange}}` : ''}${fmt ? '\n      valueFormatter={fmt}' : ''}
     />
   );
 }

@@ -53,7 +53,10 @@ const CSS = /* css */ `
   border-radius: var(--fnc-radius);
   font-weight: 700;
   font-size: 15px;
-  flex: none;
+  /* The symbol gives way first when the toolbar is tight: its name truncates, never overlaps. */
+  flex: 0 1 auto;
+  min-width: 36px;
+  overflow: hidden;
 }
 .fnc-symbol .fnc-icon { color: var(--fnc-text-2); display: flex; }
 .fnc-symbol-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -306,6 +309,8 @@ const CSS = /* css */ `
 /* ── Slots: host-app UI inside the widget (collapse when empty) ── */
 .fnc-slot:empty { display: none; }
 .fnc-slot-host { display: flex; align-self: stretch; min-width: 0; flex: 0 1 auto; }
+/* Buttons next to the gear keep their size (they'd otherwise slide under it on phones). */
+.fnc-slot-host-fixed { flex: none; }
 .fnc-slot-toolbar { position: relative; display: flex; align-items: center; min-width: 0; padding-left: 9px; margin-left: 4px; }
 .fnc-slot-toolbar::before {
   content: '';
@@ -714,10 +719,23 @@ const CSS = /* css */ `
 .fnc-action-primary { background: var(--fnc-accent); color: #fff; }
 .fnc-action-danger { flex: 0 0 auto; padding: 0 16px; color: var(--fnc-danger, #F04452); background: none; }
 
+/* ── Narrow phones (≤ 400px): drop the menu chevrons and separators so every button fits ── */
+@media (max-width: 400px) {
+  .fnc-toolbar .fnc-btn-wide > svg:last-child { display: none; }
+  .fnc-toolbar .fnc-btn-wide { padding: 0 3px; }
+  .fnc-toolbar > .fnc-sep { display: none; }
+  .fnc-toolbar > .fnc-spacer { min-width: 0; }
+}
+
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .fnc-toolbar { padding: 0 4px; }
+  .fnc-toolbar { padding: 0 4px; gap: 2px; }
+  .fnc-toolbar .fnc-btn { width: 32px; height: 32px; }
+  .fnc-toolbar .fnc-btn-wide, .fnc-toolbar .fnc-btn-label { width: auto; padding: 0 6px; }
+  .fnc-toolbar .fnc-sep { margin: 0 2px; }
   .fnc-symbol { max-width: 140px; padding: 0 8px 0 6px; }
+  /* Logo only on phones; the name is in the chart legend right below. */
+  .fnc-toolbar .fnc-symbol:has(.fnc-avatar) :is(.fnc-symbol-name, .fnc-icon) { display: none; }
   .fnc-chip { padding: 0 8px; }
   .fnc-btn-screenshot { display: none; }
   .fnc-btn-label span { display: none; }
@@ -743,7 +761,7 @@ const CSS = /* css */ `
   .fnc-dialog.fnc-search-dialog { width: 100%; height: 100%; }
   .fnc-sr-footer, .fnc-sr-side, .fnc-hide-mobile, .fnc-sr-spark { display: none; }
   /* The interval button must stay whole; the symbol name truncates instead. */
-  .fnc-symbol { flex: 0 1 auto; min-width: 0; }
+  .fnc-symbol { flex: 0 1 auto; min-width: 36px; }
   /* MA rows wrap to two lines: [label ✓ color width ×] / [source period] */
   .fnc-rows .fnc-row { flex-wrap: wrap; row-gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--fnc-border); }
   /* Basis = row − indent(52) − gap(8) − period(72): too wide for line 1, so it always wraps. */

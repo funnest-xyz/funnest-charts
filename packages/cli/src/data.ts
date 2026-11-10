@@ -72,6 +72,16 @@ export function suggestCharts(rows: Row[]): Suggestion[] {
   const allPositive = (c: string) => rows.every((r) => typeof r[c] !== 'number' || (r[c] as number) >= 0);
   const hasNegative = (c: string) => rows.some((r) => typeof r[c] === 'number' && (r[c] as number) < 0);
 
+  // OHLC columns (English or Korean names) → candles first.
+  const find = (...names: string[]) => numeric.find((c) => names.includes(c.toLowerCase()));
+  const ohlc = { open: find('open', 'o', '시가'), high: find('high', 'h', '고가'), low: find('low', 'l', '저가'), close: find('close', 'c', '종가') };
+  if (ohlc.open && ohlc.high && ohlc.low && ohlc.close) {
+    const volume = find('volume', 'vol', 'v', '거래량');
+    out.push({
+      reason: { ko: '시가·고가·저가·종가가 있어 캔들 차트가 잘 맞아요', en: 'Open/high/low/close columns: candles' },
+      spec: { type: 'candlestick', data: rows, ...(time ? { x: time } : {}), open: ohlc.open, high: ohlc.high, low: ohlc.low, close: ohlc.close, ...(volume ? { volume } : {}) },
+    });
+  }
   if (time && numeric.length) {
     const magnitude = (c: string) => Math.max(...rows.map((r) => Math.abs(Number(r[c]) || 0)));
     // Columns on a similar scale can share one chart; others get their own.
@@ -104,10 +114,23 @@ export function suggestCharts(rows: Row[]): Suggestion[] {
   }
   if (category && numeric.length) {
     const v = numeric[0]!;
+    // A size column plus a change column with negatives → market map.
+    const size = numeric.find(allPositive);
+    const change = numeric.find(hasNegative);
+    if (size && change && rows.length >= 4) {
+      out.push({
+        reason: { ko: `${size}로 크기, ${change}로 색을 정한 마켓맵`, en: `Market map: size by ${size}, color by ${change}` },
+        spec: { type: 'treemap', data: rows, label: category, value: size, change },
+      });
+    }
     if (rows.length <= 8 && allPositive(v)) {
       out.push({
         reason: { ko: `${category}별 ${v} 비중`, en: `Share of ${v} by ${category}` },
         spec: { type: 'percentage-bar', data: rows, label: category, value: v },
+      });
+      out.push({
+        reason: { ko: `${category}별 ${v} 비중을 도넛으로`, en: `Share of ${v} by ${category} as a donut` },
+        spec: { type: 'donut', data: rows, label: category, value: v },
       });
     }
     out.push({

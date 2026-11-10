@@ -98,7 +98,7 @@ A JSON spec describes one chart; it renders with the same components:
   "area": "gradient", "format": { "suffix": "원" }, "referenceLines": [{ "y": 71000, "label": "평단가" }] }
 ```
 
-Types: `line`, `area` (`stacked`), `bar` (`colorBySign`, `layout: 'horizontal'`), `percentage-bar` (`label`, `value`), `sparkline`.
+Types: `line`, `area` (`stacked`), `bar` (`colorBySign`, `layout: 'horizontal'`), `candlestick` (`open`, `high`, `low`, `close`, `volume`), `donut` (`label`, `value`, `totalLabel`), `treemap` (`label`, `value`, `change`), `percentage-bar` (`label`, `value`), `sparkline`.
 
 ```bash
 npx @funnest/charts-cli list

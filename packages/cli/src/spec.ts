@@ -3,7 +3,7 @@ import { messages, type CliLocale } from './i18n';
 /** A row of tabular data: column name → value. */
 export type Row = Record<string, unknown>;
 
-export type ChartType = 'line' | 'area' | 'bar' | 'percentage-bar' | 'sparkline';
+export type ChartType = 'line' | 'area' | 'bar' | 'candlestick' | 'donut' | 'treemap' | 'percentage-bar' | 'sparkline';
 
 export interface ReferenceLineSpec {
   y?: number;
@@ -41,9 +41,23 @@ export interface ChartSpec {
   labels?: Record<string, string>;
   /** Colors per y column (or per row label for percentage-bar). */
   colors?: Record<string, string>;
-  /** percentage-bar: the label and value columns. */
+  /** percentage-bar / donut / treemap: the label and value columns. */
   label?: string;
   value?: string;
+  /** candlestick: OHLC (+ volume) columns. */
+  open?: string;
+  high?: string;
+  low?: string;
+  close?: string;
+  volume?: string;
+  /** treemap: change column (%) for the tile color. */
+  change?: string;
+  /** treemap: |change| that gets the full color. Default 5. */
+  maxChange?: number;
+  /** donut: text under the total. */
+  totalLabel?: string;
+  /** donut: hole size 0–0.95 (0 = pie). Default 0.68. */
+  innerRadius?: number;
   curve?: 'monotone' | 'linear' | 'step';
   area?: 'none' | 'gradient' | 'solid';
   stacked?: boolean;
@@ -193,6 +207,108 @@ export const CHARTS: Record<ChartType, ChartDef> = {
       colorBySign: true,
       format: { suffix: '원' },
       referenceLines: [{ y: 0 }],
+    },
+  },
+  candlestick: {
+    type: 'candlestick',
+    ko: '캔들 차트. 시가·고가·저가·종가와 거래량',
+    en: 'Candlestick chart: open/high/low/close with volume',
+    component: 'CandlestickChart',
+    fields: {
+      ...COMMON,
+      x: SERIES.x!,
+      open: { kind: 'string', required: true, column: 'numeric', ko: '시가 열', en: 'Open column' },
+      high: { kind: 'string', required: true, column: 'numeric', ko: '고가 열', en: 'High column' },
+      low: { kind: 'string', required: true, column: 'numeric', ko: '저가 열', en: 'Low column' },
+      close: { kind: 'string', required: true, column: 'numeric', ko: '종가 열', en: 'Close column' },
+      volume: { kind: 'string', column: 'numeric', ko: '거래량 열 (있으면 아래에 막대)', en: 'Volume column (bars along the bottom)' },
+      showXAxis: SERIES.showXAxis!,
+      showYAxis: SERIES.showYAxis!,
+      format: FORMAT,
+      referenceLines: SERIES.referenceLines!,
+    },
+    example: {
+      title: '삼성전자 일봉',
+      data: (() => {
+        let p = 71_000;
+        return days(24).map((date, i) => {
+          const open = p;
+          const close = Math.round(open * (1 + Math.sin(i * 1.3) * 0.018 + 0.002));
+          p = close;
+          return { date, open, high: Math.round(Math.max(open, close) * 1.008), low: Math.round(Math.min(open, close) * 0.992), close, volume: 8_000_000 + ((i * 1_370_000) % 6_000_000) };
+        });
+      })(),
+      x: 'date',
+      open: 'open',
+      high: 'high',
+      low: 'low',
+      close: 'close',
+      volume: 'volume',
+      format: { suffix: '원' },
+    },
+  },
+  donut: {
+    type: 'donut',
+    ko: '도넛 차트. 자산 비중, 가운데에 합계',
+    en: 'Donut chart: portfolio shares with the total in the middle',
+    component: 'DonutChart',
+    fields: {
+      ...COMMON,
+      height: { kind: 'number', default: 220, ko: '높이(px)', en: 'Height (px)' },
+      label: { kind: 'string', required: true, column: 'any', ko: '이름 열', en: 'Label column' },
+      value: { kind: 'string', required: true, column: 'numeric', ko: '값 열', en: 'Value column' },
+      colors: { kind: 'record', ko: '이름 → 색', en: 'Label → color' },
+      totalLabel: { kind: 'string', ko: '가운데 합계 아래 글씨', en: 'Text under the total' },
+      innerRadius: { kind: 'number', default: 0.68, ko: '구멍 크기 (0이면 파이)', en: 'Hole size (0 = pie)' },
+      format: FORMAT,
+    },
+    example: {
+      title: '자산 구성',
+      data: [
+        { asset: '국내주식', amount: 4200 },
+        { asset: '해외주식', amount: 3100 },
+        { asset: '코인', amount: 1700 },
+        { asset: '현금', amount: 1000 },
+      ],
+      label: 'asset',
+      value: 'amount',
+      colors: { 현금: '#B0B8C1' },
+      totalLabel: '총 자산',
+      format: { suffix: '만' },
+    },
+  },
+  treemap: {
+    type: 'treemap',
+    ko: '트리맵. 시가총액으로 크기, 등락률로 색을 정하는 마켓맵',
+    en: 'Treemap: market map sized by value, colored by change',
+    component: 'TreemapChart',
+    fields: {
+      ...COMMON,
+      label: { kind: 'string', required: true, column: 'any', ko: '이름 열', en: 'Label column' },
+      value: { kind: 'string', required: true, column: 'numeric', ko: '크기 열 (시가총액 등)', en: 'Size column (market cap, …)' },
+      change: { kind: 'string', column: 'numeric', ko: '등락률 열 (%). 오르면 빨강, 내리면 파랑', en: 'Change column (%): red up, blue down' },
+      maxChange: { kind: 'number', default: 5, ko: '가장 진한 색이 되는 등락률', en: 'Change for the full color' },
+      colors: { kind: 'record', ko: '이름 → 색 (change 대신)', en: 'Label → color (instead of change)' },
+      format: FORMAT,
+    },
+    example: {
+      title: '오늘의 시장',
+      data: [
+        { name: '삼성전자', cap: 420, pct: 1.84 },
+        { name: 'SK하이닉스', cap: 130, pct: 4.12 },
+        { name: 'LG에너지솔루션', cap: 85, pct: -2.31 },
+        { name: '삼성바이오', cap: 55, pct: -0.4 },
+        { name: '현대차', cap: 48, pct: 0.62 },
+        { name: '셀트리온', cap: 40, pct: 2.95 },
+        { name: '기아', cap: 38, pct: 1.05 },
+        { name: 'NAVER', cap: 32, pct: -0.88 },
+        { name: 'KB금융', cap: 30, pct: 0.21 },
+        { name: '카카오', cap: 18, pct: -3.4 },
+      ],
+      label: 'name',
+      value: 'cap',
+      change: 'pct',
+      format: { suffix: '조' },
     },
   },
   'percentage-bar': {

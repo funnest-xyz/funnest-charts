@@ -25,7 +25,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const server = new McpServer({ name: 'funnest-charts', version: '0.3.0' });
+const server = new McpServer({ name: 'funnest-charts', version: '0.4.0' });
 
 const locale = z.enum(['ko', 'en']).optional().describe('Message language (default ko)');
 const chartType = z.enum(CHART_TYPES as [string, ...string[]]);
@@ -36,7 +36,7 @@ server.registerTool(
   {
     title: 'List charts',
     description:
-      'List Funnest Charts chart types (line, area, bar, percentage-bar, sparkline) with what each is for and the React component it maps to. For a full trading chart (candles, indicators, drawing tools) use <FnChart /> with a Datafeed — see get_datafeed_template.',
+      'List Funnest Charts chart types (line, area, bar, candlestick, donut, treemap, percentage-bar, sparkline) with what each is for and the React component it maps to. For a full trading chart (candles, indicators, drawing tools) use <FnChart /> with a Datafeed — see get_datafeed_template.',
     inputSchema: { locale },
   },
   async ({ locale: l = 'ko' }) => ({
