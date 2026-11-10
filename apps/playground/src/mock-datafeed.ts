@@ -70,6 +70,7 @@ const krx = (symbol: string, name: string, basePrice: number, baseVolume: number
     tickSize: krxTickSize,
     type: 'stock',
     country: 'KR',
+    logoUrl: `/logos/${symbol}.png`,
   },
   basePrice,
   dailyVol,
@@ -87,6 +88,7 @@ const SYMBOLS: Record<string, MockSymbol> = {
     info: {
       symbol: 'BTCUSDT',
       name: 'BTC/USDT',
+      logoUrl: '/logos/BTC.png',
       exchange: 'Binance',
       timezone: 'Asia/Seoul',
       session: '24x7',
@@ -105,6 +107,7 @@ const SYMBOLS: Record<string, MockSymbol> = {
     info: {
       symbol: 'ETHUSDT',
       name: 'ETH/USDT',
+      logoUrl: '/logos/ETH.png',
       exchange: 'Binance',
       timezone: 'Asia/Seoul',
       session: '24x7',
@@ -123,6 +126,7 @@ const SYMBOLS: Record<string, MockSymbol> = {
     info: {
       symbol: 'AAPL',
       name: 'Apple',
+      logoUrl: '/logos/AAPL.png',
       exchange: 'NASDAQ',
       timezone: 'America/New_York',
       session: '0930-1600',

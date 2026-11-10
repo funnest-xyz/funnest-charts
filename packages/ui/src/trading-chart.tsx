@@ -1,6 +1,7 @@
 /** @jsxImportSource preact */
 import {
   createChart,
+  darkTheme,
   lightTheme,
   type Chart,
   type ChartOptions,
@@ -69,7 +70,19 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
   drawingToolbar?: boolean;
   /** Initial chart type. Default 'candles'. */
   chartType?: ChartType;
+  /**
+   * Funnest logo badge in the bottom-left corner of the chart, linking to charts.funnest.xyz.
+   * Default true. Free to turn off (Apache-2.0); keeping it on is how you say thanks.
+   */
+  attribution?: boolean;
+  /**
+   * Base palette. 'system' (default) follows the OS light/dark setting and switches live.
+   * `theme` overrides are applied on top of whichever base is active.
+   */
+  colorScheme?: ColorScheme;
 }
+
+export type ColorScheme = 'light' | 'dark' | 'system';
 
 /**
  * Empty elements inside the widget layout where the host app mounts its own UI (any framework):
@@ -79,6 +92,8 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
 export interface TradingChartSlots {
   /** In the toolbar row, after the interval buttons. */
   readonly toolbar: HTMLElement;
+  /** Right end of the toolbar, next to the settings (gear) button — for extra icon buttons. */
+  readonly toolbarEnd: HTMLElement;
   /** A full-width row under the toolbar. */
   readonly belowToolbar: HTMLElement;
   /** A full-width row under the chart. */
@@ -92,7 +107,9 @@ export interface TradingChart {
   setSymbol(symbol: string, resolution?: Resolution): Promise<void>;
   setResolution(resolution: Resolution): Promise<void>;
   setLocale(locale: Locale): void;
+  /** Override theme tokens (kept across light/dark switches). */
   setTheme(theme: Partial<ThemeTokens>): void;
+  setColorScheme(scheme: ColorScheme): void;
   /** Layout snapshot (symbol, interval, chart type, settings, indicators, drawings, view). */
   save(): ChartState;
   /** Restores a layout from `save()` / stored JSON. */
@@ -144,6 +161,8 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     symbolLogo = true,
     drawingToolbar = true,
     chartType = 'candles',
+    attribution = true,
+    colorScheme = 'system',
     ...chartOptions
   } = options;
   const locale = chartOptions.locale ?? 'ko';
@@ -153,12 +172,24 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
   const storage = createStorage(storageKey);
   injectStyles(container.ownerDocument);
 
-  let theme: ThemeTokens = { ...lightTheme, ...chartOptions.theme };
+  const win = container.ownerDocument.defaultView;
+  const darkQuery = win?.matchMedia?.('(prefers-color-scheme: dark)') ?? null;
+  let scheme: ColorScheme = colorScheme;
+  let themePatch: Partial<ThemeTokens> = { ...chartOptions.theme };
+  const isDark = () => (scheme === 'system' ? !!darkQuery?.matches : scheme === 'dark');
+  const resolveTheme = (): ThemeTokens => ({ ...(isDark() ? darkTheme : lightTheme), ...themePatch });
+  let theme = resolveTheme();
   const root = div('fnc-root', container);
-  applyThemeVars(root, theme);
+  const applyScheme = () => {
+    root.dataset.colorScheme = isDark() ? 'dark' : 'light';
+    root.style.colorScheme = isDark() ? 'dark' : 'light';
+    applyThemeVars(root, theme);
+  };
+  applyScheme();
   const toolbarHost = div('fnc-toolbar-host', root);
   const slots: TradingChartSlots = {
     toolbar: div('fnc-slot fnc-slot-toolbar'),
+    toolbarEnd: div('fnc-slot fnc-slot-toolbar-end'),
     belowToolbar: div('fnc-slot fnc-slot-below-toolbar', root),
     footer: div('fnc-slot fnc-slot-footer'),
   };
@@ -169,7 +200,14 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
   const overlayHost = div('fnc-overlay', stage);
   root.appendChild(slots.footer);
 
-  const chart = createChart(chartHost, { ...chartOptions, datafeed, displayTimezone });
+  const chart = createChart(chartHost, { ...chartOptions, theme, datafeed, displayTimezone });
+  const refreshScheme = () => {
+    theme = resolveTheme();
+    applyScheme();
+    chart.setTheme(theme);
+  };
+  const onSchemeChange = () => scheme === 'system' && refreshScheme();
+  darkQuery?.addEventListener?.('change', onSchemeChange);
   chart.setChartType(chartType);
   const store = new Store<UiState>({
     locale,
@@ -227,13 +265,27 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
       store.set({ searchOpen: true });
       return;
     }
+    // Escape closes the top-most layer even when focus has left the dialog (clicking empty
+    // space inside a dialog moves focus to <body>, so the dialog's own handler never sees it).
+    if (e.key === 'Escape' && !e.defaultPrevented && (s.searchOpen || s.dialog)) {
+      e.preventDefault();
+      store.set(s.searchOpen ? { searchOpen: false } : { dialog: null });
+      return;
+    }
     if (e.key === 'Escape' && root.classList.contains('fnc-pseudo-fullscreen') && !s.searchOpen && !s.dialog) {
       root.classList.remove('fnc-pseudo-fullscreen');
       onFullscreenChange();
     }
   };
+  // Korean/Japanese IME: while composing, the first Escape only ends the composition and
+  // keydown reports "Process" (keyCode 229). The key-up still says "Escape", so close then.
+  const onKeyUp = (e: KeyboardEvent) => {
+    const s = store.get();
+    if (e.key === 'Escape' && (s.searchOpen || s.dialog)) store.set(s.searchOpen ? { searchOpen: false } : { dialog: null });
+  };
   document.addEventListener('fullscreenchange', onFullscreenChange);
   document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
 
   const ctx: WidgetContext = {
     root,
@@ -246,6 +298,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     displayTimezone,
     showLogo: symbolLogo,
     drawingToolbar,
+    attribution,
     slots,
     setDrawbarCollapsed: (collapsed) => {
       store.set({ drawbarCollapsed: collapsed });
@@ -314,14 +367,19 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     save: () => chart.save(),
     load: (state) => chart.load(state),
     setTheme: (patch) => {
-      theme = { ...theme, ...patch };
-      applyThemeVars(root, theme);
-      chart.setTheme(patch);
+      themePatch = { ...themePatch, ...patch };
+      refreshScheme();
+    },
+    setColorScheme: (next) => {
+      scheme = next;
+      refreshScheme();
     },
     destroy: () => {
       offs.forEach((off) => off());
       document.removeEventListener('fullscreenchange', onFullscreenChange);
       document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      darkQuery?.removeEventListener?.('change', onSchemeChange);
       if (isNativeFullscreen()) void document.exitFullscreen();
       render(null, toolbarHost);
       render(null, overlayHost);

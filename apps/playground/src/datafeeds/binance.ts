@@ -90,6 +90,8 @@ export class BinanceDatafeed implements Datafeed {
     return {
       symbol: s.symbol,
       name: futures ? `${s.baseAsset}/${s.quoteAsset} 무기한` : `${s.baseAsset}/${s.quoteAsset}`,
+      // Demo-only: Upbit's public coin logos (the library never ships images).
+      logoUrl: `https://static.upbit.com/logos/${s.baseAsset}.png`,
       exchange: futures ? 'Binance Futures' : 'Binance',
       timezone: this.options.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
       session: '24x7',

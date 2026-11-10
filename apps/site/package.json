@@ -1,0 +1,26 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node ../../scripts/fetch-logos.mjs",
+    "dev": "next dev -p 3100",
+    "prebuild": "pnpm -C ../.. build && node ../../scripts/fetch-logos.mjs",
+    "build": "next build && node scripts/flatten-rsc.mjs",
+    "start": "next start -p 3100",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@funnest/charts": "workspace:*",
+    "@funnest/charts-react": "workspace:*",
+    "@funnest/charts-ui": "workspace:*",
+    "@funnest/charts-viz": "workspace:*",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}

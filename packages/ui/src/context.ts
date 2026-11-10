@@ -64,7 +64,9 @@ export interface WidgetContext {
   displayTimezone: string;
   showLogo: boolean;
   drawingToolbar: boolean;
-  slots: { toolbar: HTMLElement; belowToolbar: HTMLElement; footer: HTMLElement };
+  /** Show the Funnest logo badge on the chart. */
+  attribution: boolean;
+  slots: { toolbar: HTMLElement; toolbarEnd: HTMLElement; belowToolbar: HTMLElement; footer: HTMLElement };
   setDrawbarCollapsed(collapsed: boolean): void;
   selectSymbol(symbol: string): void;
   selectResolution(resolution: Resolution): void;

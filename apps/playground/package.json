@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/fetch-logos.mjs",
     "dev": "vite",
+    "prebuild": "node ../../scripts/fetch-logos.mjs",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json"
   },

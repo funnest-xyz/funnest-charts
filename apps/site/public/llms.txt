@@ -1,0 +1,28 @@
+# Funnest Charts
+
+> Open-source (Apache-2.0) financial chart library for investment apps: a full trading chart widget (candles, toolbar, symbol search, indicators, drawing tools, positions/orders) and lightweight SVG dashboard charts. Korean defaults (KST, KRX sessions, red-up/blue-down), mobile gestures, light/dark following the OS.
+
+Install: `npm i @funnest/charts-react`
+
+## Packages
+- @funnest/charts-react: `<FnChart />` trading chart + SVG components (LineChart, AreaChart, BarChart, PercentageBarChart, CartesianChart, XAxis, YAxis, Scrubber, ReferenceLine, Point, Legend, PeriodSelector)
+- @funnest/charts-ui: framework-free trading widget, `createTradingChart(el, options)`
+- @funnest/charts: canvas engine, indicators, realtime helpers (ReconnectingWebSocket, TickAggregator, combineDatafeeds)
+- @funnest/charts-viz: platform-neutral chart math (web + React Native)
+- @funnest/charts-cli: `funnest-charts` command — validate JSON chart specs, render SVG/PNG/HTML, suggest charts, emit React code
+- @funnest/charts-mcp: MCP server — list_charts, get_chart_schema, validate_spec, render_chart, suggest_chart, get_datafeed_template
+
+## Key facts
+- The trading chart reads data through a `Datafeed` you implement (resolveSymbol, getBars, subscribeBars, optional searchSymbols/subscribeQuotes). The library contains no exchange connections.
+- `colorScheme`: 'system' (default) | 'light' | 'dark'. Up/down colors via `theme={{ up, down }}`.
+- Slots for app UI inside the widget: toolbar, toolbarEnd, belowToolbar, footer.
+- SVG components: `series=[{ id, data, label?, color? }]`, `scrubber={{ showValues: true }}`, `onScrubberPositionChange`.
+
+## Docs
+- [Introduction and install](https://charts.funnest.xyz/docs/)
+- [Trading chart](https://charts.funnest.xyz/docs/trading-chart/)
+- [Data connection (Datafeed)](https://charts.funnest.xyz/docs/datafeed/)
+- [Theming](https://charts.funnest.xyz/docs/theming/)
+- [AI · CLI · MCP](https://charts.funnest.xyz/docs/ai/)
+- [Components](https://charts.funnest.xyz/docs/components/line-chart/)
+- [Agent skill](https://github.com/funnest-xyz/charts/tree/main/skills/funnest-charts)

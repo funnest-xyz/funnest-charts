@@ -318,6 +318,7 @@ const CSS = /* css */ `
   background: var(--fnc-border);
 }
 .fnc-slot-below-toolbar, .fnc-slot-footer { flex: none; min-width: 0; }
+.fnc-slot-toolbar-end { display: flex; align-items: center; gap: 2px; flex: none; }
 
 /* ── Drawing bar fold (desktop) ── */
 .fnc-drawbar .fnc-spacer { flex: 1; min-height: 8px; }
@@ -494,6 +495,30 @@ const CSS = /* css */ `
   animation: fnc-spin 0.8s linear infinite;
 }
 @keyframes fnc-spin { to { transform: rotate(360deg); } }
+
+.fnc-attribution {
+  position: absolute;
+  left: 10px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 4px;
+  border-radius: 14px;
+  color: var(--fnc-text);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.3px;
+  text-decoration: none;
+  pointer-events: auto;
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+}
+.fnc-attribution:hover { opacity: 1; background: var(--fnc-bg); box-shadow: 0 0 0 1px var(--fnc-border); }
+.fnc-attribution svg { flex: none; }
+.fnc-attribution span { max-width: 0; overflow: hidden; transition: max-width 0.2s; }
+.fnc-attribution:hover span, .fnc-attribution:focus-visible span { max-width: 80px; }
 
 .fnc-nav {
   position: absolute;

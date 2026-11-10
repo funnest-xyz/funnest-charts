@@ -37,9 +37,12 @@ TradingView의 사용성 수준은 목표로 하지만, 화면을 그대로 복�
 packages/
   core/     @funnest/charts   Canvas 엔진. UI 없이 단독으로도 사용 가능
   ui/       @funnest/charts-ui     툴바, 그리기 도구, 설정 시트 (내부 Preact)
-  react/    @funnest/charts-react  <FnChart /> 래퍼
+  react/    @funnest/charts-react  <FnChart /> 래퍼 + SVG 차트 컴포넌트 (LineChart, BarChart …)
+  viz/      @funnest/charts-viz    SVG 차트용 순수 계산 (스케일, 눈금, 경로). DOM 없음 → React Native 공유
 apps/
-  playground/                 개발용 데모 (Vite)
+  playground/                 개발용 데모 (Vite). 거래소 어댑터 예시 포함, 배포 안 함
+  site/                       charts.funnest.xyz 소개 사이트 (Next.js 정적 export)
+brand/                        로고, 색상 가이드
 docs/
 ```
 

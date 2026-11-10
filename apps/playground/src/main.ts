@@ -20,6 +20,15 @@ const datafeed = combineDatafeeds({
   BINANCEF: new BinanceDatafeed({ market: 'usdm', symbols: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'] }),
 });
 
+// Page theme follows the OS (light/dark) until the user flips the toggle.
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+const setPageTheme = (dark: boolean) => {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('theme').textContent = dark ? '라이트' : '다크';
+};
+setPageTheme(darkQuery.matches);
+darkQuery.addEventListener('change', (e) => setPageTheme(e.matches));
+
 const params = new URLSearchParams(location.search);
 const widget = createTradingChart($('chart'), {
   datafeed,
@@ -61,11 +70,7 @@ void restore
 
 // ── Demo controls ─────────────────────────────────────────────────────
 
-$('theme').onclick = (e) => {
-  const dark = document.documentElement.dataset.theme !== 'dark';
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  (e.currentTarget as HTMLElement).textContent = dark ? '라이트' : '다크';
-};
+$('theme').onclick = () => setPageTheme(document.documentElement.dataset.theme !== 'dark');
 
 let kr = true;
 $('direction').onclick = (e) => {

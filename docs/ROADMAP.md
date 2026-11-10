@@ -47,6 +47,12 @@
 
 ## 4. 진행 중 / 보류
 
-- `@funnest/charts-viz` + React 차트 컴포넌트(CartesianChart, LineChart, AreaChart, Scrubber, PeriodSelector …): 구조 결정 완료(계산 = 순수 TS, 그리기 = 웹 SVG / 앱 react-native-svg). 위 요청을 처리한 뒤 이어서 진행.
+- ✅ `@funnest/charts-viz` + React SVG 차트 컴포넌트 12종 (CartesianChart, XAxis, YAxis, LineChart, AreaChart, BarChart, PercentageBarChart, Scrubber, ReferenceLine, Point, Legend, PeriodSelector). Sparkline은 작은 LineChart로 대체.
+- ✅ 문서: 사이트 안 `/docs` (시작하기 4쪽 + 컴포넌트 13쪽, 라이브 데모·코드·속성 표). GitBook 대신 사이트 내장 — 예제가 실제로 동작해야 해서.
+- ✅ AI 도구: `@funnest/charts-cli`(스펙 검사·렌더·추천·React 코드), `@funnest/charts-mcp`(도구 6개, Datafeed 템플릿 포함), `skills/funnest-charts`, 사이트 `llms.txt`. 데이터는 인라인만(MCP가 외부 주소를 가져오지 않음).
+- 다음: CLI `render --interactive`(HTML에 스크러버), 캔들 SVG 스펙(type: candles).
+- 다음: React Native용 `@funnest/charts-native` (같은 viz 계산 + react-native-svg).
+- ✅ 브랜드 v0 (brand/), 위젯 왼쪽 아래 로고 배지 (`attribution`, 기본 켬), 소개 사이트 apps/site.
+- 다음 단계(사이트, 비공개 저장소): funnest.xyz 서비스 랜딩 + 트레이딩뷰형 차트 프로덕트.
 - 캔들 차트의 React Native 지원: 1단계는 WebView 래퍼, 이후 Skia 렌더러 검토.
 - 한국 장 휴장일(공휴일): 상태바의 장 마감·개장 계산에 아직 반영하지 않음 → `SymbolInfo`에 휴장일 목록 또는 세션 캘린더 어댑터 추가 예정.

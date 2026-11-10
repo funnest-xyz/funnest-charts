@@ -54,7 +54,7 @@ export const FnChart = forwardRef<TradingChart | null, FnChartProps>(function Fn
     };
   }, [options.datafeed]);
 
-  const { symbol, resolution, locale, theme } = options;
+  const { symbol, resolution, locale, theme, colorScheme } = options;
   useEffect(() => {
     if (!widget) return;
     const current = widget.chart.symbolInfo?.symbol;
@@ -67,6 +67,10 @@ export const FnChart = forwardRef<TradingChart | null, FnChartProps>(function Fn
   useEffect(() => {
     if (widget && locale) widget.setLocale(locale);
   }, [widget, locale]);
+
+  useEffect(() => {
+    if (widget && colorScheme) widget.setColorScheme(colorScheme);
+  }, [widget, colorScheme]);
 
   const themeKey = JSON.stringify(theme ?? null);
   useEffect(() => {

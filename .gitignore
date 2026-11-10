@@ -5,3 +5,10 @@ coverage
 .DS_Store
 test-results
 playwright-report
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+
+# Demo symbol logos are third-party trademarks: downloaded by scripts/fetch-logos.mjs, never committed.
+apps/*/public/logos/

@@ -10,5 +10,5 @@ export {
   DEFAULT_SEARCH_CATEGORIES,
 } from './trading-chart';
 export type { IntervalGroup, SearchCategory } from './context';
-export type { TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart';
+export type { ColorScheme, TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart';
 export { resolutionLabel } from './i18n';

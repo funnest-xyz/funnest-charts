@@ -1,13 +1,18 @@
 {
   "name": "@funnest/charts-react",
   "version": "0.0.0",
-  "description": "React bindings for Funnest Charts",
+  "description": "React bindings for Funnest Charts: the trading widget plus SVG line, area and bar charts",
   "keywords": [
     "react",
     "chart",
     "trading",
     "candlestick",
-    "financial"
+    "financial",
+    "line-chart",
+    "area-chart",
+    "bar-chart",
+    "sparkline",
+    "svg"
   ],
   "license": "Apache-2.0",
   "author": "Funnest",
@@ -24,6 +29,7 @@
     "access": "public"
   },
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -37,12 +43,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean --external react --external react-dom --external @funnest/charts-ui --external @funnest/charts && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --clean --external react --external react-dom --external @funnest/charts-ui --external @funnest/charts --external @funnest/charts-viz && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@funnest/charts": "workspace:*",
-    "@funnest/charts-ui": "workspace:*"
+    "@funnest/charts-ui": "workspace:*",
+    "@funnest/charts-viz": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

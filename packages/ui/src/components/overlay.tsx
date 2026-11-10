@@ -10,6 +10,7 @@ import {
   CollapseLeftIcon,
   EyeIcon,
   EyeOffIcon,
+  FunnestMark,
   GearIcon,
   MinusIcon,
   PlusIcon,
@@ -19,6 +20,7 @@ import {
 } from '../icons';
 import { useStore } from '../store';
 import { SelectionBar } from './drawing-toolbar';
+import { SymbolAvatar } from './symbol-avatar';
 
 const ZOOM_STEP = 1.25;
 const CONTROL_OFFSET = 52; // px above the time axis
@@ -159,6 +161,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
     <>
       <div class="fnc-legend" ref={ref}>
         <div class="fnc-legend-title">
+          {ctx.showLogo && <SymbolAvatar info={s.symbol} size={18} />}
           <b>{s.symbol.name}</b>
           <span>·</span>
           <span>{resolutionLabel(s.resolution, s.locale)}</span>
@@ -230,9 +233,34 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
   );
 }
 
+const ATTRIBUTION_URL = 'https://charts.funnest.xyz/?utm_source=chart&utm_medium=attribution';
+
+/** Bottom-left logo badge (like the TradingView mark): "Charts by Funnest". */
+function Attribution({ ctx }: { ctx: WidgetContext }) {
+  const s = useStore(ctx.store);
+  const { panesHeight, plotWidth } = s.layout;
+  if (!ctx.attribution || plotWidth <= 0) return null;
+  const label = s.locale === 'ko' ? 'Funnest 차트' : 'Charts by Funnest';
+  return (
+    <a
+      class="fnc-attribution"
+      href={ATTRIBUTION_URL}
+      target="_blank"
+      rel="noopener"
+      title={label}
+      aria-label={label}
+      style={{ top: `${panesHeight - 36}px` }}
+    >
+      <FunnestMark />
+      <span>funnest</span>
+    </a>
+  );
+}
+
 export function Overlay({ ctx }: { ctx: WidgetContext }) {
   return (
     <>
+      <Attribution ctx={ctx} />
       <Legend ctx={ctx} />
       <NavControls ctx={ctx} />
       <SelectionBar ctx={ctx} />

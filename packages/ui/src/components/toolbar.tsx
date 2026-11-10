@@ -73,6 +73,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           <PencilIcon />
         </button>
       )}
+      <Slot el={ctx.slots.toolbarEnd} />
       <button
         class="fnc-btn"
         title={t.chartSettings}
