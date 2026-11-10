@@ -16,7 +16,10 @@ Install: `npm i @funnest/charts-react`
 - The trading chart reads data through a `Datafeed` you implement (resolveSymbol, getBars, subscribeBars, optional searchSymbols/subscribeQuotes). The library contains no exchange connections.
 - `colorScheme`: 'system' (default) | 'light' | 'dark'. Up/down colors via `theme={{ up, down }}`.
 - Slots for app UI inside the widget: toolbar, toolbarEnd, belowToolbar, footer.
-- SVG components: `series=[{ id, data, label?, color? }]`, `scrubber={{ showValues: true }}`, `onScrubberPositionChange`.
+- SVG components: `series=[{ id, data, label?, color?, yAxisId? }]`, `scrubber={{ showValues: true }}`, `onScrubberPositionChange`.
+- Data points may be `[low, high]` ranges: Area draws a band, BarPlot draws floating bars.
+- Several y axes: `yAxis=[{ id: 'price' }, { id: 'volume' }]` with `series[].yAxisId` and `<YAxis axisId />`.
+- `BarChart layout="horizontal"`; `PercentageBarChart rows=[…]` and `layout="vertical"`.
 
 ## Docs
 - [Introduction and install](https://charts.funnest.xyz/docs/)

@@ -49,6 +49,8 @@ export interface ChartSpec {
   stacked?: boolean;
   /** bar: red for ≥ 0, blue for < 0 (Korean convention). */
   colorBySign?: boolean;
+  /** bar: 'horizontal' draws one row per category (rankings, sector returns). */
+  layout?: 'vertical' | 'horizontal';
   showXAxis?: boolean;
   showYAxis?: boolean;
   legend?: boolean;
@@ -181,6 +183,7 @@ export const CHARTS: Record<ChartType, ChartDef> = {
       ...SERIES,
       stacked: { kind: 'boolean', default: false, ko: '위로 쌓기', en: 'Stack series' },
       colorBySign: { kind: 'boolean', default: false, ko: '0 이상 빨강, 미만 파랑', en: 'Red for ≥ 0, blue for < 0' },
+      layout: { kind: 'string', enum: ['vertical', 'horizontal'], default: 'vertical', ko: "'horizontal'이면 가로 막대 (순위, 업종별 수익률)", en: "'horizontal' for left-to-right bars (rankings, sector returns)" },
     },
     example: {
       title: '일별 손익',

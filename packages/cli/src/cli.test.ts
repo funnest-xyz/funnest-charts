@@ -63,4 +63,12 @@ describe('render', () => {
     expect(code).toContain("import { BarChart, ReferenceLine } from '@funnest/charts-react'");
     expect(code).toContain('getBarColor');
   });
+  it('renders horizontal bars (one row per category)', () => {
+    const spec = { type: 'bar' as const, layout: 'horizontal' as const, data: [{ s: 'A', r: 3 }, { s: 'B', r: -1 }], x: 's', y: 'r' };
+    expect(validateSpec(spec)).toEqual([]);
+    const svg = renderSvg(spec);
+    expect((svg.match(/<path/g) ?? []).length).toBe(2);
+    expect(svg).toContain('>A<');
+    expect(reactCode(spec)).toContain('layout="horizontal"');
+  });
 });

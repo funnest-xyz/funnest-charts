@@ -76,7 +76,10 @@ import { LineChart, ReferenceLine, Point } from '@funnest/charts-react';
 ```
 
 - `AreaChart stacked` for composition; `BarChart getBarColor={(v) => v >= 0 ? up : down}` for P&L.
-- `PercentageBarChart data={[{ id, label, value, color? }]}` for weights / buy-sell pressure.
+- `BarChart layout="horizontal"` for rankings / sector returns (categories from `xAxis.data`).
+- Ranges: a data point can be `[low, high]` → `Area` draws a band (forecast range), bars float (day low–high).
+- Several y axes: `yAxis={[{ id: 'price' }, { id: 'volume' }]}` + `series[].yAxisId`; `<YAxis axisId="price" />`.
+- `PercentageBarChart data={[{ id, label, value, color? }]}` for weights / buy-sell pressure; `rows={[{ id, label, data }]}` compares several bars with one legend, `layout="vertical"` for columns.
 - Sparkline = `<LineChart height={32} inset={2} strokeWidth={1.5} animate={false} />` (no axes).
 - `PeriodSelector periods value onChange` for 1W/1M/1Y tabs; `Legend` with `onItemClick`/`onItemHover`.
 - Compose freely with `CartesianChart` + `Line`, `Area`, `BarPlot`, `XAxis`, `YAxis`, `Scrubber`, `ReferenceLine`, `Point`.
@@ -92,7 +95,7 @@ A JSON spec describes one chart; it renders with the same components:
   "area": "gradient", "format": { "suffix": "원" }, "referenceLines": [{ "y": 71000, "label": "평단가" }] }
 ```
 
-Types: `line`, `area` (`stacked`), `bar` (`colorBySign`), `percentage-bar` (`label`, `value`), `sparkline`.
+Types: `line`, `area` (`stacked`), `bar` (`colorBySign`, `layout: 'horizontal'`), `percentage-bar` (`label`, `value`), `sparkline`.
 
 ```bash
 npx @funnest/charts-cli list

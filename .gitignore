@@ -17,3 +17,6 @@ apps/*/public/logos/
 .vercel
 .env*
 .cache
+
+# Claude Code personal settings
+.claude/settings.local.json

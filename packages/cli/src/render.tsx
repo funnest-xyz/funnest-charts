@@ -106,7 +106,7 @@ function element(spec: ChartSpec, width: number, height: number): ReactElement {
       return <AreaChart {...common} stacked={spec.stacked ?? false} {...(spec.curve ? { curve: spec.curve } : {})}>{extras}</AreaChart>;
     case 'bar':
       return (
-        <BarChart {...common} stacked={spec.stacked ?? false} {...(spec.colorBySign ? { getBarColor: (v: number) => (v >= 0 ? UP : DOWN) } : {})}>
+        <BarChart {...common} stacked={spec.stacked ?? false} {...(spec.layout === 'horizontal' ? { layout: 'horizontal' as const } : {})} {...(spec.colorBySign ? { getBarColor: (v: number) => (v >= 0 ? UP : DOWN) } : {})}>
           {extras}
         </BarChart>
       );
@@ -330,6 +330,7 @@ export function Chart() {
   if (spec.stacked) props.push('stacked');
   if (spec.area && spec.area !== 'none') props.push(`area=${lit(spec.area)}`);
   if (spec.curve) props.push(`curve=${lit(spec.curve)}`);
+  if (spec.type === 'bar' && spec.layout === 'horizontal') props.push('layout="horizontal"');
   if (spec.type === 'bar' && spec.colorBySign) props.push("getBarColor={(v) => (v >= 0 ? '#F04452' : '#3182F6')}");
   if (ys.length > 1 || spec.legend) props.push('legend');
 
