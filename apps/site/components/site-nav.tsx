@@ -19,6 +19,13 @@ export function SiteNav({ solid = false, lang = 'ko' }: { solid?: boolean; lang?
         <Link href={t.home} aria-label={t.homeLabel}>
           <Logo suffix="charts" />
         </Link>
+        {/* The product (funnest.xyz), right next to the brand. */}
+        <a className="app-link" href={t.app} aria-label={t.appLabel}>
+          App
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3.5 8.5l5-5M4.5 3.5h4v4" />
+          </svg>
+        </a>
         <div className="nav-actions">
           <div className="lang-switch" role="group" aria-label="Language">
             <Link href="/" hrefLang="ko" lang="ko" aria-current={lang === 'ko' ? 'true' : undefined}>
@@ -37,9 +44,6 @@ export function SiteNav({ solid = false, lang = 'ko' }: { solid?: boolean; lang?
             <span className="docs-label">{t.docs}</span>
           </Link>
           <GitHubButton lang={lang} />
-          <a className="app-btn" href={t.app} aria-label={t.appLabel}>
-            App
-          </a>
         </div>
       </div>
     </NavShell>

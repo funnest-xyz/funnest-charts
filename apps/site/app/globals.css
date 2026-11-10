@@ -551,37 +551,21 @@ h3 {
   height: 40px;
   padding: 0 16px 0 13px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgb(139 108 255 / 0.28), rgb(90 59 240 / 0.18));
-  box-shadow: inset 0 0 0 1px rgb(160 135 255 / 0.55);
-  color: #ece7ff;
+  background: linear-gradient(135deg, #7c5cff, #5a3bf0);
+  box-shadow: 0 4px 14px rgb(90 59 240 / 0.35), inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  color: #fff;
   font-size: 15px;
-  font-weight: 700;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  font-weight: 800;
+  transition: filter 0.15s, transform 0.15s;
 }
 .docs-btn svg {
   flex: none;
 }
 .docs-btn:hover {
-  background: linear-gradient(135deg, rgb(139 108 255 / 0.42), rgb(90 59 240 / 0.3));
-  box-shadow: inset 0 0 0 1px rgb(180 160 255 / 0.8);
+  filter: brightness(1.1);
 }
 .docs-btn:active {
   transform: scale(0.97);
-}
-/* On the solid (light) bar: filled violet tint. */
-.nav-solid .docs-btn {
-  background: rgb(108 77 255 / 0.1);
-  box-shadow: inset 0 0 0 1px rgb(108 77 255 / 0.35);
-  color: var(--violet-deep);
-}
-.nav-solid .docs-btn:hover {
-  background: rgb(108 77 255 / 0.18);
-}
-@media (prefers-color-scheme: dark) {
-  .nav-solid .docs-btn {
-    background: rgb(139 108 255 / 0.18);
-    color: #d4c9ff;
-  }
 }
 .docs-btn:focus-visible {
   outline: 3px solid #8b6cff;
@@ -975,37 +959,33 @@ h3 {
   }
 }
 
-/* "App" → funnest.xyz (the product), the strongest button in the bar. */
-.app-btn {
+/* "App" → funnest.xyz (the product), right next to the logo. */
+.app-link {
+  /* Sit close to the logo (the bar's default gap is 40px). */
+  margin-left: -26px;
   display: inline-flex;
   align-items: center;
-  height: 40px;
-  padding: 0 18px;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 999px;
-  background: var(--violet);
-  color: #fff;
   font-size: 15px;
-  font-weight: 800;
-  transition: background 0.15s, transform 0.15s;
+  font-weight: 700;
+  opacity: 0.8;
+  transition: opacity 0.15s, background 0.15s;
 }
-.app-btn:hover {
-  background: var(--violet-deep);
+.app-link:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
-.app-btn:active {
-  transform: scale(0.97);
-}
-.app-btn:focus-visible {
+.app-link:focus-visible {
   outline: 3px solid #8b6cff;
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 .nav-inner .nav-actions {
   margin-left: auto;
 }
 @media (max-width: 760px) {
-  .app-btn {
-    height: 36px;
-    padding: 0 14px;
-  }
   /* Not enough room on phones: GitHub stays in the footer, docs shows its icon only. */
   .nav-actions .gh-btn,
   .docs-label {
@@ -1020,6 +1000,10 @@ h3 {
 @media (max-width: 760px) {
   .nav-inner {
     gap: 12px;
+  }
+  .app-link {
+    margin-left: -6px;
+    padding: 0 8px;
   }
   .nav-actions {
     gap: 6px;
