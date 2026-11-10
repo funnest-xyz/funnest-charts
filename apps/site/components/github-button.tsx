@@ -10,14 +10,14 @@ export function GitHubIcon({ size = 20 }: { size?: number }) {
 }
 
 /** GitHub-styled link button: GitHub's mark and colors, so it's recognisable at a glance. */
-export function GitHubButton({ label = 'GitHub', large = false }: { label?: string; large?: boolean }) {
+export function GitHubButton({ label = 'GitHub', large = false, lang = 'ko' }: { label?: string; large?: boolean; lang?: 'ko' | 'en' }) {
   return (
     <a
       className={large ? 'gh-btn gh-btn-lg' : 'gh-btn'}
       href={GITHUB_URL}
       target="_blank"
       rel="noopener"
-      aria-label={`${label} (GitHub 저장소, 새 창)`}
+      aria-label={lang === 'en' ? `${label} (GitHub repository, opens in a new tab)` : `${label} (GitHub 저장소, 새 창)`}
     >
       <GitHubIcon size={large ? 22 : 18} />
       <span>{label}</span>

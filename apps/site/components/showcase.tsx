@@ -19,6 +19,7 @@ import {
 import { seriesChange } from '@funnest/charts-viz';
 import { useMemo, useState } from 'react';
 import { asset } from '../lib/base';
+import { useLang } from './locale';
 
 // Korean convention: up = red, down = blue.
 export const UP = '#F04452';
@@ -54,8 +55,31 @@ export function walk(seed: number, n: number, start: number, vol: number, drift 
 const fmt = (v: number, digits = 0) => v.toLocaleString('ko-KR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const pct = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`;
 const dirColor = (v: number) => (v > 0 ? UP : v < 0 ? DOWN : 'var(--text-3)');
-const won = (v: number) => `${fmt(v)}원`;
-const man = (v: number) => `${fmt(v)}만`;
+/** Demo strings per page language. */
+const S = {
+  ko: {
+    samsung: '삼성전자', apple: '애플', ether: '이더리움',
+    kr: '국내주식', us: '해외주식', crypto: '코인', cash: '현금',
+    krShort: '국내', usShort: '해외', pnl: '손익', buy: '매수', sell: '매도', volume: '거래량', price: '가격',
+    avg: '평단가', target: '목표가', vsAvg: '평단',
+    months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월'],
+    periods: ['1주', '1개월', '3개월', '1년'],
+    won: (v: number) => `${fmt(v)}원`,
+    man: (v: number) => `${fmt(v)}만`,
+  },
+  en: {
+    samsung: 'Samsung Electronics', apple: 'Apple', ether: 'Ethereum',
+    kr: 'KR stocks', us: 'US stocks', crypto: 'Crypto', cash: 'Cash',
+    krShort: 'KR', usShort: 'US', pnl: 'P&L', buy: 'Buy', sell: 'Sell', volume: 'Volume', price: 'Price',
+    avg: 'Avg', target: 'Target', vsAvg: 'vs avg',
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+    periods: ['1W', '1M', '3M', '1Y'],
+    won: (v: number) => `₩${fmt(v)}`,
+    // Values are in 10k KRW (만원): show millions of won.
+    man: (v: number) => `₩${(v / 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`,
+  },
+};
+const useT = () => S[useLang()];
 
 export function SymbolLogo({ src, size = 36 }: { src: string; size?: number }) {
   return <img className="symbol-logo" src={asset(src)} alt="" width={size} height={size} loading="lazy" />;
@@ -72,18 +96,20 @@ function dayLabels(n: number) {
 // ── Component previews (one per component card) ─────────────
 
 export function LineChartDemo() {
+  const { won } = useT();
   const data = useMemo(() => walk(7, 60, 52_000, 0.035, 0.002).map(Math.round), []);
   return <LineChart series={[{ id: 'p', data, color: UP }]} height={H} inset={6} area="gradient" scrubber={{ showValues: true, valueFormatter: won }} xAxis={{ data: dayLabels(60) }} />;
 }
 
 export function SparklineDemo() {
+  const t = useT();
   const rows = useMemo(
     () =>
       [
-        { name: '삼성전자', logo: '/logos/005930.png', seed: 11, start: 71_000, drift: 0.003 },
+        { name: t.samsung, logo: '/logos/005930.png', seed: 11, start: 71_000, drift: 0.003 },
         { name: 'NAVER', logo: '/logos/035420.png', seed: 47, start: 181_000, drift: -0.002 },
-        { name: '애플', logo: '/logos/AAPL.png', seed: 61, start: 232, drift: 0.002 },
-        { name: '이더리움', logo: '/logos/ETH.png', seed: 13, start: 3_400, drift: -0.003 },
+        { name: t.apple, logo: '/logos/AAPL.png', seed: 61, start: 232, drift: 0.002 },
+        { name: t.ether, logo: '/logos/ETH.png', seed: 13, start: 3_400, drift: -0.003 },
       ].map((r) => ({ ...r, data: walk(r.seed, 40, r.start, 0.03, r.drift) })),
     [],
   );
@@ -106,19 +132,21 @@ export function SparklineDemo() {
 }
 
 export function AreaChartDemo() {
+  const t = useT();
   const series = useMemo(
     () => [
-      { id: 'kr', label: '국내주식', data: walk(3, 11, 400, 0.08, 0.02).map(Math.round) },
-      { id: 'us', label: '해외주식', data: walk(9, 11, 300, 0.08, 0.03).map(Math.round) },
-      { id: 'crypto', label: '코인', data: walk(13, 11, 150, 0.2, 0.03).map(Math.round) },
+      { id: 'kr', label: t.kr, data: walk(3, 11, 400, 0.08, 0.02).map(Math.round) },
+      { id: 'us', label: t.us, data: walk(9, 11, 300, 0.08, 0.03).map(Math.round) },
+      { id: 'crypto', label: t.crypto, data: walk(13, 11, 150, 0.2, 0.03).map(Math.round) },
     ],
     [],
   );
-  const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월'];
-  return <AreaChart series={series} stacked height={H} inset={6} strokeWidth={1.5} xAxis={{ data: months }} scrubber={{ showValues: true, valueFormatter: man, dimFuture: false }} />;
+  const months = t.months;
+  return <AreaChart series={series} stacked height={H} inset={6} strokeWidth={1.5} xAxis={{ data: months }} scrubber={{ showValues: true, valueFormatter: t.man, dimFuture: false }} />;
 }
 
 export function BarChartDemo() {
+  const t = useT();
   const data = useMemo(() => {
     const r = rng(5);
     return Array.from({ length: 20 }, () => Math.round((r() - 0.42) * 900) * 1000);
@@ -126,13 +154,13 @@ export function BarChartDemo() {
   const labels = dayLabels(20);
   return (
     <BarChart
-      series={[{ id: 'pnl', label: '손익', data }]}
+      series={[{ id: 'pnl', label: t.pnl, data }]}
       height={H}
       inset={6}
       radius={2}
       xAxis={{ data: labels }}
       getBarColor={(v) => (v >= 0 ? UP : DOWN)}
-      scrubber={{ showValues: true, valueFormatter: (v) => `${v > 0 ? '+' : ''}${fmt(v)}원` }}
+      scrubber={{ showValues: true, valueFormatter: (v) => `${v > 0 ? '+' : ''}${t.won(v)}` }}
     >
       <ReferenceLine dataY={0} dash="" />
     </BarChart>
@@ -140,22 +168,23 @@ export function BarChartDemo() {
 }
 
 export function PercentageBarDemo() {
+  const t = useT();
   return (
     <div className="stack-gap">
       <PercentageBarChart
         barHeight={14}
         data={[
-          { id: 'buy', label: '매수', value: 62.4, color: UP },
-          { id: 'sell', label: '매도', value: 37.6, color: DOWN },
+          { id: 'buy', label: t.buy, value: 62.4, color: UP },
+          { id: 'sell', label: t.sell, value: 37.6, color: DOWN },
         ]}
       />
       <PercentageBarChart
         barHeight={14}
         data={[
-          { id: 'kr', label: '국내', value: 42 },
-          { id: 'us', label: '해외', value: 31 },
-          { id: 'crypto', label: '코인', value: 17 },
-          { id: 'cash', label: '현금', value: 10, color: '#B0B8C1' },
+          { id: 'kr', label: t.krShort, value: 42 },
+          { id: 'us', label: t.usShort, value: 31 },
+          { id: 'crypto', label: t.crypto, value: 17 },
+          { id: 'cash', label: t.cash, value: 10, color: '#B0B8C1' },
         ]}
       />
     </div>
@@ -164,6 +193,7 @@ export function PercentageBarDemo() {
 
 /** Line + volume bars + axis composed by hand. */
 export function CartesianDemo() {
+  const t = useT();
   const price = useMemo(() => walk(21, 30, 70_000, 0.03, 0.002).map(Math.round), []);
   const volume = useMemo(() => {
     const r = rng(8);
@@ -173,8 +203,8 @@ export function CartesianDemo() {
   return (
     <CartesianChart
       series={[
-        { id: 'vol', label: '거래량', data: volume, color: 'color-mix(in srgb, var(--text-3) 35%, transparent)' },
-        { id: 'price', label: '가격', data: price, color: VIOLET },
+        { id: 'vol', label: t.volume, data: volume, color: 'color-mix(in srgb, var(--text-3) 35%, transparent)' },
+        { id: 'price', label: t.price, data: price, color: VIOLET },
       ]}
       xAxis={{ scaleType: 'band', bandPadding: 0.35, data: dayLabels(30) }}
       yAxis={{ domain: { min: 64_000 } }}
@@ -185,7 +215,7 @@ export function CartesianDemo() {
       <BarPlot seriesIds={['vol']} radius={1} />
       <Line seriesId="price" strokeWidth={2} />
       <YAxis width={40} tickLabelFormatter={(v) => `${Math.round(v / 1000)}k`} />
-      <Scrubber seriesIds={['price']} showValues valueFormatter={(v) => won(v)} />
+      <Scrubber seriesIds={['price']} showValues valueFormatter={(v) => t.won(v)} />
     </CartesianChart>
   );
 }
@@ -222,11 +252,12 @@ export function YAxisDemo() {
 
 /** Header follows the scrubber; optional period tabs switch the range. */
 export function ScrubberDemo({ withPeriods = false }: { withPeriods?: boolean }) {
+  const t = useT();
   const PERIODS: Period[] = [
-    { id: '1W', label: '1주' },
-    { id: '1M', label: '1개월' },
-    { id: '3M', label: '3개월' },
-    { id: '1Y', label: '1년' },
+    { id: '1W', label: t.periods[0]! },
+    { id: '1M', label: t.periods[1]! },
+    { id: '3M', label: t.periods[2]! },
+    { id: '1Y', label: t.periods[3]! },
   ];
   const DAYS: Record<string, number> = { '1W': 7, '1M': 30, '3M': 90, '1Y': 365 };
   const [period, setPeriod] = useState('3M');
@@ -242,10 +273,10 @@ export function ScrubberDemo({ withPeriods = false }: { withPeriods?: boolean })
       <div className="price-head">
         <SymbolLogo src="/logos/005930.png" size={36} />
         <div>
-          <strong className="price-value">{won(change.last)}</strong>
+          <strong className="price-value">{t.won(change.last)}</strong>
           <span className="price-change" style={{ color }}>
-            {change.change > 0 ? '+' : ''}
-            {fmt(change.change)}원 ({pct(change.percent)})
+            {change.change > 0 ? '+' : change.change < 0 ? '-' : ''}
+            {t.won(Math.abs(change.change))} ({pct(change.percent)})
             <em>{index === null ? '' : ` · ${labels[index]}`}</em>
           </span>
         </div>
@@ -269,30 +300,32 @@ export function ScrubberDemo({ withPeriods = false }: { withPeriods?: boolean })
 }
 
 export function ReferenceLineDemo() {
+  const t = useT();
   const data = useMemo(() => walk(19, 60, 68_000, 0.03, 0.001).map(Math.round), []);
   return (
     <CartesianChart
-      series={[{ id: 'p', label: '가격', data, color: 'var(--text)' }]}
+      series={[{ id: 'p', label: t.price, data, color: 'var(--text)' }]}
       yAxis={{ domain: { max: Math.max(...data, 71_000) + 400 } }}
       height={H}
       inset={{ top: 14, right: 8, bottom: 8, left: 8 }}
       enableScrubbing
     >
       <Line seriesId="p" curve="linear" strokeWidth={1.5} />
-      <ReferenceLine dataY={69_500} label="평단가 69,500" labelPosition="left" color={VIOLET} />
-      <ReferenceLine dataY={71_000} label="목표가 71,000" labelPosition="left" color={UP} />
-      <Scrubber showValues valueFormatter={(v) => `${won(v)} (평단 ${pct(((v - 69_500) / 69_500) * 100)})`} dimFuture={false} label={() => ''} />
+      <ReferenceLine dataY={69_500} label={`${t.avg} 69,500`} labelPosition="left" color={VIOLET} />
+      <ReferenceLine dataY={71_000} label={`${t.target} 71,000`} labelPosition="left" color={UP} />
+      <Scrubber showValues valueFormatter={(v) => `${t.won(v)} (${t.vsAvg} ${pct(((v - 69_500) / 69_500) * 100)})`} dimFuture={false} label={() => ''} />
     </CartesianChart>
   );
 }
 
 export function PointDemo() {
+  const tr = useT();
   const data = useMemo(() => walk(19, 60, 68_000, 0.03, 0.001).map(Math.round), []);
   const [picked, setPicked] = useState<number | null>(null);
   const trades = [
-    { x: 12, side: '매수', color: UP, pos: 'bottom' as const },
-    { x: 31, side: '매수', color: UP, pos: 'bottom' as const },
-    { x: 47, side: '매도', color: DOWN, pos: 'top' as const },
+    { x: 12, side: tr.buy, color: UP, pos: 'bottom' as const },
+    { x: 31, side: tr.buy, color: UP, pos: 'bottom' as const },
+    { x: 47, side: tr.sell, color: DOWN, pos: 'top' as const },
   ];
   return (
     <CartesianChart series={[{ id: 'p', data, color: 'var(--text)' }]} height={H} inset={{ top: 18, right: 12, bottom: 20, left: 8 }}>
@@ -304,7 +337,7 @@ export function PointDemo() {
           dataX={t.x}
           color={t.color}
           radius={picked === t.x ? 6 : 4}
-          label={picked === t.x ? `${t.side} ${won(data[t.x]!)}` : t.side}
+          label={picked === t.x ? `${t.side} ${tr.won(data[t.x]!)}` : t.side}
           labelPosition={t.pos}
           onClick={() => setPicked((p) => (p === t.x ? null : t.x))}
         />

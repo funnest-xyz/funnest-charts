@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { DocsSidebar, type SidebarSection } from '../../components/docs-sidebar';
-import { SiteNav } from '../../components/site-nav';
-import { COMPONENT_DOCS, COMPONENT_GROUPS } from '../../lib/component-docs';
+import { DocsSidebar, type SidebarSection } from '../../../components/docs-sidebar';
+import { SiteNav } from '../../../components/site-nav';
+import { COMPONENT_DOCS, COMPONENT_GROUPS } from '../../../lib/component-docs';
 
 export const metadata: Metadata = {
   title: { default: '문서 · Funnest Charts', template: '%s · Funnest Charts 문서' },

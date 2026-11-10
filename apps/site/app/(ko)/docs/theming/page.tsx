@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { pageMeta } from '../../../lib/meta';
-import { Code, DocHeader, NextLinks, P, Props } from '../../../components/docs';
+import { pageMeta } from '../../../../lib/meta';
+import { Code, DocHeader, NextLinks, P, Props } from '../../../../components/docs';
 
 export const metadata: Metadata = pageMeta('docs-theming', '테마', '라이트·다크, 상승·하락 색, CSS 변수로 내 서비스 디자인에 맞춰요.');
 

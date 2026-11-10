@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Code, Demo, DocHeader, NextLinks, Props } from '../../../../components/docs';
-import { COMPONENT_DOCS } from '../../../../lib/component-docs';
-import { pageMeta } from '../../../../lib/meta';
+import { Code, Demo, DocHeader, NextLinks, Props } from '../../../../../components/docs';
+import { COMPONENT_DOCS } from '../../../../../lib/component-docs';
+import { pageMeta } from '../../../../../lib/meta';
 
 export const dynamicParams = false;
 

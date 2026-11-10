@@ -947,3 +947,30 @@ h3 {
   color: var(--text-3);
   font-size: 13px;
 }
+
+/* KO | EN switch in the top bar */
+.lang-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+}
+.lang-switch a {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+.lang-switch a[aria-current] {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  opacity: 1;
+}
+.lang-switch a:hover {
+  opacity: 1;
+}
+@media (max-width: 760px) {
+  .lang-switch a {
+    padding: 4px 8px;
+  }
+}

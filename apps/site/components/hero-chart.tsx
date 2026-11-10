@@ -3,14 +3,34 @@
 import { FnChart, FnChartSlot } from '@funnest/charts-react';
 import { useEffect, useMemo, useState } from 'react';
 import { MockDatafeed } from '../lib/mock-datafeed';
+import { useLang } from './locale';
 
 type Scheme = 'dark' | 'light';
 type CandleStyle = 'kr' | 'global';
 
-const CANDLES: Record<CandleStyle, { up: string; down: string; label: string }> = {
-  kr: { up: '#F04452', down: '#3182F6', label: '한국식 (상승 빨강 · 하락 파랑)' },
-  global: { up: '#12B886', down: '#F04452', label: '글로벌 (상승 초록 · 하락 빨강)' },
+const CANDLES: Record<CandleStyle, { up: string; down: string }> = {
+  kr: { up: '#F04452', down: '#3182F6' },
+  global: { up: '#12B886', down: '#F04452' },
 };
+
+const TEXT = {
+  ko: {
+    candles: { kr: '한국식 (상승 빨강 · 하락 파랑)', global: '글로벌 (상승 초록 · 하락 빨강)' },
+    toLight: '라이트 모드로',
+    toDark: '다크 모드로',
+    switchTo: (mode: string) => `${mode} 바꾸기`,
+    candleTitle: (label: string) => `캔들 색상: ${label}`,
+    candleAria: (label: string) => `캔들 색상 바꾸기. 지금은 ${label}`,
+  },
+  en: {
+    candles: { kr: 'Korean (red up · blue down)', global: 'Global (green up · red down)' },
+    toLight: 'Light mode',
+    toDark: 'Dark mode',
+    switchTo: (mode: string) => `Switch to ${mode.toLowerCase()}`,
+    candleTitle: (label: string) => `Candle colors: ${label}`,
+    candleAria: (label: string) => `Change candle colors. Now ${label}`,
+  },
+} as const;
 
 const SunIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
@@ -41,9 +61,12 @@ const CandleIcon = ({ up, down }: { up: string; down: string }) => (
  * light/dark and candle colours. It tilts up into place once on load.
  */
 export function HeroChart() {
+  const lang = useLang();
+  const t = TEXT[lang];
   const [mounted, setMounted] = useState(false);
   const [scheme, setScheme] = useState<Scheme>('dark');
-  const [candles, setCandles] = useState<CandleStyle>('kr');
+  // English visitors get a US stock and green-up candles by default.
+  const [candles, setCandles] = useState<CandleStyle>(lang === 'en' ? 'global' : 'kr');
   useEffect(() => setMounted(true), []);
   const datafeed = useMemo(() => (mounted ? new MockDatafeed() : null), [mounted]);
   const colors = CANDLES[candles];
@@ -58,9 +81,10 @@ export function HeroChart() {
           {datafeed ? (
             <FnChart
               datafeed={datafeed}
-              symbol="005930"
+              symbol={lang === 'en' ? 'AAPL' : '005930'}
               resolution="1D"
               colorScheme={scheme}
+              locale={lang}
               theme={theme}
               storageKey={null}
               style={{ height: '100%' }}
@@ -69,8 +93,8 @@ export function HeroChart() {
                 <button
                   type="button"
                   className="fnc-btn"
-                  title={nextScheme === 'light' ? '라이트 모드로' : '다크 모드로'}
-                  aria-label={nextScheme === 'light' ? '라이트 모드로 바꾸기' : '다크 모드로 바꾸기'}
+                  title={nextScheme === 'light' ? t.toLight : t.toDark}
+                  aria-label={t.switchTo(nextScheme === 'light' ? t.toLight : t.toDark)}
                   onClick={() => setScheme(nextScheme)}
                 >
                   {scheme === 'dark' ? <SunIcon /> : <MoonIcon />}
@@ -78,8 +102,8 @@ export function HeroChart() {
                 <button
                   type="button"
                   className="fnc-btn"
-                  title={`캔들 색상: ${colors.label}`}
-                  aria-label={`캔들 색상 바꾸기. 지금은 ${colors.label}`}
+                  title={t.candleTitle(t.candles[candles])}
+                  aria-label={t.candleAria(t.candles[candles])}
                   onClick={() => setCandles(nextCandles)}
                 >
                   <CandleIcon up={colors.up} down={colors.down} />

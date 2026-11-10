@@ -153,6 +153,29 @@ for (const [name, viewport, colorScheme] of RUNS) {
   await page.close();
 }
 
+// ── English landing ──
+{
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.on('pageerror', (e) => errors.push(`en: ${e.message}`));
+  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.locator('.lang-switch a', { hasText: 'EN' }).click();
+  await page.waitForURL(/\/en\/$/);
+  await page.waitForSelector('.fnc-root canvas');
+  await page.waitForTimeout(800);
+  check((await page.getAttribute('html', 'lang')) === 'en', 'en: html lang="en"');
+  check(/Welcome to our nest/.test(await page.locator('.hero h1').textContent()), 'en: English hero copy');
+  check(!/[가-힣]/.test(await page.locator('#components').innerText()), 'en: component cards have no Korean text');
+  const legend = await page.locator('.fnc-legend-title b').first().textContent();
+  check(/Apple/i.test(legend ?? ''), `en: hero chart shows a US stock (${legend})`);
+  check(/Light mode/.test((await page.locator('.fnc-slot-toolbar-end button').first().getAttribute('title')) ?? ''), 'en: toggle labels in English');
+  check(/og\/default-en\.png/.test(await page.content()), 'en: English OG image');
+  await page.screenshot({ path: `${SHOTS}/en-hero.png` });
+  await page.locator('.lang-switch a', { hasText: 'KO' }).click();
+  await page.waitForURL((u) => !u.pathname.includes('/en/'));
+  check((await page.getAttribute('html', 'lang')) === 'ko', 'en: KO switch returns to Korean');
+  await page.close();
+}
+
 // ── Docs ──
 {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

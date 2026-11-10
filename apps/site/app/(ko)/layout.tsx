@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { asset } from '../lib/base';
-import './globals.css';
+import { asset } from '../../lib/base';
+import '../globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://charts.funnest.xyz'),
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     description: '투자 서비스를 위한 오픈소스 차트',
     images: [asset('/og/default.png')],
   },
+  alternates: { canonical: asset('/'), languages: { ko: asset('/'), en: asset('/en/') } },
 };
 
 export const viewport: Viewport = { themeColor: '#6C4DFF' };

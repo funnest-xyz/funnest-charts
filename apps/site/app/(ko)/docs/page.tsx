@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { pageMeta } from '../../lib/meta';
-import { Callout, Code, DocHeader, NextLinks, P } from '../../components/docs';
+import { pageMeta } from '../../../lib/meta';
+import { Callout, Code, DocHeader, NextLinks, P } from '../../../components/docs';
 
 export const metadata: Metadata = pageMeta('docs', '소개와 설치', 'Funnest Charts 소개와 설치. npm i @funnest/charts-react 한 줄로 트레이딩 차트와 차트 컴포넌트를 시작해요.');
 

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { pageMeta } from '../../../lib/meta';
-import { Callout, Code, DocHeader, NextLinks, Props } from '../../../components/docs';
+import { pageMeta } from '../../../../lib/meta';
+import { Callout, Code, DocHeader, NextLinks, Props } from '../../../../components/docs';
 
 export const metadata: Metadata = pageMeta('docs-datafeed', '데이터 연결', 'Datafeed 인터페이스로 거래소·증권사 데이터를 연결하고 실시간 WebSocket을 이어요.');
 
