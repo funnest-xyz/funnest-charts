@@ -26,7 +26,8 @@ const server = createServer(async (req, res) => {
     res.writeHead(404).end();
   }
 }).listen(0);
-const url = `http://localhost:${server.address().port}${BASE}/`;
+// SITE_URL=https://… tests a deployed site instead of the local build.
+const url = process.env.SITE_URL ? process.env.SITE_URL.replace(/\/?$/, '/') : `http://localhost:${server.address().port}${BASE}/`;
 await mkdir(SHOTS, { recursive: true });
 
 const browser = await chromium.launch();

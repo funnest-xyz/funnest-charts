@@ -13,3 +13,6 @@ next-env.d.ts
 # Demo symbol logos are third-party trademarks: downloaded by scripts/fetch-logos.mjs, never committed.
 apps/*/public/logos/
 .release
+
+.vercel
+.env*

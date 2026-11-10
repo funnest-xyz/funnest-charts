@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+apps/site/out
+apps/playground/dist
+apps/*/public/logos
+test-results
+playwright-report
+.release
+*.log
+*.tsbuildinfo
