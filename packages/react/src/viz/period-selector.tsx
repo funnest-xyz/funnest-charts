@@ -4,6 +4,26 @@ import { VAR } from './context';
 export interface Period {
   id: string;
   label: string;
+  /** A live tab: a pulsing dot next to the label, and the live color when selected. */
+  live?: boolean;
+}
+
+/** A label with a pulsing "live" dot (used by live periods; usable on its own too). */
+export function LiveTabLabel({ label, color = 'var(--fnv-live, #F04452)' }: { label: string; color?: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span aria-hidden="true" style={{ position: 'relative', width: 7, height: 7 }}>
+        <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: color }} />
+        <svg width="7" height="7" viewBox="0 0 7 7" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+          <circle cx="3.5" cy="3.5" r="3.5" style={{ fill: color }} fillOpacity={0.45}>
+            <animate attributeName="r" values="3.5;8" dur="1.6s" repeatCount="indefinite" />
+            <animate attributeName="fill-opacity" values="0.45;0" dur="1.6s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+      </span>
+      {label}
+    </span>
+  );
 }
 
 /** Common ranges for price charts. */
@@ -22,6 +42,8 @@ export interface PeriodSelectorProps {
   onChange: (id: string) => void;
   /** Active pill color. Default Funnest violet (set --fnv-accent to theme). */
   activeColor?: string;
+  /** Pill color while a live period is selected. Default red. */
+  liveColor?: string;
   /** Stretch the tabs across the full width (mobile). */
   fullWidth?: boolean;
   className?: string;
@@ -35,11 +57,14 @@ export function PeriodSelector({
   value,
   onChange,
   activeColor = 'var(--fnv-accent, #6C4DFF)',
+  liveColor = 'var(--fnv-live, #F04452)',
   fullWidth = false,
   className,
   style,
   'aria-label': ariaLabel = 'Period',
 }: PeriodSelectorProps) {
+  const activeIsLive = periods.find((p) => p.id === value)?.live ?? false;
+  const pillColor = activeIsLive ? liveColor : activeColor;
   const listRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
 
@@ -85,7 +110,7 @@ export function PeriodSelector({
             left: pill.left,
             width: pill.width,
             borderRadius: 999,
-            background: activeColor,
+            background: pillColor,
             opacity: 0.12,
             transition: 'left 0.2s ease, width 0.2s ease',
           }}
@@ -111,14 +136,14 @@ export function PeriodSelector({
               border: 0,
               borderRadius: 999,
               background: 'transparent',
-              color: active ? activeColor : VAR.text,
+              color: active ? (p.live ? liveColor : activeColor) : VAR.text,
               font: 'inherit',
               fontSize: 13,
               fontWeight: active ? 700 : 500,
               cursor: 'pointer',
             }}
           >
-            {p.label}
+            {p.live ? <LiveTabLabel label={p.label} color={liveColor} /> : p.label}
           </button>
         );
       })}

@@ -1,4 +1,4 @@
-import type { BandScale, LinearScale, StackedSeries } from '@funnest/charts-viz';
+import type { BandScale, StackedSeries, ValueScale } from '@funnest/charts-viz';
 import { createContext, useContext } from 'react';
 
 export interface ChartSeries {
@@ -8,12 +8,20 @@ export interface ChartSeries {
   label?: string;
   /** Any CSS color. Defaults to the palette. */
   color?: string;
+  /** Line style for this series (overrides the chart's). */
+  lineStyle?: LineStyle;
+  /** Area fill for this series in AreaChart / LineChart `area` (overrides the chart's). */
+  areaStyle?: 'gradient' | 'solid' | 'dotted' | 'none';
 }
+
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 /** A series with its resolved color. */
 export interface ResolvedSeries extends ChartSeries {
   color: string;
   index: number;
+  /** Another series is emphasized (legend hover): draw this one faded. */
+  dimmed: boolean;
 }
 
 export interface PlotRect {
@@ -39,14 +47,17 @@ export interface CartesianContextValue {
   x(i: number): number;
   /** Set when the x axis is categorical (bar charts). */
   band: BandScale | null;
-  y: LinearScale;
+  /** Value scale (linear or log). */
+  y: ValueScale;
   /** Stacked edges per series id when `stacked`. */
   stacked: Map<string, StackedSeries> | null;
   /** Label for x position `i` (from `xAxis.data`, else the index). */
   xLabel(i: number): string;
   xData: readonly (string | number)[] | undefined;
-  /** Index under the pointer, or null. */
+  /** Index under the pointer (or chosen with the arrow keys), or null. */
   scrubIndex: number | null;
+  /** The chart has keyboard focus (scrubbing with arrow keys). */
+  focused: boolean;
   animate: boolean;
 }
 
@@ -70,7 +81,15 @@ export const VAR = {
   line: 'var(--fnv-line, color-mix(in srgb, CanvasText 32%, transparent))',
   bg: 'var(--fnv-bg, Canvas)',
   font: 'var(--fnv-font, inherit)',
+  accentRing: 'color-mix(in srgb, var(--fnv-accent, #6C4DFF) 55%, transparent)',
 } as const;
+
+/** Opacity for series faded by legend emphasis. */
+export const DIM_OPACITY = 0.22;
+
+/** Stroke dash pattern for a line style (dotted uses round caps on zero-length dashes). */
+export const dashFor = (style: LineStyle | undefined, width: number): string | undefined =>
+  style === 'dashed' ? `${width * 3} ${width * 2.5}` : style === 'dotted' ? `0.1 ${width * 2.6}` : undefined;
 
 const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 const compactFormat = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 2 });

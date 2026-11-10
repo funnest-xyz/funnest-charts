@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import { VAR } from './context';
 
-export type LegendPosition = 'top' | 'bottom';
+export type LegendPosition = 'top' | 'bottom' | 'left' | 'right';
+export type LegendShape = 'circle' | 'square' | 'squircle' | 'pill' | 'line';
 
 export interface LegendItem {
   id: string;
@@ -19,23 +20,37 @@ export interface LegendProps {
   onItemClick?: (id: string) => void;
   /** Pointer enters (id) or leaves (null) an item — e.g. to highlight that series. */
   onItemHover?: (id: string | null) => void;
-  /** 'circle' (default), 'square' or 'line' swatches. */
-  shape?: 'circle' | 'square' | 'line';
+  /** Swatch: 'circle' (default), 'square', 'squircle', 'pill' or 'line'. */
+  shape?: LegendShape;
+  /** 'row' wraps items across (default); 'column' stacks them (side legends). */
+  direction?: 'row' | 'column';
+  /** Alignment of the items. Default 'flex-start'. */
+  justify?: CSSProperties['justifyContent'];
   className?: string;
   style?: CSSProperties;
 }
 
 /** Series key, HTML (not SVG) so it wraps and stays readable at any width. */
-export function Legend({ items, onItemClick, onItemHover, shape = 'circle', className, style }: LegendProps) {
-  const swatch = (color: string): CSSProperties =>
-    shape === 'line'
-      ? { width: 12, height: 3, borderRadius: 2, background: color }
-      : { width: 8, height: 8, borderRadius: shape === 'circle' ? '50%' : 2, background: color };
+export function Legend({ items, onItemClick, onItemHover, shape = 'circle', direction = 'row', justify = 'flex-start', className, style }: LegendProps) {
+  const swatch = (color: string): CSSProperties => {
+    switch (shape) {
+      case 'line':
+        return { width: 12, height: 3, borderRadius: 2, background: color };
+      case 'pill':
+        return { width: 14, height: 6, borderRadius: 3, background: color };
+      case 'square':
+        return { width: 8, height: 8, borderRadius: 1, background: color };
+      case 'squircle':
+        return { width: 9, height: 9, borderRadius: 3, background: color };
+      default:
+        return { width: 8, height: 8, borderRadius: '50%', background: color };
+    }
+  };
   return (
     <div
       className={className}
       role={onItemClick ? 'group' : 'list'}
-      style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', padding: '4px 0', fontSize: 12, color: VAR.text, fontFamily: VAR.font, ...style }}
+      style={{ display: 'flex', flexDirection: direction, flexWrap: direction === 'row' ? 'wrap' : 'nowrap', justifyContent: justify, gap: direction === 'row' ? '4px 14px' : 8, padding: '4px 0', fontSize: 12, color: VAR.text, fontFamily: VAR.font, ...style }}
     >
       {items.map((item) => {
         const content = (

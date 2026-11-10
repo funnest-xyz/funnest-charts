@@ -1,13 +1,19 @@
 import { barPath } from '@funnest/charts-viz';
-import { useCartesianChart } from './context';
+import { DIM_OPACITY, useCartesianChart } from './context';
 
 export interface BarPlotProps {
   /** Only draw these series (default: all). */
   seriesIds?: readonly string[];
   /** Corner radius at the bar's far end. Default 3. */
   radius?: number;
+  /** Also round the baseline end (pill-shaped bars). Default false. */
+  roundBaseline?: boolean;
   /** Gap between grouped bars in one slot, px. Default 2. */
   groupGap?: number;
+  /** Gap between stacked segments, px. Default 0. */
+  stackGap?: number;
+  /** Smallest drawn bar length for non-zero values, px (tiny values stay visible). Default 0. */
+  minSize?: number;
   /** Per-bar color (e.g. up/down volume). Return undefined to use the series color. */
   getBarColor?: (value: number, index: number, seriesId: string) => string | undefined;
   /** Dim bars other than the scrubbed one. Default true. */
@@ -18,14 +24,24 @@ export interface BarPlotProps {
  * Bars for every series: side by side (grouped) or on top of each other when the chart
  * is `stacked`. Needs `xAxis.scaleType: 'band'` (BarChart sets it).
  */
-export function BarPlot({ seriesIds, radius = 3, groupGap = 2, getBarColor, highlightScrubbed = true }: BarPlotProps) {
+export function BarPlot({
+  seriesIds,
+  radius = 3,
+  roundBaseline = false,
+  groupGap = 2,
+  stackGap = 0,
+  minSize = 0,
+  getBarColor,
+  highlightScrubbed = true,
+}: BarPlotProps) {
   const ctx = useCartesianChart();
   const band = ctx.band;
   if (!band) return null;
   const list = seriesIds ? ctx.series.filter((s) => seriesIds.includes(s.id)) : ctx.series;
   const groups = ctx.stacked ? 1 : Math.max(1, list.length);
   const barW = Math.max(1, (band.bandwidth - groupGap * (groups - 1)) / groups);
-  const zero = ctx.y(Math.min(Math.max(0, Math.min(...ctx.y.domain)), Math.max(...ctx.y.domain)));
+  const [d0, d1] = ctx.y.domain;
+  const zero = ctx.y(Math.min(Math.max(0, Math.min(d0, d1)), Math.max(d0, d1)));
   const dim = highlightScrubbed && ctx.scrubIndex !== null;
 
   return (
@@ -35,24 +51,37 @@ export function BarPlot({ seriesIds, radius = 3, groupGap = 2, getBarColor, high
         const offset = ctx.stacked ? 0 : k * (barW + groupGap);
         // Only the outermost segment of a stack gets rounded corners.
         const isTopOfStack = (i: number, v: number) =>
-          !ctx.stacked || !list.slice(k + 1).some((o) => {
+          !ctx.stacked ||
+          !list.slice(k + 1).some((o) => {
             const ov = o.data[i];
             return ov !== null && ov !== undefined && ov !== 0 && Math.sign(ov) === Math.sign(v);
           });
         return (
-          <g key={s.id}>
+          <g key={s.id} opacity={s.dimmed ? DIM_OPACITY : 1}>
             {s.data.map((v, i) => {
-              if (v === null || v === undefined || !Number.isFinite(v)) return null;
+              if (v === null || v === undefined || !Number.isFinite(v) || v === 0) return null;
               const x = band(i) + offset;
-              const y0 = st ? ctx.y(st.y0[i]!) : zero;
-              const y1 = st ? ctx.y(st.y1[i]!) : ctx.y(v);
+              let y0 = st ? ctx.y(st.y0[i]!) : zero;
+              let y1 = st ? ctx.y(st.y1[i]!) : ctx.y(v);
+              const dir = Math.sign(y1 - y0) || -1;
+              const top = isTopOfStack(i, v);
+              const atBase = Math.abs(y0 - zero) <= 0.5;
+              // Stack gaps: pull each segment in at the joins (never at the zero line).
+              if (st && stackGap > 0) {
+                if (!atBase) y0 += (dir * stackGap) / 2;
+                if (!top) y1 -= (dir * stackGap) / 2;
+              }
+              if (minSize > 0 && Math.abs(y1 - y0) < minSize) y1 = y0 + dir * minSize;
               const color = getBarColor?.(v, i, s.id) ?? s.color;
+              // With gaps every segment reads as its own piece, so its far end gets a small radius.
+              const r = top ? radius : st && stackGap > 0 ? Math.min(radius, 2) : 0;
               return (
                 <path
                   key={i}
-                  d={barPath(x, barW, y0, y1, isTopOfStack(i, v) ? radius : 0)}
-                 
-                  fillOpacity={dim && ctx.scrubIndex !== i ? 0.45 : 1} style={{ fill: color }}>
+                  d={barPath(x, barW, y0, y1, r, roundBaseline && atBase)}
+                  fillOpacity={dim && ctx.scrubIndex !== i ? 0.45 : 1}
+                  style={{ fill: color }}
+                >
                   {ctx.animate && <animate attributeName="opacity" from="0" to="1" dur="0.5s" fill="freeze" />}
                 </path>
               );

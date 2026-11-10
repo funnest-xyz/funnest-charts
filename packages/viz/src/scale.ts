@@ -18,6 +18,31 @@ export function linearScale(domain: readonly [number, number], range: readonly [
   return scale;
 }
 
+/**
+ * A log10 scale for values spanning orders of magnitude (long-term price charts).
+ * Domain values must be positive; non-positive inputs clamp to the domain minimum.
+ */
+export interface LogScale {
+  readonly kind: 'log';
+  readonly domain: readonly [number, number];
+  readonly range: readonly [number, number];
+  (value: number): number;
+  invert(pixel: number): number;
+}
+
+export function logScale(domain: readonly [number, number], range: readonly [number, number]): LogScale {
+  const d0 = Math.max(Number.MIN_VALUE, domain[0]);
+  const d1 = Math.max(d0, domain[1]);
+  const inner = linearScale([Math.log10(d0), Math.log10(d1)], range);
+  const scale = ((v: number) => inner(Math.log10(Math.max(v, d0)))) as LogScale;
+  scale.invert = (p: number) => 10 ** inner.invert(p);
+  Object.assign(scale, { kind: 'log', domain: [d0, d1], range: [range[0], range[1]] });
+  return scale;
+}
+
+/** Either value scale; both map a value to a pixel and back. */
+export type ValueScale = LinearScale | LogScale;
+
 /** A categorical scale: `count` equal bands across the range, each with inner padding. */
 export interface BandScale {
   readonly kind: 'band';

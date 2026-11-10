@@ -58,7 +58,16 @@ for (const [name, viewport, colorScheme] of RUNS) {
   const lb = await lineCard.boundingBox();
   await page.mouse.move(lb.x + lb.width * 0.5, lb.y + lb.height * 0.5);
   await page.waitForTimeout(150);
-  check((await page.locator('#linechart svg rect[rx="8"]').count()) === 1, `${name}: hover tooltip on LineChart card`);
+  // LineChart card: the value sits beside the beacon (beaconLabels).
+  check(/원/.test((await page.locator('#linechart svg text[dominant-baseline="central"]').allTextContents()).join(' ')), `${name}: beacon label on LineChart card`);
+  // AreaChart card: a value tooltip box.
+  const areaSvg = page.locator('#areachart svg').first();
+  await areaSvg.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  const ab = await areaSvg.boundingBox();
+  await page.mouse.move(ab.x + ab.width * 0.5, ab.y + ab.height * 0.5);
+  await page.waitForTimeout(150);
+  check((await page.locator('#areachart svg rect[rx="8"]').count()) === 1, `${name}: hover tooltip on AreaChart card`);
   await page.mouse.move(0, 0);
 
   const html = await page.content();

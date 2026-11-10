@@ -75,26 +75,29 @@ export function segments<T>(values: readonly (T | null | undefined)[]): { start:
 }
 
 /**
- * Bar from `baseY` to `valueY` (pixels), `radius` rounding only the end away from the
- * baseline — so negative bars round at the bottom.
+ * Bar from `baseY` to `valueY` (pixels). `radius` rounds the end away from the baseline
+ * (negative bars round at the bottom); `roundBase` rounds the baseline end too.
  */
-export function barPath(x: number, width: number, baseY: number, valueY: number, radius = 0): string {
+export function barPath(x: number, width: number, baseY: number, valueY: number, radius = 0, roundBase = false): string {
   const top = Math.min(baseY, valueY);
-  const h = Math.abs(valueY - baseY);
-  const r = Math.max(0, Math.min(radius, width / 2, h));
+  const bottom = Math.max(baseY, valueY);
+  const h = bottom - top;
   const x1 = x + width;
-  if (r === 0) return `M${f(x)},${f(top)}H${f(x1)}V${f(top + h)}H${f(x)}Z`;
-  if (valueY <= baseY) {
-    // Grows upward: round the top corners.
-    return (
-      `M${f(x)},${f(baseY)}V${f(top + r)}Q${f(x)},${f(top)} ${f(x + r)},${f(top)}` +
-      `H${f(x1 - r)}Q${f(x1)},${f(top)} ${f(x1)},${f(top + r)}V${f(baseY)}Z`
-    );
-  }
-  const bottom = top + h;
+  const r = Math.max(0, Math.min(radius, width / 2, roundBase ? h / 2 : h));
+  if (r === 0) return `M${f(x)},${f(top)}H${f(x1)}V${f(bottom)}H${f(x)}Z`;
+  const up = valueY <= baseY; // grows upward from the baseline
+  const rTop = up || roundBase ? r : 0;
+  const rBottom = !up || roundBase ? r : 0;
   return (
-    `M${f(x)},${f(baseY)}V${f(bottom - r)}Q${f(x)},${f(bottom)} ${f(x + r)},${f(bottom)}` +
-    `H${f(x1 - r)}Q${f(x1)},${f(bottom)} ${f(x1)},${f(bottom - r)}V${f(baseY)}Z`
+    `M${f(x)},${f(top + rTop)}` +
+    (rTop ? `Q${f(x)},${f(top)} ${f(x + rTop)},${f(top)}` : '') +
+    `H${f(x1 - rTop)}` +
+    (rTop ? `Q${f(x1)},${f(top)} ${f(x1)},${f(top + rTop)}` : '') +
+    `V${f(bottom - rBottom)}` +
+    (rBottom ? `Q${f(x1)},${f(bottom)} ${f(x1 - rBottom)},${f(bottom)}` : '') +
+    `H${f(x + rBottom)}` +
+    (rBottom ? `Q${f(x)},${f(bottom)} ${f(x)},${f(bottom - rBottom)}` : '') +
+    'Z'
   );
 }
 

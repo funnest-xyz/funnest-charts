@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  logScale,
+  logTicks,
   areaPath,
   bandScale,
   barPath,
@@ -74,7 +76,10 @@ describe('paths', () => {
   it('bars', () => {
     expect(barPath(0, 10, 100, 40)).toBe('M0,40H10V100H0Z');
     // Negative bar (below the baseline) rounds its bottom corners.
-    expect(barPath(0, 10, 50, 80, 2)).toContain('Q0,80 2,80');
+    // Negative bar (below the baseline): bottom corners rounded, top (baseline) square.
+    const neg = barPath(0, 10, 50, 80, 2);
+    expect(neg).toContain('Q10,80 8,80');
+    expect(neg.startsWith('M0,50H10')).toBe(true);
   });
 });
 
@@ -103,5 +108,27 @@ describe('data', () => {
   });
   it('series change skips gaps', () => {
     expect(seriesChange([null, 100, 110, null])).toEqual({ first: 100, last: 110, change: 10, percent: 10 });
+  });
+});
+
+describe('log scale', () => {
+  it('maps decades evenly', () => {
+    const y = logScale([1, 1000], [300, 0]);
+    expect(y(1)).toBe(300);
+    expect(y(10)).toBe(200);
+    expect(y(1000)).toBe(0);
+    expect(Math.round(y.invert(100))).toBe(100);
+  });
+  it('ticks at 1, 2, 5 × 10ⁿ', () => {
+    expect(logTicks(1, 1000, 5)).toEqual([1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]);
+    expect(logTicks(1, 1e8, 3)).toEqual([1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]);
+  });
+});
+
+describe('bar path ends', () => {
+  it('rounds both ends with roundBase', () => {
+    const d = barPath(0, 10, 100, 40, 4, true);
+    expect(d.match(/Q/g)?.length).toBe(4);
+    expect(barPath(0, 10, 100, 40, 4).match(/Q/g)?.length).toBe(2);
   });
 });

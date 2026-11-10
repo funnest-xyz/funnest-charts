@@ -1,4 +1,4 @@
-import { sampleIndices, ticks as niceTicks } from '@funnest/charts-viz';
+import { logTicks, sampleIndices, ticks as niceTicks } from '@funnest/charts-viz';
 import { formatNumber, useCartesianChart, VAR } from './context';
 
 export interface XAxisProps {
@@ -89,7 +89,8 @@ export function YAxis({
   const ctx = useCartesianChart();
   const { plot, y } = ctx;
   const [d0, d1] = y.domain;
-  const values = (ticks ?? niceTicks(d0, d1, Math.max(2, Math.floor(plot.height / minTickSpacing)))).filter(
+  const count = Math.max(2, Math.floor(plot.height / minTickSpacing));
+  const values = (ticks ?? (y.kind === 'log' ? logTicks(d0, d1, count) : niceTicks(d0, d1, count))).filter(
     (v) => v >= Math.min(d0, d1) - 1e-9 && v <= Math.max(d0, d1) + 1e-9,
   );
   const right = position === 'right';

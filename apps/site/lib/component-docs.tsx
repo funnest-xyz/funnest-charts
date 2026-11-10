@@ -42,7 +42,10 @@ const CHART_PROPS: PropRow[] = [
   { name: 'showXAxis / showYAxis', type: 'boolean | XAxisProps | YAxisProps', desc: '축 표시. 객체로 세부 옵션을 넘길 수 있어요.' },
   { name: 'scrubber', type: 'boolean | ScrubberProps', desc: '마우스·손가락을 따라가는 선과 값 말풍선.' },
   { name: 'onScrubberPositionChange', type: '(index: number | null) => void', desc: '짚은 위치가 바뀔 때. 헤더 가격 연동에 써요.' },
-  { name: 'legend', type: "boolean | 'top' | 'bottom'", def: 'false', desc: '계열 범례.' },
+  { name: 'legend', type: "boolean | 'top' | 'bottom' | 'left' | 'right' | { position, interactive, shape }", def: 'false', desc: '계열 범례. interactive면 올려서 강조, 눌러서 숨기기.' },
+  { name: 'yAxis.scaleType', type: "'linear' | 'log'", def: "'linear'", desc: '값이 몇 자릿수씩 차이 날 때는 로그 스케일.' },
+  { name: 'emptyState', type: 'ReactNode', desc: '데이터가 없을 때 대신 보여줄 내용.' },
+  { name: 'getScrubberAccessibilityLabel', type: '(index) => string', desc: '키보드로 짚을 때 스크린리더가 읽을 문장.' },
   { name: 'animate', type: 'boolean', def: 'true', desc: '처음 그릴 때 애니메이션(동작 줄이기 설정이면 꺼져요).' },
   { name: 'palette', type: 'readonly string[]', desc: '계열 기본 색 목록.' },
 ];
@@ -56,20 +59,30 @@ export const COMPONENT_DOCS: ComponentDoc[] = [
     body: '가장 많이 쓰는 차트예요. area로 아래를 채우고, scrubber로 손끝을 따라 값을 읽게 할 수 있어요. 축을 빼고 작게 그리면 스파크라인이 돼요.',
     demo: <LineChartDemo />,
     code: `
-import { LineChart } from '@funnest/charts-react';
+import { LineChart, ReferenceLine } from '@funnest/charts-react';
+
+const hi = prices.indexOf(Math.max(...prices));
 
 <LineChart
-  series={[{ id: 'price', data: prices, color: '#F04452' }]}
+  series={[{ id: 'price', data: prices }]}
   xAxis={{ data: dates }}
   area="gradient"
-  scrubber={{ showValues: true, valueFormatter: (v) => \`\${v.toLocaleString()}원\` }}
-/>`,
+  baseline={prices[0]}  // 시작가 위는 빨강, 아래는 파랑
+  points={(i) => (i === hi ? { label: '고점' } : false)}
+  scrubber={{ beaconLabels: true, idlePulse: true }}
+>
+  <ReferenceLine dataY={prices[0]} dash="2 3" />
+</LineChart>`,
     props: [
       ...CHART_PROPS,
       { name: 'curve', type: "'monotone' | 'linear' | 'step' | 'stepBefore' | 'stepAfter'", def: "'monotone'", desc: "monotone은 부드럽지만 데이터에 없는 고점·저점을 만들지 않아요." },
       { name: 'area', type: "'none' | 'gradient' | 'solid'", def: "'none'", desc: '선 아래 채우기.' },
       { name: 'strokeWidth', type: 'number', def: '2', desc: '선 두께.' },
       { name: 'connectNulls', type: 'boolean', def: 'false', desc: 'null 구간을 건너뛰고 이어서 그려요.' },
+      { name: 'lineStyle', type: "'solid' | 'dashed' | 'dotted'", def: "'solid'", desc: '선 모양. 계열마다 series.lineStyle로도 정해요.' },
+      { name: 'points', type: 'boolean | (index, value) => LinePoint | false', desc: '점 표시. 함수로 고점·저점에만 라벨을 붙일 수 있어요.' },
+      { name: 'baseline', type: 'number', desc: '이 값을 기준으로 선과 영역 색을 나눠요(예: 시작가).' },
+      { name: 'splitColors', type: '{ above, below }', def: '빨강 / 파랑', desc: 'baseline 위아래 색.' },
     ],
   },
   {
@@ -94,7 +107,9 @@ import { AreaChart } from '@funnest/charts-react';
 />`,
     props: [
       ...CHART_PROPS,
-      { name: 'fill', type: "'gradient' | 'solid'", def: "'gradient'", desc: '채우기 방식(stacked일 땐 solid).' },
+      { name: 'fill', type: "'gradient' | 'solid' | 'dotted'", def: "'gradient'", desc: '채우기 방식. 계열마다 series.areaStyle로도 정해요.' },
+      { name: 'baseline / splitColors', type: 'number / { above, below }', desc: '기준값 위아래로 색을 나눠 채워요.' },
+      { name: 'gradientStops', type: '{ offset, opacity, color? }[]', desc: '그라디언트를 직접 정해요(0 = 선, 1 = 기준선).' },
       { name: 'showLines', type: 'boolean', def: 'true', desc: '영역 위쪽 경계선.' },
       { name: 'curve', type: 'Curve', def: "'monotone'", desc: '곡선 방식.' },
     ],
@@ -122,6 +137,9 @@ import { BarChart, ReferenceLine } from '@funnest/charts-react';
       { name: 'getBarColor', type: '(value, index, seriesId) => string | undefined', desc: '막대별 색. undefined면 계열 색.' },
       { name: 'radius', type: 'number', def: '3', desc: '막대 끝 모서리 둥글기(음수 막대는 아래쪽).' },
       { name: 'groupGap', type: 'number', def: '2', desc: '여러 계열을 나란히 그릴 때 막대 사이 간격.' },
+      { name: 'stackGap', type: 'number', def: '0', desc: '쌓인 막대 조각 사이 간격(px).' },
+      { name: 'roundBaseline', type: 'boolean', def: 'false', desc: '기준선 쪽 모서리도 둥글게(알약 모양).' },
+      { name: 'barMinSize', type: 'number', def: '0', desc: '아주 작은 값도 보이게 하는 최소 길이(px).' },
     ],
   },
   {
@@ -146,6 +164,9 @@ import { PercentageBarChart } from '@funnest/charts-react';
       { name: 'gap', type: 'number', def: '2', desc: '구간 사이 간격.' },
       { name: 'showLabels', type: 'boolean', def: 'true', desc: '아래 범례와 퍼센트.' },
       { name: 'formatLabel', type: '(item, fraction) => string', desc: '라벨 형식. 기본은 "62.4%".' },
+      { name: 'radius', type: 'number', def: 'barHeight / 2', desc: '막대 양 끝 둥글기.' },
+      { name: 'legendPosition', type: "'top' | 'bottom' | 'right'", def: "'bottom'", desc: '라벨 위치.' },
+      { name: 'legendShape', type: "'circle' | 'square' | 'squircle' | 'pill' | 'line'", def: "'circle'", desc: '색 표시 모양.' },
     ],
   },
   {
@@ -223,6 +244,11 @@ const shown = prices[index ?? prices.length - 1];
       { name: 'valueFormatter', type: '(value, seriesId) => string', desc: '말풍선 값 형식.' },
       { name: 'seriesIds', type: 'string[]', desc: '표시할 계열만 고르기.' },
       { name: 'dimFuture', type: 'boolean', def: 'true', desc: '짚은 곳 오른쪽을 흐리게.' },
+      { name: 'hideOverlay', type: 'boolean', def: 'false', desc: 'dimFuture를 끄는 것과 같아요.' },
+      { name: 'idlePulse', type: 'boolean', def: 'false', desc: '짚지 않을 때 각 계열의 마지막 점이 깜빡여요(실시간 느낌).' },
+      { name: 'beaconLabels', type: 'boolean | (value, seriesId) => string', def: 'false', desc: '점 바로 옆에 값을 보여줘요.' },
+      { name: 'beaconColor', type: '(value, seriesId) => string', desc: '점 색을 값에 따라(예: 기준선 위아래).' },
+      { name: '키보드', type: '← → · Shift · Home · End · Esc', desc: '차트에 초점을 두면 키보드로 짚을 수 있어요.' },
     ],
   },
   {
@@ -267,6 +293,7 @@ const shown = prices[index ?? prices.length - 1];
       { name: 'tickLabelFormatter', type: '(value) => string', desc: '라벨 형식. 기본은 10만 이상이면 1.2M처럼 줄여요.' },
       { name: 'minTickSpacing', type: 'number', def: '32', desc: '눈금 사이 최소 간격(px).' },
       { name: 'showGrid', type: 'boolean', def: 'true', desc: '가로 격자.' },
+      { name: '로그 스케일', type: "yAxis={{ scaleType: 'log' }}", desc: '차트에 켜면 눈금이 1·2·5 × 10ⁿ으로 바뀌어요.' },
     ],
   },
   {
@@ -298,6 +325,9 @@ const [period, setPeriod] = useState('3M');
       { name: 'onChange', type: '(id) => void', desc: '탭을 바꿀 때.' },
       { name: 'activeColor', type: 'string', def: 'var(--fnv-accent)', desc: '선택 색. 등락 색과 맞추면 자연스러워요.' },
       { name: 'fullWidth', type: 'boolean', def: 'false', desc: '탭을 가로로 꽉 채워요(모바일).' },
+      { name: 'periods[].live', type: 'boolean', desc: '실시간 탭. 깜빡이는 점이 붙고, 고르면 liveColor로 바뀌어요.' },
+      { name: 'liveColor', type: 'string', def: '빨강', desc: '실시간 탭을 골랐을 때 색.' },
+      { name: 'LiveTabLabel', type: 'component', desc: '깜빡이는 점이 붙은 라벨을 따로 쓸 때.' },
     ],
   },
   {
@@ -320,6 +350,9 @@ const [period, setPeriod] = useState('3M');
       { name: 'labelPosition', type: "'left' | 'right' | 'center' | 'top' | 'bottom'", def: "'right'", desc: '글자 위치.' },
       { name: 'color', type: 'string', desc: '선과 글자 색.' },
       { name: 'dash', type: 'string', def: "'4 4'", desc: "점선 패턴. ''이면 실선." },
+      { name: 'labelStyle', type: "'text' | 'pill'", def: "'text'", desc: 'pill이면 선 색 배경의 알약 모양 라벨.' },
+      { name: 'labelAlign', type: "'above' | 'below' | 'center'", def: "'above'", desc: '가로선에서 라벨을 선 위, 아래, 가운데에.' },
+      { name: 'labelDx / labelDy', type: 'number', def: '0', desc: '라벨 위치 미세 조정(px).' },
     ],
   },
   {
@@ -364,9 +397,11 @@ import { Legend } from '@funnest/charts-react';
 />`,
     props: [
       { name: 'items', type: '{ id, label, color, value?, inactive? }[]', desc: '범례 항목.' },
-      { name: 'shape', type: "'circle' | 'square' | 'line'", def: "'circle'", desc: '색 표시 모양.' },
+      { name: 'shape', type: "'circle' | 'square' | 'squircle' | 'pill' | 'line'", def: "'circle'", desc: '색 표시 모양.' },
       { name: 'onItemClick', type: '(id) => void', desc: '누르면(버튼으로 바뀌어요).' },
       { name: 'onItemHover', type: '(id | null) => void', desc: '올리면 id, 벗어나면 null.' },
+      { name: 'direction', type: "'row' | 'column'", def: "'row'", desc: '가로로 줄바꿈 또는 세로로 쌓기.' },
+      { name: 'justify', type: 'CSS justify-content', def: "'flex-start'", desc: '정렬.' },
     ],
   },
 ];

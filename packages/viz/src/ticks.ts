@@ -49,3 +49,24 @@ export function sampleIndices(count: number, max: number): number[] {
   for (let i = 0; i < count; i += every) out.push(i);
   return out;
 }
+
+/**
+ * Ticks for a log scale: 1, 2, 5 × 10ⁿ inside [min, max] (min > 0). Falls back to powers
+ * of ten alone when that would be too many, and to linear ticks for a narrow range.
+ */
+export function logTicks(min: number, max: number, count = 5): number[] {
+  if (!(min > 0) || !(max > min)) return ticks(min, max, count);
+  const lo = Math.floor(Math.log10(min));
+  const hi = Math.ceil(Math.log10(max));
+  if (hi - lo <= 1) return ticks(min, max, count);
+  const pick = (mults: number[]) => {
+    const out: number[] = [];
+    for (let e = lo; e <= hi; e++) for (const m of mults) {
+      const v = round(m * 10 ** e);
+      if (v >= min * (1 - 1e-9) && v <= max * (1 + 1e-9)) out.push(v);
+    }
+    return out;
+  };
+  const dense = pick([1, 2, 5]);
+  return dense.length <= count * 2 ? dense : pick([1]);
+}

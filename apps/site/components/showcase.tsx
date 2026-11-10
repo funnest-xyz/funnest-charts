@@ -64,6 +64,7 @@ const S = {
     avg: '평단가', target: '목표가', vsAvg: '평단',
     months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월'],
     periods: ['1주', '1개월', '3개월', '1년'],
+    live: '실시간',
     won: (v: number) => `${fmt(v)}원`,
     man: (v: number) => `${fmt(v)}만`,
   },
@@ -74,6 +75,7 @@ const S = {
     avg: 'Avg', target: 'Target', vsAvg: 'vs avg',
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
     periods: ['1W', '1M', '3M', '1Y'],
+    live: 'Live',
     won: (v: number) => `₩${fmt(v)}`,
     // Values are in 10k KRW (만원): show millions of won.
     man: (v: number) => `₩${(v / 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`,
@@ -98,7 +100,22 @@ function dayLabels(n: number) {
 export function LineChartDemo() {
   const { won } = useT();
   const data = useMemo(() => walk(7, 60, 52_000, 0.035, 0.002).map(Math.round), []);
-  return <LineChart series={[{ id: 'p', data, color: UP }]} height={H} inset={6} area="gradient" scrubber={{ showValues: true, valueFormatter: won }} xAxis={{ data: dayLabels(60) }} />;
+  const hi = data.indexOf(Math.max(...data));
+  const lo = data.indexOf(Math.min(...data));
+  return (
+    <LineChart
+      series={[{ id: 'p', data }]}
+      height={H}
+      inset={{ top: 18, right: 6, bottom: 18, left: 6 }}
+      area="gradient"
+      baseline={data[0]!}
+      xAxis={{ data: dayLabels(60) }}
+      points={(i) => (i === hi ? { label: won(data[i]!) } : i === lo ? { label: won(data[i]!), labelPosition: 'bottom' } : false)}
+      scrubber={{ beaconLabels: (v) => won(v), idlePulse: true }}
+    >
+      <ReferenceLine dataY={data[0]!} dash="2 3" />
+    </LineChart>
+  );
 }
 
 export function SparklineDemo() {
@@ -142,7 +159,18 @@ export function AreaChartDemo() {
     [],
   );
   const months = t.months;
-  return <AreaChart series={series} stacked height={H} inset={6} strokeWidth={1.5} xAxis={{ data: months }} scrubber={{ showValues: true, valueFormatter: t.man, dimFuture: false }} />;
+  return (
+    <AreaChart
+      series={series}
+      stacked
+      height={H - 28}
+      inset={6}
+      strokeWidth={1.5}
+      xAxis={{ data: months }}
+      legend={{ position: 'bottom', interactive: true, shape: 'pill' }}
+      scrubber={{ showValues: true, valueFormatter: t.man, dimFuture: false }}
+    />
+  );
 }
 
 export function BarChartDemo() {
@@ -236,16 +264,17 @@ export function XAxisDemo() {
 }
 
 export function YAxisDemo() {
-  const data = useMemo(() => walk(4, 30, 98_000, 0.03, 0.002), []);
+  // Ten years of a fast grower: a log axis keeps early moves readable.
+  const data = useMemo(() => walk(4, 120, 120, 0.09, 0.05), []);
   return (
     <LineChart
       series={[{ id: 'p', data, color: VIOLET }]}
       height={H}
       inset={{ top: 10, right: 6, bottom: 10, left: 6 }}
-      showYAxis={{ width: 52, showLine: true, tickLabelFormatter: (v) => fmt(v) }}
-      yAxis={{ nice: true }}
+      showYAxis={{ width: 56, showLine: true, tickLabelFormatter: (v) => fmt(v) }}
+      yAxis={{ scaleType: 'log' }}
       strokeWidth={1.5}
-      scrubber={{ showValues: true, valueFormatter: (v) => fmt(v), dimFuture: false, label: () => '' }}
+      scrubber={{ showValues: true, valueFormatter: (v) => fmt(v), hideOverlay: true, label: () => '' }}
     />
   );
 }
@@ -254,18 +283,36 @@ export function YAxisDemo() {
 export function ScrubberDemo({ withPeriods = false }: { withPeriods?: boolean }) {
   const t = useT();
   const PERIODS: Period[] = [
+    ...(withPeriods ? [{ id: 'LIVE', label: t.live, live: true }] : []),
     { id: '1W', label: t.periods[0]! },
     { id: '1M', label: t.periods[1]! },
     { id: '3M', label: t.periods[2]! },
     { id: '1Y', label: t.periods[3]! },
   ];
-  const DAYS: Record<string, number> = { '1W': 7, '1M': 30, '3M': 90, '1Y': 365 };
+  const DAYS: Record<string, number> = { LIVE: 2, '1W': 7, '1M': 30, '3M': 90, '1Y': 365 };
   const [period, setPeriod] = useState('3M');
   const [index, setIndex] = useState<number | null>(null);
   const full = useMemo(() => walk(7, 365, 52_000, 0.035, 0.0012).map(Math.round), []);
+  // Live: today's 5-minute prices from the open (09:00) up to now, ending at the latest close.
+  const intraday = useMemo(() => {
+    const last = full[full.length - 1]!;
+    const steps = walk(91, 72, 1000, 0.006); // start high enough that 2-decimal rounding stays smooth
+    const end = steps[steps.length - 1]!;
+    return steps.map((v) => Math.round((last * v) / end));
+  }, [full]);
+  const live = period === 'LIVE';
   const n = DAYS[period]!;
-  const data = full.slice(-n);
-  const labels = useMemo(() => dayLabels(n), [n]);
+  const data = live ? intraday : full.slice(-n);
+  const labels = useMemo(
+    () =>
+      live
+        ? intraday.map((_, i) => {
+            const m = 9 * 60 + i * 5;
+            return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+          })
+        : dayLabels(n),
+    [live, intraday, n],
+  );
   const change = seriesChange(data, index ?? data.length - 1)!;
   const color = dirColor(change.change);
   return (
@@ -287,7 +334,7 @@ export function ScrubberDemo({ withPeriods = false }: { withPeriods?: boolean })
         inset={{ top: 16, bottom: 4, left: 4, right: 4 }}
         xAxis={{ data: labels }}
         area="gradient"
-        scrubber
+        scrubber={{ idlePulse: true }}
         onScrubberPositionChange={setIndex}
       >
         <ReferenceLine dataY={data[0]!} dash="2 3" />
@@ -311,8 +358,8 @@ export function ReferenceLineDemo() {
       enableScrubbing
     >
       <Line seriesId="p" curve="linear" strokeWidth={1.5} />
-      <ReferenceLine dataY={69_500} label={`${t.avg} 69,500`} labelPosition="left" color={VIOLET} />
-      <ReferenceLine dataY={71_000} label={`${t.target} 71,000`} labelPosition="left" color={UP} />
+      <ReferenceLine dataY={69_500} label={`${t.avg} 69,500`} labelPosition="left" labelStyle="pill" labelAlign="center" color={VIOLET} />
+      <ReferenceLine dataY={71_000} label={`${t.target} 71,000`} labelPosition="right" labelStyle="pill" labelAlign="center" color={UP} />
       <Scrubber showValues valueFormatter={(v) => `${t.won(v)} (${t.vsAvg} ${pct(((v - 69_500) / 69_500) * 100)})`} dimFuture={false} label={() => ''} />
     </CartesianChart>
   );
@@ -369,24 +416,17 @@ export function LegendDemo() {
     const values = all.flatMap((s) => s.data);
     return { min: Math.min(...values), max: Math.max(...values) };
   }, [all]);
-  const [hidden, setHidden] = useState<string[]>([]);
-  const [hovered, setHovered] = useState<string | null>(null);
-  const toggle = (id: string) => setHidden((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]));
-  // Hovering a legend item fades the other lines.
-  const shown = all
-    .filter((s) => !hidden.includes(s.id))
-    .map((s) => ({ ...s, color: hovered && hovered !== s.id ? `color-mix(in srgb, ${s.color} 25%, transparent)` : s.color }));
   return (
-    <div>
-      <Legend
-        shape="line"
-        items={all.map((s) => ({ id: s.id, label: s.label, color: s.color, inactive: hidden.includes(s.id) }))}
-        onItemClick={toggle}
-        onItemHover={setHovered}
-      />
-      {/* Fixed range so toggling a series doesn't rescale the others. */}
-      <LineChart series={shown} yAxis={{ domain: range }} height={H - 30} inset={6} strokeWidth={1.5} scrubber={{ showValues: true, dimFuture: false, label: () => '' }} />
-    </div>
+    // Fixed range so toggling a series doesn't rescale the others.
+    <LineChart
+      series={all}
+      yAxis={{ domain: range }}
+      height={H}
+      inset={6}
+      strokeWidth={1.5}
+      legend={{ position: 'top', interactive: true, shape: 'line' }}
+      scrubber={{ showValues: true, dimFuture: false, label: () => '' }}
+    />
   );
 }
 
