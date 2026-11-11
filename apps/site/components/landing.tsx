@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Reveal } from './client-bits';
 import { GitHubButton, GITHUB_URL } from './github-button';
@@ -250,7 +251,8 @@ export function Landing({ lang }: { lang: Lang }) {
         <div className="container footer-inner">
           <Logo />
           <p>
-            © 2026 Funnest · Apache-2.0 · <a href={GITHUB_URL}>GitHub</a> · <a href="https://funnest.xyz">funnest.xyz</a>
+            © 2026 Funnest · Apache-2.0 · <Link href="/docs/">{lang === 'en' ? 'Docs' : '문서'}</Link> · <a href={GITHUB_URL}>GitHub</a> ·{' '}
+            <a href="https://funnest.xyz">funnest.xyz</a>
           </p>
         </div>
       </footer>

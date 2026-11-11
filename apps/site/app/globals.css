@@ -993,15 +993,10 @@ h3 {
   margin-left: auto;
 }
 @media (max-width: 760px) {
-  /* Not enough room on phones: GitHub stays in the footer, docs shows its icon only. */
-  .nav-actions .gh-btn,
-  .docs-label {
+  /* Not enough room on phones: the top bar keeps GitHub (icon only); docs stay reachable
+     from the page (hero button, footer). */
+  .nav-actions .docs-btn {
     display: none;
-  }
-  .docs-btn {
-    width: 36px;
-    justify-content: center;
-    padding: 0;
   }
 }
 @media (max-width: 760px) {
