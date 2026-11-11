@@ -89,7 +89,12 @@ function ToolGroup({
       </button>
       {tools.length > 1 && (
         <button class="fnc-tool-more" aria-label={`${t.moreTools}: ${name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => onOpen(!open)}>
-          <CornerIcon />
+          <span class="fnc-tool-corner">
+            <CornerIcon />
+          </span>
+          <span class="fnc-tool-chevron">
+            <ChevronRightIcon />
+          </span>
         </button>
       )}
       {open && (
