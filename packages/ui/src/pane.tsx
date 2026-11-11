@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { createChart, type Chart, type ChartOptions, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
+import { createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay';
 import type { ContextMenuItems, IntervalGroup, MultiControls, SearchCategory, UiState, WidgetContext } from './context';
@@ -47,6 +47,29 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     displayTimezone: config.displayTimezone,
   });
   chart.setChartType(config.chartType);
+
+  // A chart theme (or custom candle colors) recolors the canvas; what sits on it (legend, buttons, dialogs) follows
+  // through the stage's CSS variables so it stays readable on a light or dark canvas.
+  const canvasVars = (s: ChartSettings) => {
+    const muted = s.textColor && /^#[0-9a-f]{6}$/i.test(s.textColor) ? `${s.textColor}99` : null;
+    const vars: [string, string | null][] = [
+      ['--fnc-bg', s.background],
+      ['--fnc-text', s.textColor],
+      ['--fnc-text-2', muted],
+      ['--fnc-border', s.gridColor],
+      ['--fnc-surface', s.gridColor],
+      // Legend values and other up/down text match the candles.
+      ['--fnc-up', s.upColor],
+      ['--fnc-down', s.downColor],
+    ];
+    for (const [name, value] of vars) {
+      if (value) stage.style.setProperty(name, value);
+      else stage.style.removeProperty(name);
+    }
+    chart.refreshTheme();
+  };
+  canvasVars(chart.settings);
+  chart.on('settingsChange', canvasVars);
 
   const store = new Store<UiState>({
     locale: config.chartOptions.locale ?? 'ko',

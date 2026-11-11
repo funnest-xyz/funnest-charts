@@ -1811,14 +1811,17 @@ export class Chart {
 
   private resolvePalette(): Palette {
     const t = this.theme;
+    const s = this.settingsValue;
     const c = (v: string) => this.colors.color(v);
+    // A chart theme's text color also gives the muted text (axis labels) and crosshair.
+    const muted = s.textColor && /^#[0-9a-f]{6}$/i.test(s.textColor) ? `${s.textColor}99` : null;
     return {
-      background: c(t.background),
-      text: c(t.text),
-      textSecondary: c(t.textSecondary),
-      grid: c(t.grid),
-      border: c(t.border),
-      crosshair: c(t.crosshair),
+      background: c(s.background ?? t.background),
+      text: c(s.textColor ?? t.text),
+      textSecondary: c(muted ?? t.textSecondary),
+      grid: c(s.gridColor ?? t.grid),
+      border: c(s.gridColor ?? t.border),
+      crosshair: c(muted ?? t.crosshair),
       up: c(this.settingsValue.upColor ?? t.up),
       down: c(this.settingsValue.downColor ?? t.down),
       accent: c(t.accent),

@@ -23,6 +23,62 @@ export interface ChartSettings {
   /** Up/down candle colors; null follows the theme. */
   upColor: string | null;
   downColor: string | null;
+  /** Chart canvas colors (a theme from CHART_THEMES or your own); null follows the theme. `textColor` must be #rrggbb. */
+  background: string | null;
+  gridColor: string | null;
+  textColor: string | null;
+}
+
+/** The settings a chart theme sets. */
+export type ChartThemeColors = Pick<ChartSettings, 'upColor' | 'downColor' | 'background' | 'gridColor' | 'textColor'>;
+
+export interface ChartThemePreset {
+  id: string;
+  name: { ko: string; en: string };
+  colors: ChartThemeColors;
+}
+
+const FOLLOW: ChartThemeColors = { upColor: null, downColor: null, background: null, gridColor: null, textColor: null };
+
+/**
+ * Ready-made chart themes for the settings dialog. Applying one sets the five color settings;
+ * 'default' clears them so the chart follows the page theme again.
+ */
+export const CHART_THEMES: readonly ChartThemePreset[] = [
+  { id: 'default', name: { ko: '기본', en: 'Default' }, colors: FOLLOW },
+  { id: 'global', name: { ko: '초록·빨강', en: 'Green · Red' }, colors: { ...FOLLOW, upColor: '#26A69A', downColor: '#EF5350' } },
+  {
+    id: 'midnight',
+    name: { ko: '미드나잇', en: 'Midnight' },
+    colors: { upColor: '#2EBD85', downColor: '#F6465D', background: '#0E1117', gridColor: '#1A1F29', textColor: '#C9D1D9' },
+  },
+  {
+    id: 'navy',
+    name: { ko: '딥 네이비', en: 'Deep navy' },
+    colors: { upColor: '#FF5A5F', downColor: '#4C8DFF', background: '#0F1A2E', gridColor: '#1B2A44', textColor: '#C8D3E6' },
+  },
+  {
+    id: 'mono',
+    name: { ko: '모노', en: 'Mono' },
+    colors: { upColor: '#E4E4E7', downColor: '#6B6B75', background: '#121214', gridColor: '#1F1F23', textColor: '#D4D4D8' },
+  },
+  {
+    id: 'paper',
+    name: { ko: '페이퍼', en: 'Paper' },
+    colors: { upColor: '#F04452', downColor: '#3182F6', background: '#FFFFFF', gridColor: '#F0F2F5', textColor: '#333D4B' },
+  },
+  {
+    id: 'sepia',
+    name: { ko: '세피아', en: 'Sepia' },
+    colors: { upColor: '#C2410C', downColor: '#2F6690', background: '#F6F0E4', gridColor: '#E9DFCB', textColor: '#4A3F33' },
+  },
+];
+
+/** The preset whose colors `settings` match, if any. */
+export function matchChartTheme(settings: ChartSettings): ChartThemePreset | undefined {
+  const keys = Object.keys(FOLLOW) as (keyof ChartThemeColors)[];
+  const same = (a: string | null, b: string | null) => (a ?? '').toLowerCase() === (b ?? '').toLowerCase();
+  return CHART_THEMES.find((t) => keys.every((k) => same(t.colors[k], settings[k])));
 }
 
 export const DEFAULT_CHART_SETTINGS: ChartSettings = {
@@ -36,6 +92,9 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   countdown: true,
   upColor: null,
   downColor: null,
+  background: null,
+  gridColor: null,
+  textColor: null,
 };
 
 /**

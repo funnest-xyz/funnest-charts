@@ -930,6 +930,23 @@ const CSS = /* css */ `
 .fnc-seg button[aria-checked='true'] { background: var(--fnc-bg); color: var(--fnc-text); font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
 .fnc-seg-sm button { min-width: 36px; height: 26px; padding: 0 6px; font-size: 12px; }
 
+/* ── Chart themes (settings dialog) ──────────────────── */
+.fnc-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; padding: 2px 0 6px; }
+.fnc-theme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--fnc-radius);
+  font-size: 12px;
+  color: var(--fnc-text-2);
+}
+.fnc-theme:hover { background: var(--fnc-surface); }
+.fnc-theme[aria-checked='true'] { border-color: var(--fnc-text-2); color: var(--fnc-text); font-weight: 700; }
+.fnc-theme-swatch { width: 56px; height: 36px; display: block; }
+
 /* ── Compare legend rows ─────────────────────────────── */
 .fnc-cmp { display: flex; align-items: center; gap: 6px; min-height: 22px; font-size: 12px; color: var(--fnc-text-2); pointer-events: auto; }
 .fnc-cmp-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }

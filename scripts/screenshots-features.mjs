@@ -38,7 +38,22 @@ await page.click('.fnc-btn-settings');
 await page.click('.fnc-seg [role="radio"] >> text=로그');
 check((await page.evaluate(() => window.chart.settings.priceScale)) === 'log', 'settings dialog switches to log');
 await shot('settings-dialog');
+// Chart themes: presets in the dialog recolor the canvas and the legend over it.
+await page.click('.fnc-theme:has-text("페이퍼")');
+await page.waitForTimeout(200);
+check((await page.evaluate(() => window.chart.settings.background)) === '#FFFFFF', 'theme preset sets the canvas colors');
+check((await page.locator('.fnc-theme[aria-checked="true"]').textContent()) === '페이퍼', 'applied theme is marked');
+await shot('theme-dialog');
 await page.keyboard.press('Escape');
+const legendColor = await page.locator('.fnc-legend-title b').first().evaluate((el) => getComputedStyle(el).color);
+check(legendColor === 'rgb(51, 61, 75)', `legend text follows the theme (${legendColor})`);
+await shot('theme-paper');
+await page.evaluate(() => window.chart.setSettings({ upColor: '#2EBD85', downColor: '#F6465D', background: '#0E1117', gridColor: '#1A1F29', textColor: '#C9D1D9' }));
+await page.waitForTimeout(200);
+await shot('theme-midnight');
+await page.evaluate(() => window.chart.setSettings({ upColor: null, downColor: null, background: null, gridColor: null, textColor: null }));
+await page.waitForTimeout(100);
+check((await page.locator('.fnc-stage').first().getAttribute('style'))?.includes('--fnc-bg') !== true, 'default theme removes the canvas overrides');
 await page.evaluate(() => window.chart.setSettings({ priceScale: 'normal' }));
 
 // ── Countdown (24x7 intraday) ─────────────────────────────────────────

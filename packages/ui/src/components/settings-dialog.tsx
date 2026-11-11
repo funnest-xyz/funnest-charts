@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { DEFAULT_CHART_SETTINGS, type ChartSettings, type PriceScaleMode } from '@funnest/charts';
+import { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, type ChartSettings, type PriceScaleMode } from '@funnest/charts';
 import { useEffect, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
 import { STRINGS, type Strings } from '../i18n';
@@ -56,7 +56,8 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
   const close = () => ctx.store.set({ dialog: null });
   const set = (patch: Partial<ChartSettings>) => ctx.chart.setSettings(patch);
   // Show the effective theme colors when no override is set.
-  const themeColor = (name: '--fnc-up' | '--fnc-down') => toHex(getComputedStyle(ctx.root).getPropertyValue(name).trim());
+  const themeColor = (name: '--fnc-up' | '--fnc-down' | '--fnc-bg' | '--fnc-border') => toHex(getComputedStyle(ctx.root).getPropertyValue(name).trim());
+  const currentTheme = matchChartTheme(settings);
 
   return (
     <div class="fnc-backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
@@ -68,6 +69,36 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
           </button>
         </div>
         <form class="fnc-form" onSubmit={(e) => (e.preventDefault(), close())}>
+          <div class="fnc-section">{t.settingsTheme}</div>
+          <div class="fnc-themes" role="radiogroup" aria-label={t.settingsTheme}>
+            {CHART_THEMES.map((theme) => {
+              const c = theme.colors;
+              const bg = c.background ?? themeColor('--fnc-bg');
+              const grid = c.gridColor ?? themeColor('--fnc-border');
+              const up = c.upColor ?? themeColor('--fnc-up');
+              const down = c.downColor ?? themeColor('--fnc-down');
+              return (
+                <button
+                  type="button"
+                  role="radio"
+                  class="fnc-theme"
+                  aria-checked={currentTheme?.id === theme.id}
+                  onClick={() => set({ ...c })}
+                >
+                  {/* Two candles on the theme's canvas. */}
+                  <svg class="fnc-theme-swatch" viewBox="0 0 56 36" aria-hidden="true">
+                    <rect x="0.5" y="0.5" width="55" height="35" rx="5" fill={bg} stroke={grid} />
+                    <path d="M4 12h48M4 24h48" stroke={grid} />
+                    <path d="M21 6v24" stroke={up} stroke-width="1.5" />
+                    <rect x="17" y="11" width="8" height="13" rx="1" fill={up} />
+                    <path d="M35 8v22" stroke={down} stroke-width="1.5" />
+                    <rect x="31" y="13" width="8" height="11" rx="1" fill={down} />
+                  </svg>
+                  <span>{theme.name[locale === 'en' ? 'en' : 'ko']}</span>
+                </button>
+              );
+            })}
+          </div>
           <div class="fnc-section">{t.settingsCandles}</div>
           {(['upColor', 'downColor'] as const).map((key) => (
             <label class="fnc-row">
