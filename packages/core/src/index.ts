@@ -33,10 +33,11 @@ export type {
   DrawingGeometry,
   DrawingPoint,
   DrawingRenderContext,
+  DrawingStyle,
   DrawingType,
 } from './objects/drawings';
 export { BUILTIN_DRAWINGS, distToSegment, FIB_LEVELS } from './objects/drawings';
-export type { PaneCoords } from './objects/types';
+export type { ChartOverlay, ObjectRenderContext, PaneCoords } from './objects/types';
 export type { Painter } from './render/painter';
 export type { Palette } from './render/renderer';
 export { snapToOhlc } from './objects/magnet';

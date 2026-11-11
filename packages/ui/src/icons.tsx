@@ -336,3 +336,26 @@ export const ToolsIcon = () => (
     <circle cx="7.5" cy="14" r="2" />
   </Icon>
 );
+
+export const GripIcon = () => (
+  <Icon>
+    <path d="M7.5 5h.01M7.5 10h.01M7.5 15h.01M12.5 5h.01M12.5 10h.01M12.5 15h.01" stroke-width="2.4" />
+  </Icon>
+);
+export const LockIcon = ({ open = false }: { open?: boolean }) => (
+  <Icon>
+    <rect x="4.5" y="9" width="11" height="8" rx="1.8" />
+    <path d={open ? 'M7 9V6.5a3 3 0 0 1 5.8-1' : 'M7 9V6.5a3 3 0 0 1 6 0V9'} />
+  </Icon>
+);
+export const CopyIcon = () => (
+  <Icon>
+    <rect x="7" y="7" width="9.5" height="9.5" rx="1.8" />
+    <path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6a1.5 1.5 0 0 0 1.5 1.5H7" />
+  </Icon>
+);
+export const TextIcon = () => (
+  <Icon>
+    <path d="M4.5 5V3.8h11V5M10 3.8v12.5M7.5 16.3h5" />
+  </Icon>
+);

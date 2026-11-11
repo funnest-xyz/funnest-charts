@@ -49,6 +49,50 @@ describe('DrawingManager', () => {
     expect(m.drawings[1]!.points).toEqual([{ time: 50_000, price: 750 }]);
   });
 
+  it('freehand tools take a point every few px while dragging and finish on release', () => {
+    const brush: DrawingDefinition = { type: 'brush', name: { ko: '브러시', en: 'Brush' }, clicks: 2, freehand: true, distance: () => 99, render: () => {} };
+    const m = new DrawingManager(() => {}, drawingRegistry([brush]));
+    m.setTool('brush');
+    m.createAt(coords, 100, 500);
+    for (let x = 101; x <= 140; x++) m.previewAt(coords, x, 500);
+    expect(m.drawings).toHaveLength(0);
+    m.releaseAt(coords, 140, 500, true);
+    expect(m.drawings).toHaveLength(1);
+    // 100, then one every ≥ 3 px: 103, 106, … 139
+    expect(m.drawings[0]!.points.length).toBe(1 + 13);
+    expect(m.tool).toBeNull();
+  });
+
+  it('locked drawings select but do not drag', () => {
+    const m = new DrawingManager(() => {});
+    m.setTool('trendline');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 300, 500);
+    const d = m.drawings[0]!;
+    m.update(d.id, { style: { locked: true, width: 3, dash: 'dashed' } });
+    m.beginDrag(coords, d.id, 'body', 200, 500);
+    m.dragTo(coords, 250, 450);
+    m.endDrag(true);
+    expect(m.drawings[0]!.points[0]).toEqual({ time: 10_000, price: 500 });
+    expect(m.selectedId).toBe(d.id);
+  });
+
+  it('render context passes style, bars and helpers to the tool', () => {
+    const seen: unknown[] = [];
+    const tool: DrawingDefinition = {
+      type: 'probe',
+      name: { ko: '확인', en: 'Probe' },
+      clicks: 1,
+      distance: () => 99,
+      render: (_d, rc) => seen.push([rc.width(2), rc.dash([1, 1]), rc.style.text, rc.bars.length, rc.barIndexAt(5)]),
+    };
+    const m = new DrawingManager(() => {}, drawingRegistry([tool]));
+    m.set([{ id: 'a', type: 'probe', points: [{ time: 0, price: 1 }], style: { width: 3, dash: 'dotted', text: '메모' } }]);
+    const painter = { ctx: { save() {}, restore() {} } } as never;
+    m.render({ painter, coords, palette: { accent: '#000', background: '#fff' } as never }, [], [{ time: 0, open: 1, high: 1, low: 1, close: 1 }], () => 7);
+    expect(seen).toEqual([[3, [1.5, 3], '메모', 1, 7]]);
+  });
+
   it('hit-tests and drags handles and bodies', () => {
     const m = new DrawingManager(() => {});
     m.setTool('trendline');

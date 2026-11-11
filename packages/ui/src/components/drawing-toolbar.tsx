@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import type { DrawingDefinition, DrawingType, Locale } from '@funnest/charts';
+import type { DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
@@ -7,8 +7,11 @@ import { STRINGS } from '../i18n';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  CopyIcon,
   CornerIcon,
   CursorIcon,
+  GripIcon,
+  LockIcon,
   FibonacciIcon,
   HorizontalLineIcon,
   MagnetIcon,
@@ -192,27 +195,168 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
 }
 
 const SWATCHES = ['#3182F6', '#F04452', '#12B886', '#FF9F0A', '#7048E8'];
+const WIDTHS = [1, 2, 3, 4];
+const DASH_ORDER: NonNullable<DrawingStyle['dash']>[] = ['solid', 'dashed', 'dotted'];
+const RECENT_KEY = 'fnc-drawing-colors';
+const POS_KEY = 'fnc-selbar-pos';
+const readJson = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+const writeJson = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* private mode */
+  }
+};
 
-/** Floating bar for the selected drawing: color + delete (also the only way to delete on touch). */
+function DashGlyph({ dash }: { dash: NonNullable<DrawingStyle['dash']> }) {
+  const pattern = dash === 'dashed' ? '4 3' : dash === 'dotted' ? '1 3' : undefined;
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <path d="M3 10h14" stroke-dasharray={pattern} />
+    </svg>
+  );
+}
+
+/**
+ * Floating bar for the selected drawing: move it by its grip (remembered; double-click resets),
+ * color (swatches, a custom one, recent customs), line width and style, text for text tools,
+ * lock, duplicate, delete (also the only way to delete on touch).
+ */
 export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = STRINGS[s.locale];
   const d = s.selection;
+  const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
+  const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
+  const [menu, setMenu] = useState<null | 'width'>(null);
+  const colorInput = useRef<HTMLInputElement>(null);
   if (!d || s.layout.plotWidth <= 0) return null;
 
+  const def = ctx.chart.drawingDefinitions().find((x) => x.type === d.type);
+  const style = d.style ?? {};
+  const setStyle = (patch: Partial<DrawingStyle>) => ctx.chart.updateDrawing(d.id, { style: { ...style, ...patch } });
+  const current = d.color ?? SWATCHES[0]!;
+  const pickColor = (color: string) => ctx.chart.updateDrawing(d.id, { color });
+  const addRecent = (color: string) => {
+    const next = [color, ...recent.filter((c) => c !== color)].slice(0, 3);
+    setRecent(next);
+    writeJson(RECENT_KEY, next);
+  };
+  const locked = !!style.locked;
+  const dash = style.dash ?? 'solid';
+
+  const startMove = (e: PointerEvent) => {
+    e.preventDefault();
+    const start = [e.clientX, e.clientY];
+    const from = offset;
+    const move = (ev: PointerEvent) => setOffset([from[0] + ev.clientX - start[0]!, from[1] + ev.clientY - start[1]!]);
+    const up = (ev: PointerEvent) => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      const next: [number, number] = [from[0] + ev.clientX - start[0]!, from[1] + ev.clientY - start[1]!];
+      setOffset(next);
+      writeJson(POS_KEY, next);
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  };
+
   return (
-    <div class="fnc-selbar" role="toolbar" style={{ left: `${s.layout.plotWidth / 2}px` }}>
-      {SWATCHES.map((color) => (
-        <button
-          class="fnc-swatch"
-          style={{ background: color }}
-          data-tip={t.color}
-          aria-label={`${t.color} ${color}`}
-          aria-pressed={(d.color ?? SWATCHES[0]) === color}
-          onClick={() => ctx.chart.updateDrawing(d.id, { color })}
-        />
+    <div class="fnc-selbar" role="toolbar" style={{ left: `${s.layout.plotWidth / 2 + offset[0]}px`, top: `${8 + offset[1]}px` }}>
+      <button
+        class="fnc-btn fnc-selbar-grip"
+        data-tip={t.moveBar}
+        aria-label={t.moveBar}
+        onPointerDown={startMove}
+        onDblClick={() => {
+          setOffset([0, 0]);
+          writeJson(POS_KEY, [0, 0]);
+        }}
+      >
+        <GripIcon />
+      </button>
+      {[...SWATCHES, ...recent.filter((c) => !SWATCHES.includes(c))].map((color) => (
+        <button class="fnc-swatch" style={{ background: color }} data-tip={t.color} aria-label={`${t.color} ${color}`} aria-pressed={current === color} onClick={() => pickColor(color)} />
       ))}
+      <label class="fnc-swatch fnc-swatch-add" data-tip={t.customColor} aria-label={t.customColor}>
+        +
+        <input
+          ref={colorInput}
+          type="color"
+          value={/^#[0-9a-f]{6}$/i.test(current) ? current : '#3182f6'}
+          onInput={(e) => pickColor((e.target as HTMLInputElement).value)}
+          onChange={(e) => addRecent((e.target as HTMLInputElement).value)}
+        />
+      </label>
       <div class="fnc-sep" />
+      <div class="fnc-selbar-menu">
+        <button class="fnc-btn fnc-selbar-width" data-tip={t.lineWidth} aria-label={t.lineWidth} aria-expanded={menu === 'width'} onClick={() => setMenu(menu === 'width' ? null : 'width')}>
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 10h14" stroke="currentColor" stroke-width={style.width ?? 2} stroke-linecap="round" />
+          </svg>
+        </button>
+        {menu === 'width' && (
+          <div class="fnc-menu fnc-selbar-pop" role="menu">
+            {WIDTHS.map((w) => (
+              <button
+                class="fnc-menu-item"
+                role="menuitemradio"
+                aria-checked={(style.width ?? 2) === w}
+                onClick={() => {
+                  setStyle({ width: w });
+                  setMenu(null);
+                }}
+              >
+                <svg width="40" height="12" viewBox="0 0 40 12" aria-hidden="true">
+                  <path d="M2 6h36" stroke="currentColor" stroke-width={w} stroke-linecap="round" />
+                </svg>
+                <span>{w}px</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <button
+        class="fnc-btn"
+        data-tip={`${t.lineStyle}: ${dash === 'solid' ? t.lineSolid : dash === 'dashed' ? t.lineDashed : t.lineDotted}`}
+        aria-label={t.lineStyle}
+        onClick={() => setStyle({ dash: DASH_ORDER[(DASH_ORDER.indexOf(dash) + 1) % DASH_ORDER.length] })}
+      >
+        <DashGlyph dash={dash} />
+      </button>
+      {def?.text && (
+        <input
+          class="fnc-selbar-text"
+          value={style.text ?? ''}
+          placeholder={t.textPlaceholder}
+          aria-label={t.drawingText}
+          maxLength={200}
+          onInput={(e) => setStyle({ text: (e.target as HTMLInputElement).value })}
+          onKeyDown={(e) => e.stopPropagation()}
+        />
+      )}
+      <div class="fnc-sep" />
+      <button class="fnc-btn" data-tip={locked ? t.unlock : t.lock} aria-label={locked ? t.unlock : t.lock} aria-pressed={locked} onClick={() => setStyle({ locked: !locked })}>
+        <LockIcon open={!locked} />
+      </button>
+      <button
+        class="fnc-btn"
+        data-tip={t.duplicate}
+        aria-label={t.duplicate}
+        onClick={() => {
+          const id = ctx.chart.addDrawing({ type: d.type, points: d.points.map((p) => ({ ...p })), color: d.color, style: { ...style, locked: false } });
+          ctx.chart.selectDrawing(id);
+        }}
+      >
+        <CopyIcon />
+      </button>
       <button class="fnc-btn" data-tip={t.remove} aria-label={t.remove} onClick={() => ctx.chart.removeDrawing(d.id)}>
         <TrashIcon />
       </button>

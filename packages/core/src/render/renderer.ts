@@ -6,7 +6,7 @@ import type { CanvasLayer } from './canvas-layer';
 import { Painter } from './painter';
 import type { DrawingManager } from '../objects/drawings';
 import type { TradingLabels, TradingLayer } from '../objects/trading';
-import type { AxisBadge, PaneCoords } from '../objects/types';
+import type { AxisBadge, ChartOverlay, PaneCoords } from '../objects/types';
 import type { IndicatorOutput } from '../indicators/definitions';
 import type { ChartSettings } from '../settings';
 
@@ -98,6 +98,7 @@ export interface RenderModel {
   replaySelecting?: boolean;
   objects: {
     coords: PaneCoords;
+    overlays: readonly ChartOverlay[];
     drawings: DrawingManager;
     trading: TradingLayer;
     tradingLabels: TradingLabels;
@@ -416,8 +417,17 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   ctx.clip();
   const o = m.objects;
   const rc = { painter: p, coords: o.coords, palette: pal };
+  for (const overlay of o.overlays) {
+    ctx.save();
+    try {
+      overlay.render(rc);
+    } catch (error) {
+      console.error('[fnc] overlay', error);
+    }
+    ctx.restore();
+  }
   o.trading.render(rc, m.bars, o.barIndexAt, (i) => m.timeScale.indexToX(i), o.tradingLabels, badges);
-  o.drawings.render(rc, badges);
+  o.drawings.render(rc, badges, m.bars, o.barIndexAt);
   ctx.restore();
 
   // Last price line

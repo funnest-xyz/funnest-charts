@@ -183,6 +183,16 @@ const CSS = /* css */ `
 }
 .fnc-swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--fnc-bg), 0 0 0 4px var(--fnc-text-2); }
 .fnc-selbar .fnc-btn { width: 32px; height: 32px; }
+.fnc-selbar { padding-left: 4px; }
+.fnc-selbar-grip { cursor: grab; touch-action: none; }
+.fnc-selbar-grip:active { cursor: grabbing; }
+.fnc-swatch-add { position: relative; display: grid; place-items: center; overflow: hidden; border: 1px dashed var(--fnc-text-2); color: var(--fnc-text-2); font-size: 13px; line-height: 1; cursor: pointer; }
+.fnc-swatch-add input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.fnc-selbar-menu { position: relative; }
+.fnc-selbar-pop { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); min-width: 110px; }
+.fnc-selbar-pop .fnc-menu-item { gap: 10px; }
+.fnc-selbar-text { width: 150px; height: 28px; padding: 0 8px; border: 1px solid var(--fnc-border); border-radius: var(--fnc-radius); background: var(--fnc-surface); color: var(--fnc-text); font: inherit; font-size: 13px; outline: none; }
+.fnc-selbar-text:focus { border-color: var(--fnc-text-2); }
 .fnc-overlay { pointer-events: none; }
 .fnc-overlay button { pointer-events: auto; }
 

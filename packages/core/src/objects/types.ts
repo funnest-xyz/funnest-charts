@@ -22,6 +22,15 @@ export interface ObjectRenderContext {
   palette: Palette;
 }
 
+/**
+ * Something an app paints on the price pane every frame (a liquidation map, volume profile…),
+ * clipped to the pane, above the candles and indicators, under trading lines and drawings.
+ * Added with chart.addOverlay(); it reads its own data and the pane's coordinates.
+ */
+export interface ChartOverlay {
+  render(rc: ObjectRenderContext): void;
+}
+
 export type ObjectHit =
   | { kind: 'drawing'; id: string; part: 'body' | number }
   | { kind: 'order'; id: string; part: 'line' | 'cancel' }

@@ -1,3 +1,4 @@
+import type { Bar } from '../types';
 import type { Locale } from '../model/time-format';
 import type { Painter } from '../render/painter';
 import type { Palette } from '../render/renderer';
@@ -14,12 +15,29 @@ export interface DrawingPoint {
   price: number;
 }
 
+/** How a drawing looks beyond its color (all optional; tools read them through the render context). */
+export interface DrawingStyle {
+  /** Main line width in CSS px (1–4). */
+  width?: number;
+  /** Main line pattern. */
+  dash?: 'solid' | 'dashed' | 'dotted';
+  /** Text tools (and notes on others): what it says. */
+  text?: string;
+  /** Text size in CSS px. */
+  fontSize?: number;
+  /** Can't be dragged or edited until unlocked (still selectable). */
+  locked?: boolean;
+}
+
 export interface Drawing {
   id: string;
   type: DrawingType;
   points: DrawingPoint[];
   color?: string;
+  style?: DrawingStyle;
 }
+
+const DASHES: Record<NonNullable<DrawingStyle['dash']>, number[]> = { solid: [], dashed: [6, 4], dotted: [1.5, 3] };
 
 /** What a drawing definition gets to measure and paint itself. Pixels are relative to the price pane. */
 export interface DrawingGeometry {
@@ -33,6 +51,16 @@ export interface DrawingRenderContext extends DrawingGeometry {
   palette: Palette;
   /** `drawing.color`, or the theme accent. */
   color: string;
+  /** `drawing.style` (empty object when none). */
+  style: DrawingStyle;
+  /** The main line width: the drawing's style, else the tool's default. */
+  width(fallback: number): number;
+  /** The main line dash pattern for canvas: the drawing's style, else the tool's default. */
+  dash(fallback?: readonly number[]): number[];
+  /** The chart's bars (oldest first), for tools that measure them (VWAP, volume profile…). */
+  bars: readonly Bar[];
+  /** Index of the last bar at or before `time` (-1 before the first). */
+  barIndexAt(time: number): number;
   /** Adds a price-axis badge (drawn above the axis labels, clamped to the pane). */
   badge(y: number, text: string, bg: string, fg?: string): void;
 }
@@ -67,6 +95,13 @@ export interface DrawingDefinition {
   constrain?(points: DrawingPoint[], index: number): DrawingPoint[];
   /** Drag handle positions; dragging handle i moves point i. Default: the points. */
   handles?(geometry: DrawingGeometry): [number, number][];
+  /**
+   * Drawn by dragging: every pointer move adds a point (a brush); releasing (or clicking again)
+   * finishes it. `clicks` is ignored.
+   */
+  freehand?: boolean;
+  /** Has text (`style.text`): the widget offers a text field for it when selected. */
+  text?: boolean;
   /** Distance in px from (x, y) to the shape, for hit testing. */
   distance(geometry: DrawingGeometry, x: number, y: number): number;
   render(drawing: Drawing, rc: DrawingRenderContext): void;
@@ -97,7 +132,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     group: 'line',
     clicks: 2,
     distance: (g, x, y) => distToSegment(x, y, ...p0(g), ...p1(g)),
-    render: (_d, { painter, color, ...g }) => painter.line(...p0(g), ...p1(g), color, 2),
+    render: (_d, { painter, color, ...g }) => painter.line(...p0(g), ...p1(g), color, g.width(2), g.dash()),
   },
   {
     type: 'horizontal',
@@ -109,7 +144,9 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     distance: (g, _x, y) => Math.abs(y - p0(g)[1]),
     render: (d, { painter, color, coords, badge, ...g }) => {
       const y = p0(g)[1];
-      painter.hLine(y, 0, coords.plotWidth, color);
+      const dash = g.dash();
+      if (g.width(1) === 1 && !dash.length) painter.hLine(y, 0, coords.plotWidth, color);
+      else painter.line(0, y, coords.plotWidth, y, color, g.width(1), dash);
       badge(y, coords.formatPrice(d.points[0]!.price), color);
     },
   },
@@ -178,6 +215,7 @@ export class DrawingManager {
   selectedId: string | null = null;
 
   private draft: { drawing: Drawing; placed: DrawingPoint[] } | null = null;
+  private freehandLast: [number, number] | null = null;
   private drag: { id: string; part: 'body' | number; x: number; y: number; origin: [number, number][] } | null = null;
 
   constructor(
@@ -249,6 +287,14 @@ export class DrawingManager {
     const def = this.tool ? this.registry.get(this.tool) : undefined;
     if (!def) return;
     const point = c.pointAt(x, y);
+    if (def.freehand) {
+      // A brush: the first press starts it, a second click (or the release after a drag) ends it.
+      if (this.draft) return this.finish();
+      this.draft = { drawing: { id: newId('d'), type: def.type, points: [point] }, placed: [point] };
+      this.freehandLast = [x, y];
+      this.onChange('preview');
+      return;
+    }
     if (!this.draft) {
       const placed = [point];
       this.draft = { drawing: { id: newId('d'), type: def.type, points: this.expand(def, placed, c) }, placed };
@@ -266,12 +312,27 @@ export class DrawingManager {
     const draft = this.draft;
     const def = draft && this.registry.get(draft.drawing.type);
     if (!draft || !def) return;
+    if (def.freehand) {
+      // A point every few px, up to a few thousand.
+      const last = this.freehandLast;
+      if (last && Math.hypot(x - last[0], y - last[1]) < 3) return;
+      if (draft.drawing.points.length >= 4000) return;
+      this.freehandLast = [x, y];
+      draft.drawing.points.push(c.pointAt(x, y));
+      this.onChange('preview');
+      return;
+    }
     draft.drawing.points = this.expand(def, [...draft.placed, c.pointAt(x, y)], c);
     this.onChange('preview');
   }
 
   /** Pointer released: a drag since the first point places the next one (drag-to-draw). */
   releaseAt(c: PaneCoords, x: number, y: number, moved: boolean): void {
+    const def = this.draft && this.registry.get(this.draft.drawing.type);
+    if (def?.freehand) {
+      if (moved && this.draft!.drawing.points.length > 1) this.finish();
+      return;
+    }
     if (this.draft && moved) this.createAt(c, x, y);
   }
 
@@ -294,7 +355,8 @@ export class DrawingManager {
   private handles(c: PaneCoords, d: Drawing): [number, number][] {
     const def = this.registry.get(d.type);
     const g = this.geometry(c, d);
-    return def?.handles ? def.handles(g) : g.points;
+    // A brush has thousands of points: it moves as a whole, without handles.
+    return def?.handles ? def.handles(g) : def?.freehand ? [] : g.points;
   }
 
   hitTest(c: PaneCoords, x: number, y: number, tolerance: number): ObjectHit | null {
@@ -315,6 +377,7 @@ export class DrawingManager {
     const d = this.drawings.find((x) => x.id === id);
     if (!d) return;
     this.select(id);
+    if (d.style?.locked) return;
     this.drag = { id, part, x, y, origin: this.geometry(c, d).points };
   }
 
@@ -341,21 +404,32 @@ export class DrawingManager {
 
   // ── Rendering ─────────────────────────────────────────────────────
 
-  render(rc: ObjectRenderContext, badges: AxisBadge[]): void {
+  render(rc: ObjectRenderContext, badges: AxisBadge[], bars: readonly Bar[] = [], barIndexAt: (time: number) => number = () => -1): void {
     const all = this.draft ? [...this.drawings, this.draft.drawing] : this.drawings;
     const c = rc.coords;
     for (const d of all) {
       const def = this.registry.get(d.type);
       if (!def) continue;
       const color = d.color ?? rc.palette.accent;
-      def.render(d, {
-        ...this.geometry(c, d),
-        painter: rc.painter,
-        palette: rc.palette,
-        color,
-        badge: (y, text, bg, fg = '#FFFFFF') => badges.push({ y, text, bg, fg }),
-      });
-      if (d.id === this.selectedId || d === this.draft?.drawing) {
+      const style = d.style ?? {};
+      rc.painter.ctx.save();
+      try {
+        def.render(d, {
+          ...this.geometry(c, d),
+          painter: rc.painter,
+          palette: rc.palette,
+          color,
+          style,
+          width: (fallback) => Math.min(8, Math.max(0.5, style.width ?? fallback)),
+          dash: (fallback = []) => (style.dash ? DASHES[style.dash] : [...fallback]),
+          bars,
+          barIndexAt,
+          badge: (y, text, bg, fg = '#FFFFFF') => badges.push({ y, text, bg, fg }),
+        });
+      } finally {
+        rc.painter.ctx.restore();
+      }
+      if ((d.id === this.selectedId && !style.locked) || d === this.draft?.drawing) {
         for (const [px, py] of this.handles(c, d)) rc.painter.circle(px, py, HANDLE_RADIUS, rc.palette.background, color);
       }
     }

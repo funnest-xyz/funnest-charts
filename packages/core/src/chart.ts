@@ -21,7 +21,7 @@ import {
 import { snapToOhlc } from './objects/magnet';
 import { DEFAULT_CHART_SETTINGS, parseChartState, type ChartSettings, type ChartState } from './settings';
 import { TradingSync, type TradingAdapter } from './objects/trading-sync';
-import type { ObjectHit, PaneCoords } from './objects/types';
+import type { ChartOverlay, ObjectHit, PaneCoords } from './objects/types';
 import { CanvasLayer } from './render/canvas-layer';
 import { ColorResolver } from './render/color-resolver';
 import {
@@ -271,6 +271,7 @@ export class Chart {
   private readonly interaction: Interaction;
   private readonly cleanups: Array<() => void> = [];
   private readonly drawings: DrawingManager;
+  private readonly overlays: ChartOverlay[] = [];
   private readonly trading: TradingLayer;
   private readonly tradingSync: TradingSync;
   private tooltipKey: string | null = null;
@@ -1374,6 +1375,23 @@ export class Chart {
     return this.trading.addAlert(options);
   }
 
+  /**
+   * Paints `overlay` on the price pane every frame (see ChartOverlay). `redraw()` asks for a
+   * new frame after its data changed; `remove()` takes it off.
+   */
+  addOverlay(overlay: ChartOverlay): { redraw(): void; remove(): void } {
+    this.overlays.push(overlay);
+    this.invalidate();
+    return {
+      redraw: () => this.invalidate(),
+      remove: () => {
+        const i = this.overlays.indexOf(overlay);
+        if (i >= 0) this.overlays.splice(i, 1);
+        this.invalidate();
+      },
+    };
+  }
+
   /** Fill markers (▲ buy under the bar, ▼ sell above; ⚡ at the price for liquidations). Replaces the previous set. */
   setExecutions(markers: readonly ExecutionMarker[]): void {
     this.trading.setExecutions(markers);
@@ -1498,6 +1516,7 @@ export class Chart {
       replaySelecting: this.replaySelecting,
       objects: {
         coords: this.paneCoords(),
+        overlays: this.overlays,
         drawings: this.drawings,
         trading: this.trading,
         tradingLabels: TRADING_LABELS[this.locale],
