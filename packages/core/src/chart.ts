@@ -15,6 +15,7 @@ import {
   type LineHandle,
   type OrderLineOptions,
   type PositionLineOptions,
+  type TradingLabelOptions,
   type TradingLabels,
 } from './objects/trading';
 import { snapToOhlc } from './objects/magnet';
@@ -234,9 +235,9 @@ function firstFinite(values: Float64Array, from: number): number {
   return Number.NaN;
 }
 
-const TOOLTIP_LABELS: Record<Locale, { buy: string; sell: string; fills: (n: number) => string; price: string; avg: string; qty: string }> = {
-  ko: { buy: '매수', sell: '매도', fills: (n) => `${n}건`, price: '체결가', avg: '평균가', qty: '수량' },
-  en: { buy: 'Buy', sell: 'Sell', fills: (n) => `${n} fills`, price: 'Price', avg: 'Avg', qty: 'Qty' },
+const TOOLTIP_LABELS: Record<Locale, { buy: string; sell: string; liquidation: string; fills: (n: number) => string; price: string; avg: string; qty: string }> = {
+  ko: { buy: '매수', sell: '매도', liquidation: '청산', fills: (n) => `${n}건`, price: '체결가', avg: '평균가', qty: '수량' },
+  en: { buy: 'Buy', sell: 'Sell', liquidation: 'Liquidation', fills: (n) => `${n} fills`, price: 'Price', avg: 'Avg', qty: 'Qty' },
 };
 
 /**
@@ -1373,9 +1374,18 @@ export class Chart {
     return this.trading.addAlert(options);
   }
 
-  /** Fill markers (▲ buy under the bar, ▼ sell above). Replaces the previous set. */
+  /** Fill markers (▲ buy under the bar, ▼ sell above; ⚡ at the price for liquidations). Replaces the previous set. */
   setExecutions(markers: readonly ExecutionMarker[]): void {
     this.trading.setExecutions(markers);
+  }
+
+  /** What position/order/alert line labels show and where (direction, price, size, P&L, ×, alignment, line width). */
+  setTradingLabels(patch: Partial<TradingLabelOptions>): void {
+    this.trading.setLabelOptions(patch);
+  }
+
+  get tradingLabels(): TradingLabelOptions {
+    return this.trading.labelSettings;
   }
 
   setTheme(theme: Partial<ThemeTokens>): void {
@@ -1940,14 +1950,14 @@ export class Chart {
     const g = this.tooltipKey ? this.trading.executionGroup(this.tooltipKey) : undefined;
     if (!g) return null;
     const t = TOOLTIP_LABELS[this.locale];
-    const side = g.side === 'buy' ? t.buy : t.sell;
+    const side = g.kind === 'liquidation' ? t.liquidation : g.side === 'buy' ? t.buy : t.sell;
     const lines = [
       g.count > 1 ? `${side} ${t.fills(g.count)}` : side,
       `${g.count > 1 ? t.avg : t.price} ${formatPrice(roundToTick(g.averagePrice, this.tickSize), this.pricePrecision)}`,
     ];
     if (g.quantity > 0) lines.push(`${t.qty} ${Number(g.quantity.toFixed(8))}`);
     lines.push(this.formatter.crosshairLabel(g.time, true));
-    return { x: g.x, y: g.y, side: g.side, lines };
+    return { x: g.x, y: g.y, side: g.kind === 'liquidation' ? 'sell' : g.side, lines };
   }
 
   private emitCrosshair(info: CrosshairInfo | null): void {

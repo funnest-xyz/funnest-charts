@@ -42,12 +42,44 @@ export interface ExecutionMarker {
   price: number;
   side: 'buy' | 'sell';
   quantity?: number;
+  /** 'liquidation': a forced close, drawn as a ⚡ badge at its price instead of ▲/▼. Default 'fill'. */
+  kind?: 'fill' | 'liquidation';
 }
+
+/**
+ * What the labels of position, order and alert lines show, and where (chart settings like
+ * "라벨" in trading terminals). Defaults keep the original look.
+ */
+export interface TradingLabelOptions {
+  /** 매수/매도 and the position name. */
+  side: boolean;
+  /** The line's price inside the label (the price axis always shows it). */
+  price: boolean;
+  quantity: boolean;
+  /** Positions: P&L against the last price. */
+  pnl: boolean;
+  /** The × on cancellable lines. */
+  buttons: boolean;
+  align: 'left' | 'center' | 'right';
+  /** Draw lines across the whole chart; off, only from the label to the price axis. */
+  fullWidth: boolean;
+}
+
+export const DEFAULT_TRADING_LABEL_OPTIONS: TradingLabelOptions = {
+  side: true,
+  price: false,
+  quantity: true,
+  pnl: true,
+  buttons: true,
+  align: 'left',
+  fullWidth: true,
+};
 
 /** Fills on the same bar and side, shown as one marker. */
 export interface ExecutionGroup {
   key: string;
   side: 'buy' | 'sell';
+  kind: 'fill' | 'liquidation';
   count: number;
   quantity: number;
   /** Quantity-weighted average price (plain average when quantities are missing). */
@@ -88,8 +120,18 @@ export class TradingLayer {
   private labelRects = new Map<string, { label: Rect; cancel: Rect | null }>();
   private drag: { id: string; price: number } | null = null;
   private groups: ExecutionGroup[] = [];
+  private labelOptions: TradingLabelOptions = { ...DEFAULT_TRADING_LABEL_OPTIONS };
 
   constructor(private readonly onChange: () => void) {}
+
+  get labelSettings(): TradingLabelOptions {
+    return { ...this.labelOptions };
+  }
+
+  setLabelOptions(patch: Partial<TradingLabelOptions>): void {
+    this.labelOptions = { ...this.labelOptions, ...patch };
+    this.onChange();
+  }
 
   addPosition(options: PositionLineOptions): LineHandle<PositionLineOptions> {
     const id = newId('pos');
@@ -218,19 +260,21 @@ export class TradingLayer {
       const index = barIndexAt(e.time);
       const bar = bars[index];
       if (!bar) continue;
-      const key = `${bar.time}:${e.side}`;
+      const liquidation = e.kind === 'liquidation';
+      const key = `${bar.time}:${liquidation ? 'liq' : e.side}`;
       let g = byKey.get(key);
       if (!g) {
         const buy = e.side === 'buy';
         g = {
           key,
           side: e.side,
+          kind: liquidation ? 'liquidation' : 'fill',
           count: 0,
           quantity: 0,
           averagePrice: 0,
           time: e.time,
           x: indexToX(index),
-          y: buy ? c.priceToY(bar.low) + 10 : c.priceToY(bar.high) - 10,
+          y: liquidation ? c.priceToY(e.price) : buy ? c.priceToY(bar.low) + 10 : c.priceToY(bar.high) - 10,
           weighted: 0,
           weight: 0,
         };
@@ -247,6 +291,24 @@ export class TradingLayer {
     const { ctx } = p;
     for (const g of this.groups) {
       if (g.x < -10 || g.x > c.plotWidth + 10) continue;
+      if (g.kind === 'liquidation') {
+        // ⚡ in a red badge at the liquidation price.
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = palette.down;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(g.x + 1.5, g.y - 5.5);
+        ctx.lineTo(g.x - 3.5, g.y + 1);
+        ctx.lineTo(g.x - 0.2, g.y + 1);
+        ctx.lineTo(g.x - 1.5, g.y + 5.5);
+        ctx.lineTo(g.x + 3.5, g.y - 1);
+        ctx.lineTo(g.x + 0.2, g.y - 1);
+        ctx.closePath();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        continue;
+      }
       const buy = g.side === 'buy';
       ctx.beginPath();
       ctx.moveTo(g.x, buy ? g.y - 5 : g.y + 5);
@@ -258,17 +320,20 @@ export class TradingLayer {
       if (g.count > 1) p.text(String(g.count), g.x + 7, g.y, buy ? palette.up : palette.down, 'left', 'middle');
     }
 
-    // Labels of lines at nearly the same price would sit on top of each other: each one moves
-    // right past the labels it would overlap (lines stay full width; clicks follow the label).
+    // Labels sit at the chosen side (left, centre, right). Labels of lines at nearly the same
+    // price would cover each other: each one moves past the ones it would overlap — rightwards,
+    // or leftwards when aligned right. Clicks follow the label.
+    const opts = this.labelOptions;
     const placed: Rect[] = [];
     const placeX = (width: number, y: number) => {
-      let x = LABEL_X;
+      const toLeft = opts.align === 'right';
+      let x = opts.align === 'left' ? LABEL_X : toLeft ? c.plotWidth - width - LABEL_X : (c.plotWidth - width) / 2;
       for (let moved = true; moved; ) {
         moved = false;
         for (const r of placed) {
           const overlapsY = Math.abs(r.y + LABEL_HEIGHT / 2 - y) < LABEL_HEIGHT + 2;
           if (overlapsY && x < r.x + r.w + LABEL_GAP && x + width > r.x - LABEL_GAP) {
-            x = r.x + r.w + LABEL_GAP;
+            x = toLeft ? r.x - width - LABEL_GAP : r.x + r.w + LABEL_GAP;
             moved = true;
           }
         }
@@ -276,16 +341,27 @@ export class TradingLayer {
       placed.push({ x, y: y - LABEL_HEIGHT / 2, w: width, h: LABEL_HEIGHT });
       return x;
     };
+    /** The line, then its label on top; without full width the line runs from the label to the axis. */
+    const drawLine = (y: number, color: string, segments: PillSegment[], dash?: readonly [number, number]) => {
+      if (segments.length === 0) {
+        p.hLine(y, 0, c.plotWidth, color, dash);
+        return null;
+      }
+      const x = placeX(p.pillWidth(segments), y);
+      const from = opts.fullWidth ? 0 : Math.min(x + p.pillWidth(segments), c.plotWidth);
+      p.hLine(y, from, c.plotWidth, color, dash);
+      return p.pill(segments, x, y, LABEL_HEIGHT);
+    };
 
     for (const pos of this.positions.values()) {
       const y = c.priceToY(pos.price);
       badges.push({ y, text: c.formatPrice(pos.price), bg: palette.text, fg: palette.background });
       if (!visible(y)) continue;
-      p.hLine(y, 0, c.plotWidth, palette.text);
-      const segments = [
-        { text: `${pos.label ?? labels.position} · ${pos.quantity}`, bg: palette.text, fg: palette.background },
-      ];
-      if (last) {
+      const main = [opts.side ? (pos.label ?? labels.position) : '', opts.price ? c.formatPrice(pos.price) : '', opts.quantity ? String(pos.quantity) : '']
+        .filter(Boolean)
+        .join(' · ');
+      const segments: PillSegment[] = main ? [{ text: main, bg: palette.text, fg: palette.background }] : [];
+      if (last && opts.pnl) {
         const pnl = (last.close - pos.price) * pos.quantity * (pos.side === 'long' ? 1 : -1);
         const pct = pos.price ? ((last.close - pos.price) / pos.price) * 100 * (pos.side === 'long' ? 1 : -1) : 0;
         const sign = pnl > 0 ? '+' : '';
@@ -295,7 +371,7 @@ export class TradingLayer {
           fg: '#FFFFFF',
         });
       }
-      p.pill(segments, placeX(p.pillWidth(segments), y), y, LABEL_HEIGHT);
+      drawLine(y, palette.text, segments);
     }
 
     for (const [id, order] of this.orders) {
@@ -304,17 +380,22 @@ export class TradingLayer {
       const color = order.alert ? palette.textSecondary : order.side === 'buy' ? palette.up : palette.down;
       badges.push({ y, text: c.formatPrice(price), bg: color, fg: '#FFFFFF' });
       if (!visible(y)) continue;
-      p.hLine(y, 0, c.plotWidth, color, order.alert ? ALERT_DASH : ORDER_DASH);
-      const main = order.alert
-        ? (order.label ?? labels.alert)
-        : [order.side === 'buy' ? labels.buy : labels.sell, order.label, String(order.quantity)].filter(Boolean).join(' ');
-      const segments: PillSegment[] = [{ text: main, bg: color, fg: '#FFFFFF' }];
-      if (order.onCancel) segments.push({ text: '×', bg: color, fg: '#FFFFFF', padding: 7 });
-      const rects = p.pill(segments, placeX(p.pillWidth(segments), y), y, LABEL_HEIGHT);
-      if (order.onCancel && rects[1]) p.vLine(rects[1].x, y - 6, y + 6, 'rgba(255,255,255,0.4)');
+      // The custom label (지정가, 익절, 알림…) always shows; direction, price and size follow the options.
+      const main = (
+        order.alert
+          ? [order.label ?? labels.alert, opts.price ? c.formatPrice(price) : '']
+          : [opts.side ? (order.side === 'buy' ? labels.buy : labels.sell) : '', order.label, opts.price ? c.formatPrice(price) : '', opts.quantity ? String(order.quantity) : '']
+      )
+        .filter(Boolean)
+        .join(' ');
+      const cancellable = !!order.onCancel && opts.buttons;
+      const segments: PillSegment[] = [{ text: main || c.formatPrice(price), bg: color, fg: '#FFFFFF' }];
+      if (cancellable) segments.push({ text: '×', bg: color, fg: '#FFFFFF', padding: 7 });
+      const rects = drawLine(y, color, segments, order.alert ? ALERT_DASH : ORDER_DASH)!;
+      if (cancellable && rects[1]) p.vLine(rects[1].x, y - 6, y + 6, 'rgba(255,255,255,0.4)');
       this.labelRects.set(id, {
         label: { x: rects[0]!.x, y: rects[0]!.y, w: rects.reduce((w, r) => w + r.w, 0), h: LABEL_HEIGHT },
-        cancel: order.onCancel ? rects[1]! : null,
+        cancel: cancellable ? rects[1]! : null,
       });
     }
   }
