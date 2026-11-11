@@ -102,6 +102,11 @@ export class Painter {
    * A row of joined label segments ("pill") centered vertically on `y`.
    * Returns each segment's rect for hit testing (e.g. an order's cancel button).
    */
+  /** Width `pill` will take for these segments. */
+  pillWidth(segments: readonly PillSegment[]): number {
+    return segments.reduce((w, seg) => w + Math.ceil(this.measure(seg.text)) + (seg.padding ?? 8) * 2, 0);
+  }
+
   pill(segments: readonly PillSegment[], x: number, y: number, height = 20, radius = 4): Rect[] {
     const { ctx } = this;
     const rects: Rect[] = [];

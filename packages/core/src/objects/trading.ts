@@ -75,6 +75,7 @@ type LineEntry = OrderLineOptions & { alert?: boolean };
 
 const LABEL_X = 12;
 const LABEL_HEIGHT = 20;
+const LABEL_GAP = 6;
 const ORDER_DASH: readonly [number, number] = [6, 4];
 const ALERT_DASH: readonly [number, number] = [2, 3];
 
@@ -257,6 +258,25 @@ export class TradingLayer {
       if (g.count > 1) p.text(String(g.count), g.x + 7, g.y, buy ? palette.up : palette.down, 'left', 'middle');
     }
 
+    // Labels of lines at nearly the same price would sit on top of each other: each one moves
+    // right past the labels it would overlap (lines stay full width; clicks follow the label).
+    const placed: Rect[] = [];
+    const placeX = (width: number, y: number) => {
+      let x = LABEL_X;
+      for (let moved = true; moved; ) {
+        moved = false;
+        for (const r of placed) {
+          const overlapsY = Math.abs(r.y + LABEL_HEIGHT / 2 - y) < LABEL_HEIGHT + 2;
+          if (overlapsY && x < r.x + r.w + LABEL_GAP && x + width > r.x - LABEL_GAP) {
+            x = r.x + r.w + LABEL_GAP;
+            moved = true;
+          }
+        }
+      }
+      placed.push({ x, y: y - LABEL_HEIGHT / 2, w: width, h: LABEL_HEIGHT });
+      return x;
+    };
+
     for (const pos of this.positions.values()) {
       const y = c.priceToY(pos.price);
       badges.push({ y, text: c.formatPrice(pos.price), bg: palette.text, fg: palette.background });
@@ -275,7 +295,7 @@ export class TradingLayer {
           fg: '#FFFFFF',
         });
       }
-      p.pill(segments, LABEL_X, y, LABEL_HEIGHT);
+      p.pill(segments, placeX(p.pillWidth(segments), y), y, LABEL_HEIGHT);
     }
 
     for (const [id, order] of this.orders) {
@@ -290,7 +310,7 @@ export class TradingLayer {
         : [order.side === 'buy' ? labels.buy : labels.sell, order.label, String(order.quantity)].filter(Boolean).join(' ');
       const segments: PillSegment[] = [{ text: main, bg: color, fg: '#FFFFFF' }];
       if (order.onCancel) segments.push({ text: '×', bg: color, fg: '#FFFFFF', padding: 7 });
-      const rects = p.pill(segments, LABEL_X, y, LABEL_HEIGHT);
+      const rects = p.pill(segments, placeX(p.pillWidth(segments), y), y, LABEL_HEIGHT);
       if (order.onCancel && rects[1]) p.vLine(rects[1].x, y - 6, y + 6, 'rgba(255,255,255,0.4)');
       this.labelRects.set(id, {
         label: { x: rects[0]!.x, y: rects[0]!.y, w: rects.reduce((w, r) => w + r.w, 0), h: LABEL_HEIGHT },

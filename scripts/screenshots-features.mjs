@@ -172,6 +172,29 @@ await page.evaluate(() => {
 await page.waitForTimeout(200);
 await shot('alert-line');
 
+// ── Trading labels at nearly the same price don't overlap ────────────
+await ready('DEMO:005930', '1D');
+const labelInfo = await page.evaluate(() => {
+  const c = window.chart;
+  const last = c.bars.at(-1).close;
+  window.canceled = false;
+  c.addPositionLine({ price: last, quantity: 10, side: 'long' });
+  c.addOrderLine({ price: last * 1.001, quantity: 5, side: 'sell', label: '지정가', onCancel: () => (window.canceled = true) });
+  c.addAlertLine({ price: last * 0.999, label: '주문 가격' });
+  return { y: c.priceScale?.priceToY?.(last) ?? null };
+});
+await page.waitForTimeout(300);
+await shot('labels-staggered');
+// The order label moved right of the position label; its × must still cancel.
+const stage = await box();
+const rects = await page.evaluate(() => [...window.chart.trading.labelRects.values()].map((r) => r.cancel));
+const cancel = rects.find(Boolean);
+if (cancel) {
+  await page.mouse.click(stage.x + cancel.x + cancel.w / 2, stage.y + cancel.y + cancel.h / 2);
+  await page.waitForTimeout(200);
+}
+check(!!cancel && cancel.x > 60 && (await page.evaluate(() => window.canceled)), `× on a moved label still cancels (x ${cancel?.x})`);
+
 // ── Symbol switch while history pages load (workspace switch bug) ─────
 // Zooming out while the next symbol loads made the old bars ask for older pages; the answer
 // carried the new load token and landed on the new symbol's bars.
