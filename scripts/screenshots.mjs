@@ -130,10 +130,11 @@ const priceY = async (page, price) => {
   await page.click('.fnc-action:has-text("취소")');
 
   // Chart type: area
-  await page.click('[aria-label="차트 종류"]');
-  await page.waitForSelector('.fnc-menu');
-  await shot(page, 'desktop-chart-type-menu');
-  await page.click('.fnc-menu-item >> nth=2');
+  await page.click('.fnc-btn-tools');
+  await page.waitForSelector('.fnc-tools-menu');
+  await shot(page, 'desktop-tools-menu');
+  await page.click('.fnc-tools-seg [data-type="area"]');
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(150);
   await shot(page, 'desktop-area');
   await ctx.close();

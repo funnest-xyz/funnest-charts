@@ -241,7 +241,7 @@ h3 {
 /* Phones: the hero demo keeps symbol, interval, drawing and the theme toggles; chart type,
    indicators, settings and fullscreen go (the demo is for a quick look, not for setup). */
 @media (max-width: 640px) {
-  .hero-live :is(.fnc-chart-type, .fnc-btn-indicators, .fnc-btn-settings, .fnc-btn-fullscreen) {
+  .hero-live :is(.fnc-tools-wrap, .fnc-btn-indicators, .fnc-btn-fullscreen) {
     display: none;
   }
 }

@@ -1,26 +1,14 @@
 /** @jsxImportSource preact */
 import type { WidgetContext } from '../context';
 import { STRINGS } from '../i18n';
-import {
-  CameraIcon,
-  ChevronDownIcon,
-  CollapseIcon,
-  CompareIcon,
-  ExpandIcon,
-  IndicatorIcon,
-  PencilIcon,
-  ReplayIcon,
-  SearchIcon,
-  SettingsIcon,
-} from '../icons';
+import { ChevronDownIcon, CollapseIcon, ExpandIcon, IndicatorIcon, PencilIcon, SearchIcon } from '../icons';
 import { useStore } from '../store';
-import { ChartTypeMenu } from './chart-type-menu';
 import { Dialogs } from './indicator-dialogs';
 import { IntervalPicker } from './interval-picker';
-import { LayoutMenu } from './layout-menu';
 import { Slot } from './slot';
 import { SymbolAvatar } from './symbol-avatar';
 import { SymbolSearch } from './symbol-search';
+import { ToolsMenu } from './tools-menu';
 
 export function Toolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
@@ -61,9 +49,9 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
 
       <div class="fnc-spacer" />
 
-      {/* Chart tools sit on the right, next to settings, leaving the left for symbol, interval and market info. */}
+      {/* Right side: 지표 (used most) and one 도구 menu for the rest — chart type, split, compare,
+          replay, price axis, screenshot, settings — leaving the left for symbol, interval and market info. */}
       <div class="fnc-tools">
-        <ChartTypeMenu ctx={ctx} />
         <button
           class="fnc-btn fnc-btn-wide fnc-btn-label fnc-btn-indicators"
           data-tip={t.addIndicator}
@@ -74,28 +62,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           <IndicatorIcon />
           <span>{t.indicators}</span>
         </button>
-        {canSearch && (
-          <button
-            class="fnc-btn fnc-btn-compare"
-            data-tip={t.compareSymbol}
-            aria-label={t.compareSymbol}
-            aria-haspopup="dialog"
-            disabled={s.compares.length >= 5}
-            onClick={() => ctx.setSearchOpen(true, 'compare')}
-          >
-            <CompareIcon />
-          </button>
-        )}
-        <button
-          class="fnc-btn fnc-btn-replay"
-          data-tip={s.replay.selecting ? t.replayPick : t.replay}
-          aria-label={t.replay}
-          aria-pressed={s.replay.selecting || s.replay.active}
-          onClick={() => (s.replay.active ? ctx.chart.stopReplay() : ctx.chart.setReplaySelecting(!s.replay.selecting))}
-        >
-          <ReplayIcon />
-        </button>
-        {ctx.multi && <LayoutMenu ctx={ctx} multi={ctx.multi} />}
+        <ToolsMenu ctx={ctx} />
       </div>
       <div class="fnc-sep" />
 
@@ -111,18 +78,6 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
         </button>
       )}
       <Slot el={ctx.slots.toolbarEnd} fixed />
-      <button
-        class="fnc-btn fnc-btn-settings"
-        data-tip={t.chartSettings}
-        aria-label={t.chartSettings}
-        aria-haspopup="dialog"
-        onClick={() => ctx.store.set({ dialog: { kind: 'chartSettings' } })}
-      >
-        <SettingsIcon />
-      </button>
-      <button class="fnc-btn fnc-btn-screenshot" data-tip={t.screenshot} aria-label={t.screenshot} onClick={ctx.screenshot}>
-        <CameraIcon />
-      </button>
       <button
         class="fnc-btn fnc-btn-fullscreen"
         data-tip={s.fullscreen ? t.exitFullscreen : t.fullscreen}

@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts-ui",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Pro trading UI (toolbar, drawing tools, sheets) for Funnest Charts. Framework-agnostic.",
   "keywords": [
     "chart",

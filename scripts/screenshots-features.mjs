@@ -33,7 +33,8 @@ for (const mode of ['log', 'percent', 'normal']) {
   await page.waitForTimeout(200);
   await shot(`scale-${mode}`);
 }
-await page.click('[aria-label="차트 설정"]');
+await page.click('.fnc-btn-tools');
+await page.click('.fnc-btn-settings');
 await page.click('.fnc-seg [role="radio"] >> text=로그');
 check((await page.evaluate(() => window.chart.settings.priceScale)) === 'log', 'settings dialog switches to log');
 await shot('settings-dialog');
@@ -82,6 +83,7 @@ check((await page.locator('.fnc-btn-undo').count()) === 0, 'no undo buttons in t
 }
 
 // ── Compare ───────────────────────────────────────────────────────────
+await page.click('.fnc-btn-tools');
 await page.click('.fnc-btn-compare');
 await page.fill('.fnc-search input', 'SK');
 await page.waitForTimeout(400);
@@ -100,6 +102,7 @@ check((await page.evaluate(() => window.chart.getCompares().length)) === 0, 'com
 
 // ── Replay ────────────────────────────────────────────────────────────
 const [total, lastTime] = await page.evaluate(() => [window.chart.bars.length, window.chart.bars.at(-1).time]);
+await page.click('.fnc-btn-tools');
 await page.click('.fnc-btn-replay');
 check(await page.locator('.fnc-replay-hint').isVisible(), 'replay hint while picking');
 b = await box();

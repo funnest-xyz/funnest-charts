@@ -325,3 +325,12 @@ export const CornerIcon = () => (
     <path d="M6 0v6H0z" fill="currentColor" />
   </svg>
 );
+
+/** Sliders: the 도구 menu. */
+export const ToolsIcon = () => (
+  <Icon size={18}>
+    <path d="M3.5 6h7M14.5 6h2M3.5 14h2M9.5 14h7" />
+    <circle cx="12.5" cy="6" r="2" />
+    <circle cx="7.5" cy="14" r="2" />
+  </Icon>
+);

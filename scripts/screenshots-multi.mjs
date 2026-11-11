@@ -46,8 +46,8 @@ check('crosshair mirrored to other pane', await ev(() => window.__sync.includes(
 await page.screenshot({ path: `${out}/multi-crosshair.png` });
 
 // Layout menu → 3-left
-await page.click('.fnc-btn-layout');
-await page.waitForSelector('.fnc-layout-menu');
+await page.click('.fnc-btn-tools');
+await page.waitForSelector('.fnc-tools-layouts');
 await page.screenshot({ path: `${out}/multi-layout-menu.png` });
 await page.click('.fnc-layout-opt[data-layout="3-left"]');
 await page.waitForTimeout(500);
@@ -57,7 +57,7 @@ check('active index kept within range', (await ev(() => window.multi.activeIndex
 // Symbol + interval sync from the active pane (demo data: no exchange rate limits)
 await page.keyboard.press('Alt+Digit1');
 await page.waitForTimeout(200);
-await page.click('.fnc-btn-sync');
+await page.click('.fnc-btn-tools');
 await page.click('.fnc-sync-item:has-text("종목")');
 await page.click('.fnc-sync-item:has-text("주기")');
 await page.screenshot({ path: `${out}/multi-sync-menu.png` });
@@ -164,7 +164,9 @@ check('no native title tooltips left', (await page.locator('.fnc-root [title]').
 // Single widget still works (regression)
 await page.goto('http://localhost:5173/?symbol=DEMO:005930&resolution=1D');
 await page.waitForFunction(() => window.chart?.bars.length > 50, null, { timeout: 20000 });
-check('single widget has no layout menu', (await page.locator('.fnc-btn-layout').count()) === 0);
+await page.click('.fnc-btn-tools');
+check('single widget has no layout menu', (await page.locator('.fnc-tools-layouts').count()) === 0);
+await page.keyboard.press('Escape');
 await page.keyboard.press('Control+k');
 await page.waitForTimeout(300);
 check('single widget Ctrl+K search', (await page.locator('[role="dialog"]').count()) > 0);

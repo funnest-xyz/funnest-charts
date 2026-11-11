@@ -19,7 +19,8 @@ await ready();
 await page.waitForTimeout(800);
 
 // 1. Settings dialog
-await page.click('[aria-label="차트 설정"]');
+await page.click('.fnc-btn-tools');
+await page.click('.fnc-btn-settings');
 await page.waitForSelector('.fnc-switch');
 await page.click('.fnc-toggle-row:has-text("최고·최저 표시") .fnc-switch');
 await page.click('.fnc-toggle-row:has-text("세로 격자") .fnc-switch');
@@ -46,8 +47,9 @@ await page.waitForFunction(() => window.chart.symbolInfo.symbol === 'DEMO:005930
 log('drawings back on 삼성전자:', await count());
 
 // 3. Autosave → reload → restored
-await page.click('[aria-label="차트 종류"]');
-await page.click('.fnc-menu-item >> nth=2'); // area
+await page.click('.fnc-btn-tools');
+await page.click('.fnc-tools-seg [data-type="area"]');
+await page.keyboard.press('Escape');
 await page.waitForTimeout(300);
 await page.reload();
 await ready();

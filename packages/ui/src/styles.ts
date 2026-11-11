@@ -770,7 +770,6 @@ const CSS = /* css */ `
 @container fnc (max-width: 940px) {
   .fnc-intervals { display: none; }
   .fnc-interval-current { display: inline; }
-  .fnc-btn-screenshot { display: none; }
 }
 
 /* ── Narrow phones (≤ 400px): drop the menu chevrons and separators so every button fits ── */
@@ -884,6 +883,17 @@ const CSS = /* css */ `
 .fnc-ctx-menu kbd { font: inherit; font-size: 12px; color: var(--fnc-text-2); }
 .fnc-ctx-sep { height: 1px; margin: 4px 6px; background: var(--fnc-border); }
 
+/* ── 도구 menu: chart type, split, compare, replay, axis, screenshot, settings ── */
+.fnc-tools-menu { width: 300px; padding: 8px; gap: 2px; max-height: 72vh; overflow-y: auto; }
+.fnc-tools-section { padding: 8px 6px 6px; font-size: 12px; font-weight: 700; color: var(--fnc-text-2); }
+.fnc-tools-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 0 2px 4px; }
+.fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
+.fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
+.fnc-tools-layouts { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
+.fnc-tools-sep { height: 1px; margin: 6px 4px; background: var(--fnc-border); }
+.fnc-tools-item svg { flex: none; color: var(--fnc-text-2); }
+.fnc-tools-item[aria-pressed='true'] { background: var(--fnc-surface); color: var(--fnc-text); }
+
 /* ── Drawing tool groups ─────────────────────────────── */
 .fnc-tool-group { position: relative; display: flex; }
 .fnc-tool-group[data-open='true'] { z-index: 30; }
@@ -956,7 +966,6 @@ const CSS = /* css */ `
 
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .fnc-btn-compare, .fnc-btn-replay { display: none; }
   .fnc-toolbar { padding: 0 4px; gap: 2px; }
   .fnc-toolbar .fnc-btn { width: 32px; height: 32px; }
   .fnc-toolbar .fnc-btn-wide, .fnc-toolbar .fnc-btn-label { width: auto; padding: 0 6px; }
@@ -965,9 +974,7 @@ const CSS = /* css */ `
   /* Logo only on phones; the name is in the chart legend right below. */
   .fnc-toolbar .fnc-symbol:has(.fnc-avatar) :is(.fnc-symbol-name, .fnc-icon) { display: none; }
   .fnc-chip { padding: 0 8px; }
-  .fnc-btn-screenshot { display: none; }
   .fnc-btn-label span { display: none; }
-  .fnc-btn-sync { display: none; }
   .fnc-intervals { display: none; }
   .fnc-interval-current { display: inline; }
   .fnc-interval-menu { left: auto; right: -40px; }
