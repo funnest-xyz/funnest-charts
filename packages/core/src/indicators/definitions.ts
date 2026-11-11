@@ -88,6 +88,11 @@ export interface IndicatorDefinition {
   defaults: IndicatorParams;
   title(params: IndicatorParams): string;
   compute(bars: readonly Bar[], params: IndicatorParams): IndicatorOutput;
+  /**
+   * Left out of the indicator picker: added only from code (e.g. an app's user scripts, whose
+   * params say which script). Charts that already have it show and save it as usual.
+   */
+  hidden?: boolean;
 }
 
 /** Distinct line colors that avoid the up/down candle colors. */

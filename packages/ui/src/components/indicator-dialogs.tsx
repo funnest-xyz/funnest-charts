@@ -57,7 +57,7 @@ function IndicatorPicker({ ctx }: { ctx: WidgetContext }) {
     ctx.chart.addIndicator(type);
     close();
   };
-  const all = ctx.chart.indicatorDefinitions();
+  const all = ctx.chart.indicatorDefinitions().filter((d) => !d.hidden);
   const q = query.trim().toLowerCase();
   const matches = (d: IndicatorDefinition) =>
     !q || [d.type, d.name.ko, d.name.en, d.description[locale]].some((s) => s.toLowerCase().includes(q));
