@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { LayoutSync, MultiControls, WidgetContext } from '../context';
 import { STRINGS } from '../i18n';
 import { ChevronDownIcon, LinkIcon } from '../icons';
-import { LAYOUT_GROUPS, LAYOUTS, layoutRects, type LayoutId } from '../layouts';
+import { LAYOUT_GROUPS, LAYOUTS, layoutRects, paneCount, type LayoutId } from '../layouts';
+
+const LAYOUT_PANES = (id: LayoutId) => paneCount(LAYOUTS[id]);
 import { useStore } from '../store';
 
 /** Mini drawing of a split layout. */
@@ -90,6 +92,8 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
         )}
       </div>
 
+      {/* Syncing only means something with two or more panes on screen. */}
+      {LAYOUT_PANES(m.layout) > 1 && (
       <div class="fnc-menu-wrap" ref={sync.ref}>
         <button
           class="fnc-btn fnc-btn-sync"
@@ -122,6 +126,7 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

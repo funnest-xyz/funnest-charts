@@ -48,21 +48,24 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
 
       <Slot el={ctx.slots.toolbar} />
 
-      <div class="fnc-sep" />
-      <ChartTypeMenu ctx={ctx} />
-      <button
-        class="fnc-btn fnc-btn-wide fnc-btn-label"
-        title={t.addIndicator}
-        aria-label={t.addIndicator}
-        aria-haspopup="dialog"
-        onClick={() => ctx.store.set({ dialog: { kind: 'indicators' } })}
-      >
-        <IndicatorIcon />
-        <span>{t.indicators}</span>
-      </button>
-      {ctx.multi && <LayoutMenu ctx={ctx} multi={ctx.multi} />}
-
       <div class="fnc-spacer" />
+
+      {/* Chart tools sit on the right, next to settings, leaving the left for symbol, interval and market info. */}
+      <div class="fnc-tools">
+        <ChartTypeMenu ctx={ctx} />
+        <button
+          class="fnc-btn fnc-btn-wide fnc-btn-label"
+          title={t.addIndicator}
+          aria-label={t.addIndicator}
+          aria-haspopup="dialog"
+          onClick={() => ctx.store.set({ dialog: { kind: 'indicators' } })}
+        >
+          <IndicatorIcon />
+          <span>{t.indicators}</span>
+        </button>
+        {ctx.multi && <LayoutMenu ctx={ctx} multi={ctx.multi} />}
+      </div>
+      <div class="fnc-sep" />
 
       {ctx.drawingToolbar && (
         <button

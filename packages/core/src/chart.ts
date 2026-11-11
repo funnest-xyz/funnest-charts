@@ -220,6 +220,9 @@ export class Chart {
   private unsubscribeBars: Unsubscribe | null = null;
   private unsubscribeQuotes: Unsubscribe | null = null;
   private latestQuote: Quote | null = null;
+  /** Symbol the quote stream belongs to; kept across interval changes of the same symbol. */
+  private quoteSymbol: string | null = null;
+  private quoteToken = 0;
   private connectionState: ConnectionState | null = null;
   private readonly displayTimezone: string | undefined;
   private loadingHistory = false;
@@ -335,9 +338,16 @@ export class Chart {
     const token = ++this.loadToken;
     this.unsubscribeBars?.();
     this.unsubscribeBars = null;
-    this.unsubscribeQuotes?.();
-    this.unsubscribeQuotes = null;
-    this.latestQuote = null;
+    // Same symbol at another interval: market stats (price, 24h, open interest, funding) don't
+    // change, so the quote stream stays and the market bar doesn't blank out.
+    const keepQuotes = this.unsubscribeQuotes !== null && this.quoteSymbol === symbol;
+    if (!keepQuotes) {
+      this.quoteToken++;
+      this.unsubscribeQuotes?.();
+      this.unsubscribeQuotes = null;
+      this.latestQuote = null;
+      this.quoteSymbol = null;
+    }
     this.emitter.emit('loadingChange', true);
 
     let info: SymbolInfo;
@@ -388,12 +398,16 @@ export class Chart {
         this.emitter.emit('connectionChange', state);
       },
     );
-    this.unsubscribeQuotes =
-      feed.subscribeQuotes?.(info, (quote) => {
-        if (token !== this.loadToken) return;
-        this.latestQuote = { ...this.latestQuote, ...quote };
-        this.emitter.emit('quoteChange', this.latestQuote);
-      }) ?? null;
+    if (!keepQuotes) {
+      const quoteToken = ++this.quoteToken;
+      this.quoteSymbol = symbol;
+      this.unsubscribeQuotes =
+        feed.subscribeQuotes?.(info, (quote) => {
+          if (quoteToken !== this.quoteToken) return;
+          this.latestQuote = { ...this.latestQuote, ...quote };
+          this.emitter.emit('quoteChange', this.latestQuote);
+        }) ?? null;
+    }
     this.emitter.emit('symbolChange', info);
     this.stateChanged();
   }

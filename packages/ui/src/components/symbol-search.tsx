@@ -246,7 +246,9 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
               <SmallCloseIcon />
             </button>
           )}
-          <kbd class="fnc-kbd fnc-hide-mobile">ESC</kbd>
+          <button class="fnc-kbd fnc-kbd-btn fnc-hide-mobile" aria-label={t.close} title={t.close} onClick={close}>
+            ESC
+          </button>
         </div>
 
         <div class="fnc-tabs" role="tablist">
@@ -297,9 +299,9 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
           <span>
             <kbd class="fnc-kbd">↵</kbd> {t.openAction}
           </span>
-          <span>
+          <button class="fnc-sr-foot-btn" onClick={close}>
             <kbd class="fnc-kbd">ESC</kbd> {t.close}
-          </span>
+          </button>
           <span class="fnc-spacer" />
           <span>
             <kbd class="fnc-kbd">{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} + K</kbd> {t.searchSymbol}
