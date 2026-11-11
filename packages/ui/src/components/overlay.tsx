@@ -7,7 +7,7 @@ import { resolutionLabel, STRINGS } from '../i18n';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  CollapseLeftIcon,
+  ChevronUpIcon,
   EyeIcon,
   EyeOffIcon,
   FunnestMark,
@@ -196,7 +196,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
             </div>
           ))}
         {!collapsed && overlayItems.map((item) => <IndicatorItem ctx={ctx} item={item} />)}
-        {/* Collapse to the left at the end of the list; collapsed, a small bar brings it back. */}
+        {/* Collapse (an up arrow) at the end of the list; collapsed, a small bar brings it back. */}
         {overlayItems.length > 0 &&
           (collapsed ? (
             <button class="fnc-ind-handle" aria-expanded="false" aria-label={t.expand} data-tip={t.expand} onClick={() => setCollapsed(false)}>
@@ -204,7 +204,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
             </button>
           ) : (
             <button class="fnc-ind-collapse" aria-expanded="true" aria-label={t.collapse} data-tip={t.collapse} onClick={() => setCollapsed(true)}>
-              <CollapseLeftIcon />
+              <ChevronUpIcon />
             </button>
           ))}
       </div>
