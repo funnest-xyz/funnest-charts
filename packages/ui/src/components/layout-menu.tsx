@@ -7,6 +7,7 @@ import { LAYOUT_GROUPS, LAYOUTS, layoutRects, paneCount, type LayoutId } from '.
 
 const LAYOUT_PANES = (id: LayoutId) => paneCount(LAYOUTS[id]);
 import { useStore } from '../store';
+import { useKeepInView } from './keep-in-view';
 
 /** Mini drawing of a split layout. */
 export function LayoutGlyph({ id }: { id: LayoutId }) {
@@ -50,6 +51,8 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
   const t = STRINGS[s.locale];
   const layout = usePopover();
   const sync = usePopover();
+  const layoutMenuRef = useKeepInView<HTMLDivElement>(layout.open);
+  const syncMenuRef = useKeepInView<HTMLDivElement>(sync.open);
   const anySync = Object.values(m.sync).some(Boolean);
 
   return (
@@ -67,7 +70,7 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
           <ChevronDownIcon />
         </button>
         {layout.open && (
-          <div class="fnc-menu fnc-layout-menu" role="menu" aria-label={t.layout}>
+          <div class="fnc-menu fnc-layout-menu" role="menu" aria-label={t.layout} ref={layoutMenuRef}>
             {LAYOUT_GROUPS.map((group) => (
               <div class="fnc-layout-row">
                 <span class="fnc-layout-count">{group[0]!.split('-')[0]}</span>
@@ -107,7 +110,7 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
           <LinkIcon />
         </button>
         {sync.open && (
-          <div class="fnc-menu fnc-sync-menu" role="menu" aria-label={t.sync}>
+          <div class="fnc-menu fnc-sync-menu" role="menu" aria-label={t.sync} ref={syncMenuRef}>
             <div class="fnc-menu-title">
               {t.sync}
               <small>{t.syncHint}</small>

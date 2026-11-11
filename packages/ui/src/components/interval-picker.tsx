@@ -5,6 +5,7 @@ import type { IntervalGroup, WidgetContext } from '../context';
 import { resolutionLabel, STRINGS, type Strings } from '../i18n';
 import { ChevronDownIcon, StarIcon } from '../icons';
 import { useStore } from '../store';
+import { useKeepInView } from './keep-in-view';
 
 const GROUP_LABEL: Record<IntervalGroup['id'], keyof Strings> = {
   minutes: 'intervalMinutes',
@@ -22,6 +23,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
   const t = STRINGS[s.locale];
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useKeepInView<HTMLDivElement>(open);
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +73,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
         <ChevronDownIcon />
       </button>
       {open && (
-        <div class="fnc-menu fnc-interval-menu" role="menu">
+        <div class="fnc-menu fnc-interval-menu" role="menu" ref={menuRef}>
           {ctx.intervalGroups.map((group) => (
             <div class="fnc-menu-group" role="group" aria-label={t[GROUP_LABEL[group.id]]}>
               <div class="fnc-menu-title">{t[GROUP_LABEL[group.id]]}</div>

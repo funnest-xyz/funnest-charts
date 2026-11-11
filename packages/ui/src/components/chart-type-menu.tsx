@@ -6,6 +6,7 @@ import type { WidgetContext } from '../context';
 import { STRINGS, type Strings } from '../i18n';
 import { AreaChartIcon, CandlesIcon, ChevronDownIcon, LineChartIcon } from '../icons';
 import { useStore } from '../store';
+import { useKeepInView } from './keep-in-view';
 
 const TYPES: { type: ChartType; label: keyof Strings; icon: () => JSX.Element }[] = [
   { type: 'candles', label: 'candles', icon: CandlesIcon },
@@ -18,6 +19,7 @@ export function ChartTypeMenu({ ctx }: { ctx: WidgetContext }) {
   const t = STRINGS[s.locale];
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useKeepInView<HTMLDivElement>(open);
   const current = TYPES.find((x) => x.type === s.chartType) ?? TYPES[0]!;
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function ChartTypeMenu({ ctx }: { ctx: WidgetContext }) {
         <ChevronDownIcon />
       </button>
       {open && (
-        <div class="fnc-menu" role="menu">
+        <div class="fnc-menu" role="menu" ref={menuRef}>
           {TYPES.map(({ type, label, icon: Icon }) => (
             <button
               class="fnc-menu-item"
