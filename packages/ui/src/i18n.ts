@@ -104,7 +104,6 @@ export const STRINGS = {
     removePeriod: '기간 삭제',
     period: '기간',
     source: '가격 기준',
-    lineWidth: '두께',
     inputs: '입력값',
     style: '스타일',
     // intervals
@@ -249,7 +248,6 @@ export const STRINGS = {
     removePeriod: 'Remove period',
     period: 'Period',
     source: 'Source',
-    lineWidth: 'Width',
     inputs: 'Inputs',
     style: 'Style',
     intervalMinutes: 'Minutes',

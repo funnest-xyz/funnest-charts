@@ -332,7 +332,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
         class="fnc-btn"
         data-tip={`${t.lineStyle}: ${dash === 'solid' ? t.lineSolid : dash === 'dashed' ? t.lineDashed : t.lineDotted}`}
         aria-label={t.lineStyle}
-        onClick={() => setStyle({ dash: DASH_ORDER[(DASH_ORDER.indexOf(dash) + 1) % DASH_ORDER.length] })}
+        onClick={() => setStyle({ dash: DASH_ORDER[(DASH_ORDER.indexOf(dash) + 1) % DASH_ORDER.length]! })}
       >
         <DashGlyph dash={dash} />
       </button>
@@ -356,7 +356,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
         data-tip={t.duplicate}
         aria-label={t.duplicate}
         onClick={() => {
-          const id = ctx.chart.addDrawing({ type: d.type, points: d.points.map((p) => ({ ...p })), color: d.color, style: { ...style, locked: false } });
+          const id = ctx.chart.addDrawing({ type: d.type, points: d.points.map((p) => ({ ...p })), ...(d.color ? { color: d.color } : {}), style: { ...style, locked: false } });
           ctx.chart.selectDrawing(id);
         }}
       >

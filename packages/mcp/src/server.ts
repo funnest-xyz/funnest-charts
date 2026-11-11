@@ -25,7 +25,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const server = new McpServer({ name: 'funnest-charts', version: '0.6.10' });
+const server = new McpServer({ name: 'funnest-charts', version: '0.6.11' });
 
 const locale = z.enum(['ko', 'en']).optional().describe('Message language (default ko)');
 const chartType = z.enum(CHART_TYPES as [string, ...string[]]);

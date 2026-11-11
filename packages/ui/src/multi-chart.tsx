@@ -134,6 +134,7 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
     attribution = true,
     colorScheme = 'system',
     contextMenuItems,
+    onIndicatorsClick,
     theme,
     ...chartOptions
   } = options;
@@ -209,6 +210,7 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
       // One badge for the whole widget, not one per pane.
       attribution: attribution && index === 0,
       contextMenuItems,
+      onIndicatorsClick,
       multi: controls,
     });
     const cell = div('fnc-pane');

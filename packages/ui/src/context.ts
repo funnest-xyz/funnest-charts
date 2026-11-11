@@ -85,6 +85,8 @@ export interface WidgetContext {
   /** Show the Funnest logo badge on the chart. */
   attribution: boolean;
   contextMenuItems: ContextMenuItems | undefined;
+  /** The app's own indicator browser for the 지표 button (instead of the built-in picker). */
+  onIndicatorsClick: ((chart: Chart) => void) | undefined;
   slots: { toolbar: HTMLElement; toolbarEnd: HTMLElement; belowToolbar: HTMLElement; footer: HTMLElement };
   setDrawbarCollapsed(collapsed: boolean): void;
   selectSymbol(symbol: string): void;

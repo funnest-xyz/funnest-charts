@@ -82,6 +82,11 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
    * e.g. "이 가격에 알림 만들기". Called on every right-click with the price and time under the pointer.
    */
   contextMenuItems?: ContextMenuItems;
+  /**
+   * The toolbar's 지표 button opens this instead of the built-in indicator picker (an app's own
+   * indicator browser). Called with the pane's chart; add indicators with chart.addIndicator().
+   */
+  onIndicatorsClick?: (chart: Chart) => void;
 }
 
 export interface TradingChart {
@@ -127,6 +132,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     attribution = true,
     colorScheme = 'system',
     contextMenuItems,
+    onIndicatorsClick,
     theme,
     ...chartOptions
   } = options;
@@ -152,6 +158,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     drawingToolbar,
     attribution,
     contextMenuItems,
+    onIndicatorsClick,
   });
   shell.main.insertBefore(pane.stage, shell.slots.bottom);
   shell.setPanes(() => [pane]);

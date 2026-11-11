@@ -57,7 +57,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           data-tip={t.addIndicator}
           aria-label={t.addIndicator}
           aria-haspopup="dialog"
-          onClick={() => ctx.store.set({ dialog: { kind: 'indicators' } })}
+          onClick={() => (ctx.onIndicatorsClick ? ctx.onIndicatorsClick(ctx.chart) : ctx.store.set({ dialog: { kind: 'indicators' } }))}
         >
           <IndicatorIcon />
           <span>{t.indicators}</span>
