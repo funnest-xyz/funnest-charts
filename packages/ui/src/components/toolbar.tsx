@@ -54,7 +54,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
       <div class="fnc-tools">
         <ChartTypeMenu ctx={ctx} />
         <button
-          class="fnc-btn fnc-btn-wide fnc-btn-label"
+          class="fnc-btn fnc-btn-wide fnc-btn-label fnc-btn-indicators"
           data-tip={t.addIndicator}
           aria-label={t.addIndicator}
           aria-haspopup="dialog"
@@ -80,7 +80,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
       )}
       <Slot el={ctx.slots.toolbarEnd} fixed />
       <button
-        class="fnc-btn"
+        class="fnc-btn fnc-btn-settings"
         data-tip={t.chartSettings}
         aria-label={t.chartSettings}
         aria-haspopup="dialog"
@@ -92,7 +92,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
         <CameraIcon />
       </button>
       <button
-        class="fnc-btn"
+        class="fnc-btn fnc-btn-fullscreen"
         data-tip={s.fullscreen ? t.exitFullscreen : t.fullscreen}
         aria-label={s.fullscreen ? t.exitFullscreen : t.fullscreen}
         onClick={ctx.toggleFullscreen}

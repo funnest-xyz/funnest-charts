@@ -39,7 +39,7 @@ export function ChartTypeMenu({ ctx }: { ctx: WidgetContext }) {
   };
 
   return (
-    <div class="fnc-menu-wrap" ref={ref}>
+    <div class="fnc-menu-wrap fnc-chart-type" ref={ref}>
       <button
         class="fnc-btn fnc-btn-wide"
         data-tip={t.chartType}
