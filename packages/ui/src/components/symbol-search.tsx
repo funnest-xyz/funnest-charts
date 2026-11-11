@@ -305,9 +305,11 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
             <kbd class="fnc-kbd">ESC</kbd> {t.close}
           </button>
           <span class="fnc-spacer" />
-          <span>
-            <kbd class="fnc-kbd">{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} + K</kbd> {t.searchSymbol}
-          </span>
+          {ctx.searchHotkey && (
+            <span>
+              <kbd class="fnc-kbd">{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} + K</kbd> {t.searchSymbol}
+            </span>
+          )}
         </div>
       </div>
     </div>

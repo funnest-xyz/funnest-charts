@@ -17,6 +17,8 @@ export interface PaneConfig {
   symbolLogo: boolean;
   drawingToolbar: boolean;
   attribution: boolean;
+  /** Ctrl/⌘+K opens this widget's symbol search (its footer shows the hint only then). */
+  searchHotkey: boolean;
   contextMenuItems?: ContextMenuItems | undefined;
   multi?: MultiControls | undefined;
 }
@@ -131,6 +133,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     searchCategories: config.searchCategories,
     displayTimezone: config.displayTimezone,
     showLogo: config.symbolLogo,
+    searchHotkey: config.searchHotkey,
     drawingToolbar: config.drawingToolbar,
     attribution: config.attribution,
     contextMenuItems: config.contextMenuItems,

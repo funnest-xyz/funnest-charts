@@ -79,6 +79,8 @@ export interface WidgetContext {
   /** IANA zone used for the status-bar clock (KST for Korean users by default). */
   displayTimezone: string;
   showLogo: boolean;
+  /** Ctrl/⌘+K opens symbol search (off when the page uses the shortcut for its own search). */
+  searchHotkey: boolean;
   drawingToolbar: boolean;
   /** Show the Funnest logo badge on the chart. */
   attribution: boolean;

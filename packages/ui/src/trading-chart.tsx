@@ -148,6 +148,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     intervalGroups,
     searchCategories,
     symbolLogo,
+    searchHotkey,
     drawingToolbar,
     attribution,
     contextMenuItems,
