@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts-react",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "React bindings for Funnest Charts: the trading widget plus SVG line, area and bar charts",
   "keywords": [
     "react",

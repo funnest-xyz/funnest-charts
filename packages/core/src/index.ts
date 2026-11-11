@@ -34,6 +34,7 @@ export type {
   DrawingPoint,
   DrawingRenderContext,
   DrawingStyle,
+  DrawingColorSlot,
   DrawingType,
 } from './objects/drawings';
 export { BUILTIN_DRAWINGS, distToSegment, FIB_LEVELS } from './objects/drawings';

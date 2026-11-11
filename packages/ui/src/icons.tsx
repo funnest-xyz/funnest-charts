@@ -342,6 +342,13 @@ export const GripIcon = () => (
     <path d="M7.5 5h.01M7.5 10h.01M7.5 15h.01M12.5 5h.01M12.5 10h.01M12.5 15h.01" stroke-width="2.4" />
   </Icon>
 );
+/** Several colors (a tool's parts): a palette. */
+export const PaletteIcon = () => (
+  <Icon>
+    <path d="M10 3.5a6.5 6.5 0 1 0 0 13c1 0 1.5-.6 1.5-1.3 0-.9-.8-1.2-.8-2 0-.7.6-1.2 1.4-1.2h1.6a2.8 2.8 0 0 0 2.8-2.8C16.5 6 13.6 3.5 10 3.5Z" />
+    <path d="M6.6 9.2h.01M8.4 6.6h.01M11.6 6.4h.01M13.6 8.6h.01" stroke-width="2.2" />
+  </Icon>
+);
 export const LockIcon = ({ open = false }: { open?: boolean }) => (
   <Icon>
     <rect x="4.5" y="9" width="11" height="8" rx="1.8" />

@@ -12,6 +12,7 @@ import {
   CursorIcon,
   GripIcon,
   LockIcon,
+  PaletteIcon,
   FibonacciIcon,
   HorizontalLineIcon,
   MagnetIcon,
@@ -72,8 +73,13 @@ function ToolGroup({
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && onOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onOpen(false);
     document.addEventListener('pointerdown', close, true);
-    return () => document.removeEventListener('pointerdown', close, true);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', close, true);
+      document.removeEventListener('keydown', esc);
+    };
   }, [open]);
 
   const pick = (def: DrawingDefinition) => {
@@ -240,7 +246,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors'>(null);
   const colorInput = useRef<HTMLInputElement>(null);
   if (!d || s.layout.plotWidth <= 0) return null;
 
@@ -248,7 +254,15 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const style = d.style ?? {};
   const setStyle = (patch: Partial<DrawingStyle>) => ctx.chart.updateDrawing(d.id, { style: { ...style, ...patch } });
   const current = d.color ?? SWATCHES[0]!;
-  const pickColor = (color: string) => ctx.chart.updateDrawing(d.id, { color });
+  // A main color recolors every part too (their own colors are dropped).
+  const pickColor = (color: string) => {
+    if (style.colors) {
+      const { colors: _drop, ...rest } = style;
+      ctx.chart.updateDrawing(d.id, { color, style: rest });
+    } else ctx.chart.updateDrawing(d.id, { color });
+  };
+  const slots = def?.colors ?? [];
+  const slotColor = (key: string, fallback: string) => style.colors?.[key] ?? d.color ?? fallback;
   const addRecent = (color: string) => {
     const next = [color, ...recent.filter((c) => c !== color)].slice(0, 3);
     setRecent(next);
@@ -300,6 +314,43 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
           onChange={(e) => addRecent((e.target as HTMLInputElement).value)}
         />
       </label>
+      {slots.length > 0 && (
+        <div class="fnc-selbar-menu">
+          <button class="fnc-btn" data-tip={t.partColors} aria-label={t.partColors} aria-expanded={menu === 'colors'} onClick={() => setMenu(menu === 'colors' ? null : 'colors')}>
+            <PaletteIcon />
+          </button>
+          {menu === 'colors' && (
+            <div class="fnc-menu fnc-selbar-pop fnc-part-menu" role="menu">
+              {slots.map((slot) => {
+                const c = slotColor(slot.key, slot.color);
+                return (
+                  <label class="fnc-menu-item fnc-part">
+                    <span class="fnc-swatch" style={{ background: c }} />
+                    <span>{slot.name[s.locale]}</span>
+                    <input
+                      type="color"
+                      aria-label={`${slot.name[s.locale]} ${t.color}`}
+                      value={/^#[0-9a-f]{6}$/i.test(c) ? c : '#3182f6'}
+                      onInput={(e) => setStyle({ colors: { ...style.colors, [slot.key]: (e.target as HTMLInputElement).value } })}
+                    />
+                  </label>
+                );
+              })}
+              <button
+                class="fnc-menu-item fnc-part-reset"
+                role="menuitem"
+                onClick={() => {
+                  const { colors: _drop, ...rest } = style;
+                  ctx.chart.updateDrawing(d.id, { style: rest });
+                  setMenu(null);
+                }}
+              >
+                {t.resetColors}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <div class="fnc-sep" />
       <div class="fnc-selbar-menu">
         <button class="fnc-btn fnc-selbar-width" data-tip={t.lineWidth} aria-label={t.lineWidth} aria-expanded={menu === 'width'} onClick={() => setMenu(menu === 'width' ? null : 'width')}>

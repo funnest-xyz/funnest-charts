@@ -194,6 +194,11 @@ const CSS = /* css */ `
 .fnc-selbar-menu { position: relative; }
 .fnc-selbar-pop { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); min-width: 110px; }
 .fnc-selbar-pop .fnc-menu-item { gap: 10px; }
+.fnc-part-menu { min-width: 150px; max-height: 320px; overflow-y: auto; }
+.fnc-part { position: relative; cursor: pointer; }
+.fnc-part .fnc-swatch { width: 14px; height: 14px; box-shadow: 0 0 0 1px var(--fnc-border); }
+.fnc-part input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.fnc-part-reset { margin-top: 4px; border-top: 1px solid var(--fnc-border); color: var(--fnc-text-2); }
 .fnc-selbar-text { width: 150px; height: 28px; padding: 0 8px; border: 1px solid var(--fnc-border); border-radius: var(--fnc-radius); background: var(--fnc-surface); color: var(--fnc-text); font: inherit; font-size: 13px; outline: none; }
 .fnc-selbar-text:focus { border-color: var(--fnc-text-2); }
 .fnc-overlay { pointer-events: none; }
@@ -947,6 +952,8 @@ const CSS = /* css */ `
 .fnc-tool-group:hover .fnc-tool-chevron,
 .fnc-tool-more[aria-expanded='true'] .fnc-tool-chevron,
 .fnc-tool-more:focus-visible .fnc-tool-chevron { display: flex; }
+/* Once the list is open the tab has done its job: it fades out (clicking its spot still closes the list). */
+.fnc-tool-group[data-open='true'] .fnc-tool-more { opacity: 0; }
 @media (hover: none) {
   .fnc-tool-more { right: -12px; width: 14px; align-items: center; justify-content: center; padding: 0; }
   .fnc-tool-corner { display: none; }

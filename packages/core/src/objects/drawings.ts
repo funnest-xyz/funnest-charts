@@ -27,6 +27,19 @@ export interface DrawingStyle {
   fontSize?: number;
   /** Can't be dragged or edited until unlocked (still selectable). */
   locked?: boolean;
+  /** Colors of the tool's parts (`DrawingDefinition.colors` keys), where set apart from the rest. */
+  colors?: Record<string, string>;
+}
+
+/**
+ * A part of a tool with its own color (a Fibonacci level, a position's target zone…). Its color
+ * is `style.colors[key]`, else the drawing's color (picking one recolors every part), else `color`.
+ */
+export interface DrawingColorSlot {
+  key: string;
+  name: Record<Locale, string>;
+  /** Default color. */
+  color: string;
 }
 
 export interface Drawing {
@@ -53,6 +66,8 @@ export interface DrawingRenderContext extends DrawingGeometry {
   color: string;
   /** `drawing.style` (empty object when none). */
   style: DrawingStyle;
+  /** A part's color (see `DrawingDefinition.colors`): its own, else the drawing's, else the default. */
+  colorOf(key: string): string;
   /** The main line width: the drawing's style, else the tool's default. */
   width(fallback: number): number;
   /** The main line dash pattern for canvas: the drawing's style, else the tool's default. */
@@ -102,6 +117,8 @@ export interface DrawingDefinition {
   freehand?: boolean;
   /** Has text (`style.text`): the widget offers a text field for it when selected. */
   text?: boolean;
+  /** Parts with their own colors: the widget lets each be recolored (read them with `rc.colorOf`). */
+  colors?: DrawingColorSlot[];
   /** Distance in px from (x, y) to the shape, for hit testing. */
   distance(geometry: DrawingGeometry, x: number, y: number): number;
   render(drawing: Drawing, rc: DrawingRenderContext): void;
@@ -156,6 +173,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     group: 'fib',
     section: { ko: '피보나치', en: 'Fibonacci' },
     clicks: 2,
+    colors: FIB_LEVELS.map((level, i) => ({ key: String(level), name: { ko: String(level), en: String(level) }, color: FIB_COLORS[i]! })),
     distance: (g, x, y) => {
       // Nearest level line within its horizontal span, or the diagonal.
       const [x1, y1] = p0(g);
@@ -178,7 +196,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
       FIB_LEVELS.forEach((level, i) => {
         const price = b + (a - b) * level;
         const y = c.priceToY(price);
-        const levelColor = d.color ?? FIB_COLORS[i]!;
+        const levelColor = d.style?.colors?.[String(level)] ?? d.color ?? FIB_COLORS[i]!;
         if (i > 0) {
           const prevY = c.priceToY(b + (a - b) * FIB_LEVELS[i - 1]!);
           ctx.save();
@@ -420,6 +438,7 @@ export class DrawingManager {
           palette: rc.palette,
           color,
           style,
+          colorOf: (key) => style.colors?.[key] ?? d.color ?? def.colors?.find((c) => c.key === key)?.color ?? color,
           width: (fallback) => Math.min(8, Math.max(0.5, style.width ?? fallback)),
           dash: (fallback = []) => (style.dash ? DASHES[style.dash] : [...fallback]),
           bars,
