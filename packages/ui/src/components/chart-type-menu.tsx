@@ -42,7 +42,7 @@ export function ChartTypeMenu({ ctx }: { ctx: WidgetContext }) {
     <div class="fnc-menu-wrap" ref={ref}>
       <button
         class="fnc-btn fnc-btn-wide"
-        title={t.chartType}
+        data-tip={t.chartType}
         aria-label={t.chartType}
         aria-haspopup="menu"
         aria-expanded={open}

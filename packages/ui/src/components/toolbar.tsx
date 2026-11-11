@@ -21,7 +21,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
       <button
         class="fnc-symbol"
         disabled={!canSearch}
-        title={canSearch ? t.searchSymbol : undefined}
+        data-tip={canSearch ? t.searchSymbol : undefined}
         aria-haspopup="dialog"
         onClick={() => ctx.setSearchOpen(true)}
       >
@@ -55,7 +55,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
         <ChartTypeMenu ctx={ctx} />
         <button
           class="fnc-btn fnc-btn-wide fnc-btn-label"
-          title={t.addIndicator}
+          data-tip={t.addIndicator}
           aria-label={t.addIndicator}
           aria-haspopup="dialog"
           onClick={() => ctx.store.set({ dialog: { kind: 'indicators' } })}
@@ -70,7 +70,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
       {ctx.drawingToolbar && (
         <button
           class="fnc-btn fnc-btn-drawbar"
-          title={t.drawingTools}
+          data-tip={t.drawingTools}
           aria-label={t.drawingTools}
           aria-pressed={s.drawbarOpen || s.drawingTool !== null}
           onClick={() => ctx.store.set({ drawbarOpen: !s.drawbarOpen })}
@@ -81,19 +81,19 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
       <Slot el={ctx.slots.toolbarEnd} fixed />
       <button
         class="fnc-btn"
-        title={t.chartSettings}
+        data-tip={t.chartSettings}
         aria-label={t.chartSettings}
         aria-haspopup="dialog"
         onClick={() => ctx.store.set({ dialog: { kind: 'chartSettings' } })}
       >
         <SettingsIcon />
       </button>
-      <button class="fnc-btn fnc-btn-screenshot" title={t.screenshot} aria-label={t.screenshot} onClick={ctx.screenshot}>
+      <button class="fnc-btn fnc-btn-screenshot" data-tip={t.screenshot} aria-label={t.screenshot} onClick={ctx.screenshot}>
         <CameraIcon />
       </button>
       <button
         class="fnc-btn"
-        title={s.fullscreen ? t.exitFullscreen : t.fullscreen}
+        data-tip={s.fullscreen ? t.exitFullscreen : t.fullscreen}
         aria-label={s.fullscreen ? t.exitFullscreen : t.fullscreen}
         onClick={ctx.toggleFullscreen}
       >

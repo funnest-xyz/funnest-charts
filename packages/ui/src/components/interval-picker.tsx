@@ -52,7 +52,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
             class="fnc-chip"
             aria-pressed={r === s.resolution}
             disabled={!isSupported(r)}
-            title={isSupported(r) ? resolutionLabel(r, s.locale, 'long') : t.unsupportedInterval}
+            data-tip={isSupported(r) ? resolutionLabel(r, s.locale, 'long') : t.unsupportedInterval}
             onClick={() => select(r)}
           >
             {resolutionLabel(r, s.locale)}
@@ -61,7 +61,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
       </div>
       <button
         class={`fnc-btn fnc-btn-wide fnc-interval-trigger${favorites.includes(s.resolution) ? '' : ' fnc-interval-trigger-active'}`}
-        title={t.moreIntervals}
+        data-tip={t.moreIntervals}
         aria-label={t.moreIntervals}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -85,7 +85,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
                       role="menuitemradio"
                       aria-checked={r === s.resolution}
                       disabled={!ok}
-                      title={ok ? undefined : t.unsupportedInterval}
+                      data-tip={ok ? undefined : t.unsupportedInterval}
                       onClick={() => select(r)}
                     >
                       {resolutionLabel(r, s.locale, 'long')}
@@ -94,7 +94,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
                       class="fnc-star"
                       aria-pressed={favorite}
                       aria-label={`${resolutionLabel(r, s.locale, 'long')} ${favorite ? t.removeFavorite : t.addFavorite}`}
-                      title={favorite ? t.removeFavorite : t.addFavorite}
+                      data-tip={favorite ? t.removeFavorite : t.addFavorite}
                       onClick={() => ctx.toggleFavoriteInterval(r)}
                     >
                       <StarIcon filled={favorite} />

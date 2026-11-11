@@ -490,6 +490,38 @@ const CSS = /* css */ `
   flex: none;
 }
 
+/* Tooltip (data-tip). Hosts can restyle it with --fnc-tip-bg / --fnc-tip-text. */
+.fnc-tip {
+  position: fixed;
+  z-index: 2147483001;
+  max-width: 240px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--fnc-tip-bg, #24242b);
+  color: var(--fnc-tip-text, #f2f2f4);
+  font-family: var(--fnc-font);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.28);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms cubic-bezier(0.4, 0, 1, 1), transform 120ms cubic-bezier(0.4, 0, 1, 1), visibility 0s 120ms;
+}
+.fnc-tip[data-side='bottom'] { transform: translateY(-4px); }
+.fnc-tip[data-side='top'] { transform: translateY(4px); }
+.fnc-tip[data-side='right'] { transform: translateX(-4px); }
+.fnc-tip.is-on {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) { .fnc-tip, .fnc-tip.is-on { transform: none; } }
+@media (hover: none) { .fnc-tip { display: none; } }
+
 .fnc-tools { display: flex; align-items: center; gap: 4px; flex: none; }
 /* Right-hand menus open toward the left so they stay on screen. */
 .fnc-tools .fnc-menu { left: auto; right: 0; }

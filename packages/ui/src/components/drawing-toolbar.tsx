@@ -38,7 +38,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
   return (
     <>
       {s.drawbarCollapsed && (
-        <button class="fnc-drawbar-tab" aria-label={t.expandDrawbar} title={t.expandDrawbar} onClick={() => ctx.setDrawbarCollapsed(false)}>
+        <button class="fnc-drawbar-tab" aria-label={t.expandDrawbar} data-tip={t.expandDrawbar} onClick={() => ctx.setDrawbarCollapsed(false)}>
           <ChevronRightIcon />
         </button>
       )}
@@ -53,7 +53,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       {TOOLS.map(({ tool, label, icon: Icon }) => (
         <button
           class="fnc-btn"
-          title={t[label]}
+          data-tip={t[label]}
           aria-label={t[label]}
           aria-pressed={s.drawingTool === tool}
           onClick={() => pick(tool)}
@@ -64,7 +64,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       <div class="fnc-hsep" />
       <button
         class="fnc-btn"
-        title={t.magnet}
+        data-tip={t.magnet}
         aria-label={t.magnet}
         aria-pressed={s.magnet}
         onClick={() => ctx.chart.setMagnet(!s.magnet)}
@@ -73,7 +73,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       </button>
       <button
         class="fnc-btn"
-        title={t.removeAll}
+        data-tip={t.removeAll}
         aria-label={t.removeAll}
         disabled={s.drawingCount === 0}
         onClick={() => ctx.chart.clearDrawings()}
@@ -83,7 +83,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       <span class="fnc-spacer" />
       <button
         class="fnc-btn fnc-drawbar-collapse"
-        title={t.collapseDrawbar}
+        data-tip={t.collapseDrawbar}
         aria-label={t.collapseDrawbar}
         onClick={() => ctx.setDrawbarCollapsed(true)}
       >
@@ -109,14 +109,14 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
         <button
           class="fnc-swatch"
           style={{ background: color }}
-          title={t.color}
+          data-tip={t.color}
           aria-label={`${t.color} ${color}`}
           aria-pressed={(d.color ?? SWATCHES[0]) === color}
           onClick={() => ctx.chart.updateDrawing(d.id, { color })}
         />
       ))}
       <div class="fnc-sep" />
-      <button class="fnc-btn" title={t.remove} aria-label={t.remove} onClick={() => ctx.chart.removeDrawing(d.id)}>
+      <button class="fnc-btn" data-tip={t.remove} aria-label={t.remove} onClick={() => ctx.chart.removeDrawing(d.id)}>
         <TrashIcon />
       </button>
     </div>

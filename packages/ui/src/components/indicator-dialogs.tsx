@@ -244,7 +244,7 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
                   aria-label={`${t.period}${i + 1}`}
                   onInput={(e) => updateLine(i, { period: e.currentTarget.value.replace(/\D/g, '') })}
                 />
-                <button type="button" class="fnc-ind-btn" aria-label={t.removePeriod} title={t.removePeriod} onClick={() => setLines(lines.filter((_, j) => j !== i))}>
+                <button type="button" class="fnc-ind-btn" aria-label={t.removePeriod} data-tip={t.removePeriod} onClick={() => setLines(lines.filter((_, j) => j !== i))}>
                   <SmallCloseIcon />
                 </button>
               </div>

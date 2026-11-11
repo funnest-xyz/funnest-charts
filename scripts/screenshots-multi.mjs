@@ -49,7 +49,7 @@ await page.screenshot({ path: `${out}/multi-crosshair.png` });
 await page.click('.fnc-btn-layout');
 await page.waitForSelector('.fnc-layout-menu');
 await page.screenshot({ path: `${out}/multi-layout-menu.png` });
-await page.click('.fnc-layout-opt[title="3-left"]');
+await page.click('.fnc-layout-opt[data-layout="3-left"]');
 await page.waitForTimeout(500);
 check('layout 3-left → 3 panes', (await panes.count()) === 3, String(await ev(() => window.multi.layout)));
 check('active index kept within range', (await ev(() => window.multi.activeIndex)) === 2);
@@ -144,6 +144,22 @@ await page.click('.fnc-pane-tab >> nth=1');
 await page.waitForTimeout(300);
 check('narrow: tab switches pane', (await ev(() => window.multi.activeIndex)) === 1);
 await page.setViewportSize({ width: 1440, height: 860 });
+
+// Tooltips: drawing bar → to the right; toolbar → below; no native title attributes
+const drawBtn = page.locator('.fnc-drawbar button[data-tip]').nth(1);
+await page.mouse.move(700, 400);
+await drawBtn.hover();
+await page.waitForTimeout(600);
+const tip = await page.evaluate(() => {
+  const t = document.querySelector('.fnc-tip.is-on');
+  return t ? { text: t.textContent, side: t.dataset.side } : null;
+});
+check('drawing bar tooltip on the right', tip?.side === 'right' && !!tip.text, JSON.stringify(tip));
+await page.screenshot({ path: `${out}/multi-tooltip-drawbar.png` });
+await page.hover('.fnc-toolbar [data-tip]:not(.fnc-symbol) >> nth=2');
+await page.waitForTimeout(200);
+check('toolbar tooltip moves without a new delay', (await page.locator('.fnc-tip.is-on').count()) === 1);
+check('no native title tooltips left', (await page.locator('.fnc-root [title]').count()) === 0, String(await page.locator('.fnc-root [title]').count()));
 
 // Single widget still works (regression)
 await page.goto('http://localhost:5173/?symbol=DEMO:005930&resolution=1D');

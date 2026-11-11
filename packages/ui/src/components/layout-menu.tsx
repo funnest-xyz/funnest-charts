@@ -57,7 +57,7 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
       <div class="fnc-menu-wrap" ref={layout.ref}>
         <button
           class="fnc-btn fnc-btn-wide fnc-btn-layout"
-          title={t.layout}
+          data-tip={t.layout}
           aria-label={t.layout}
           aria-haspopup="menu"
           aria-expanded={layout.open}
@@ -77,7 +77,7 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
                     role="menuitemradio"
                     aria-checked={id === m.layout}
                     aria-label={`${t.layout} ${id}`}
-                    title={id}
+                    data-layout={id}
                     onClick={() => {
                       multi.setLayout(id);
                       layout.setOpen(false);
@@ -97,7 +97,7 @@ export function LayoutMenu({ ctx, multi }: { ctx: WidgetContext; multi: MultiCon
       <div class="fnc-menu-wrap" ref={sync.ref}>
         <button
           class="fnc-btn fnc-btn-sync"
-          title={t.sync}
+          data-tip={t.sync}
           aria-label={t.sync}
           aria-haspopup="menu"
           aria-expanded={sync.open}

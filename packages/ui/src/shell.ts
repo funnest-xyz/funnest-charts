@@ -96,6 +96,87 @@ export interface Shell {
   destroy(): void;
 }
 
+/**
+ * One tooltip per widget for every element with `data-tip` (instead of native `title`, whose look
+ * and delay can't be styled). Shows after 350ms of hover or on keyboard focus; moving between
+ * tipped elements shows the next one at once. Sides: right of the drawing bar, above the
+ * navigation buttons, otherwise below (flipped up near the bottom edge).
+ */
+function bindTooltips(root: HTMLElement): () => void {
+  const tip = div('fnc-tip', root);
+  tip.setAttribute('role', 'tooltip');
+  tip.id = `fnc-tip-${Math.random().toString(36).slice(2, 8)}`;
+  let current: HTMLElement | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let hiddenAt = 0;
+
+  const place = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let side: 'right' | 'top' | 'bottom' = el.closest('.fnc-drawbar') ? 'right' : el.closest('.fnc-nav') ? 'top' : 'bottom';
+    if (side === 'bottom' && r.bottom + h + 10 > vh) side = 'top';
+    let left = side === 'right' ? r.right + 8 : r.left + r.width / 2 - w / 2;
+    const top = side === 'right' ? r.top + r.height / 2 - h / 2 : side === 'top' ? r.top - h - 6 : r.bottom + 6;
+    left = Math.max(4, Math.min(vw - w - 4, left));
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(top)}px`;
+    tip.dataset.side = side;
+  };
+  const show = (el: HTMLElement) => {
+    const text = el.dataset.tip;
+    if (!text || !el.isConnected) return;
+    tip.textContent = text;
+    el.setAttribute('aria-describedby', tip.id);
+    place(el);
+    tip.classList.add('is-on');
+  };
+  const hide = () => {
+    clearTimeout(timer);
+    if (tip.classList.contains('is-on')) hiddenAt = Date.now();
+    tip.classList.remove('is-on');
+    current?.removeAttribute('aria-describedby');
+    current = null;
+  };
+  const target = (e: Event) => (e.target instanceof Element ? e.target.closest<HTMLElement>('[data-tip]') : null);
+
+  const onOver = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return;
+    const el = target(e);
+    if (el === current) return;
+    hide();
+    if (!el || !root.contains(el)) return;
+    current = el;
+    // Sliding from one button to the next shouldn't wait again.
+    timer = setTimeout(() => show(el), Date.now() - hiddenAt < 300 ? 0 : 350);
+  };
+  const onFocus = (e: FocusEvent) => {
+    const el = target(e);
+    if (!el || !(e.target as HTMLElement).matches?.(':focus-visible')) return;
+    hide();
+    current = el;
+    show(el);
+  };
+  root.addEventListener('pointerover', onOver);
+  root.addEventListener('pointerleave', hide);
+  root.addEventListener('pointerdown', hide, true);
+  root.addEventListener('wheel', hide, { passive: true });
+  root.addEventListener('focusin', onFocus);
+  root.addEventListener('focusout', hide);
+  return () => {
+    hide();
+    root.removeEventListener('pointerover', onOver);
+    root.removeEventListener('pointerleave', hide);
+    root.removeEventListener('pointerdown', hide, true);
+    root.removeEventListener('wheel', hide);
+    root.removeEventListener('focusin', onFocus);
+    root.removeEventListener('focusout', hide);
+    tip.remove();
+  };
+}
+
 export function createShell(container: HTMLElement, options: ShellOptions): Shell {
   injectStyles(container.ownerDocument);
   const storage = createStorage(options.storageKey);
@@ -123,6 +204,7 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
     bottom: div('fnc-slot fnc-slot-bottom'),
     footer: div('fnc-slot fnc-slot-footer'),
   };
+  const unbindTips = bindTooltips(root);
   const body = div('fnc-body', root);
   const drawbarHost = options.drawingToolbar ? div('fnc-drawbar-host', body) : null;
   const main = div('fnc-main', body);
@@ -193,6 +275,7 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
       options.onFavoriteIntervalsChange?.(favoriteIntervals);
     },
     destroy: () => {
+      unbindTips();
       document.removeEventListener('fullscreenchange', onFullscreenChange);
       darkQuery?.removeEventListener?.('change', onSchemeChange);
       if (isNativeFullscreen()) void document.exitFullscreen();

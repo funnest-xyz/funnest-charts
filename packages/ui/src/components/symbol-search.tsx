@@ -162,7 +162,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
           class={`fnc-sr-star${fav ? ' is-on' : ''}`}
           aria-pressed={fav}
           aria-label={`${info.name} ${fav ? t.removeFavorite : t.addFavorite}`}
-          title={fav ? t.removeFavorite : t.addFavorite}
+          data-tip={fav ? t.removeFavorite : t.addFavorite}
           onClick={(e) => {
             e.stopPropagation();
             toggleFavorite(info);
@@ -197,7 +197,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
           <button
             class="fnc-ind-btn"
             aria-label={`${info.name} ${t.removeRecent}`}
-            title={t.removeRecent}
+            data-tip={t.removeRecent}
             onClick={(e) => {
               e.stopPropagation();
               save(RECENT_KEY, recent.filter((r) => r.symbol !== info.symbol), setRecent);
@@ -246,7 +246,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
               <SmallCloseIcon />
             </button>
           )}
-          <button class="fnc-kbd fnc-kbd-btn fnc-hide-mobile" aria-label={t.close} title={t.close} onClick={close}>
+          <button class="fnc-kbd fnc-kbd-btn fnc-hide-mobile" aria-label={t.close} data-tip={t.close} onClick={close}>
             ESC
           </button>
         </div>

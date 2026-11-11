@@ -45,7 +45,7 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
     >
       <button
         class="fnc-ind-btn fnc-ind-eye"
-        title={item.visible ? t.hide : t.show}
+        data-tip={item.visible ? t.hide : t.show}
         aria-label={`${item.title} ${item.visible ? t.hide : t.show}`}
         aria-pressed={!item.visible}
         onClick={(e) => {
@@ -57,14 +57,14 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
       </button>
       <span class="fnc-ind-title">{item.title}</span>
       {item.visible && item.values.map((v) => (
-        <b style={{ color: v.color }} title={v.label}>
+        <b style={{ color: v.color }} data-tip={v.label}>
           {v.value}
         </b>
       ))}
       <span class="fnc-ind-actions">
         <button
           class="fnc-ind-btn"
-          title={t.indicatorSettings}
+          data-tip={t.indicatorSettings}
           aria-label={`${item.title} ${t.indicatorSettings}`}
           onClick={() => ctx.store.set({ dialog: { kind: 'indicatorSettings', id: item.id } })}
         >
@@ -72,7 +72,7 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
         </button>
         <button
           class="fnc-ind-btn"
-          title={t.removeIndicator}
+          data-tip={t.removeIndicator}
           aria-label={`${item.title} ${t.removeIndicator}`}
           onClick={() => ctx.chart.removeIndicator(item.id)}
         >
@@ -176,11 +176,11 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
         {/* Collapse to the left at the end of the list; collapsed, a small bar brings it back. */}
         {overlayItems.length > 0 &&
           (collapsed ? (
-            <button class="fnc-ind-handle" aria-expanded="false" aria-label={t.expand} title={t.expand} onClick={() => setCollapsed(false)}>
+            <button class="fnc-ind-handle" aria-expanded="false" aria-label={t.expand} data-tip={t.expand} onClick={() => setCollapsed(false)}>
               <span />
             </button>
           ) : (
-            <button class="fnc-ind-collapse" aria-expanded="true" aria-label={t.collapse} title={t.collapse} onClick={() => setCollapsed(true)}>
+            <button class="fnc-ind-collapse" aria-expanded="true" aria-label={t.collapse} data-tip={t.collapse} onClick={() => setCollapsed(true)}>
               <CollapseLeftIcon />
             </button>
           ))}
@@ -209,7 +209,7 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
   const page = () => Math.max(1, Math.round(plotWidth / ctx.chart.timeScale.barSpacing / 3));
 
   const button = (label: string, onClick: () => void, icon: JSX.Element) => (
-    <button class="fnc-btn" title={label} aria-label={label} onClick={onClick}>
+    <button class="fnc-btn" data-tip={label} aria-label={label} onClick={onClick}>
       {icon}
     </button>
   );
@@ -229,7 +229,7 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
         <button
           class="fnc-realtime"
           style={{ left: `${plotWidth - 44}px`, top: `${top}px` }}
-          title={t.toRealtime}
+          data-tip={t.toRealtime}
           aria-label={t.toRealtime}
           onClick={() => ctx.chart.scrollToRealtime()}
         >
@@ -254,7 +254,7 @@ function Attribution({ ctx }: { ctx: WidgetContext }) {
       href={ATTRIBUTION_URL}
       target="_blank"
       rel="noopener"
-      title={label}
+      data-tip={label}
       aria-label={label}
       style={{ top: `${panesHeight - 36}px` }}
     >
@@ -280,7 +280,7 @@ function PaneMaximize({ ctx, multi }: { ctx: WidgetContext; multi: MultiControls
     <button
       class="fnc-btn fnc-pane-max"
       style={{ left: `${s.layout.plotWidth - 36}px` }}
-      title={`${label} (Alt+Enter)`}
+      data-tip={`${label} (Alt+Enter)`}
       aria-label={label}
       aria-pressed={maximized}
       onClick={() => {
