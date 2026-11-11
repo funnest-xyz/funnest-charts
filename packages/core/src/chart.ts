@@ -316,6 +316,14 @@ export class Chart {
   private connectionState: ConnectionState | null = null;
   private readonly displayTimezone: string | undefined;
   private loadingHistory = false;
+  /**
+   * Bumped by every data replacement (setData) and history request: a page answers only if it
+   * is still the latest request for the bars on screen. (The load token alone isn't enough — a
+   * page requested while setSymbol() awaits carries the new token but the old symbol's bars.)
+   */
+  private historyRequest = 0;
+  /** setSymbol() is between its request and setData(). */
+  private symbolLoading = false;
   private noMoreHistory = false;
   private historyRequestedFor = Number.NaN;
   private countdownLabel: string | null = null;
@@ -404,6 +412,9 @@ export class Chart {
     this.volumeScale.autoScale = true;
     this.noMoreHistory = false;
     this.historyRequestedFor = Number.NaN;
+    // Pages requested for the bars being replaced must not land on the new ones.
+    this.historyRequest++;
+    this.loadingHistory = false;
     this.dataVersion++;
     this.invalidate();
   }
@@ -465,6 +476,7 @@ export class Chart {
       this.quoteSymbol = null;
     }
     this.emitter.emit('loadingChange', true);
+    this.symbolLoading = true;
 
     let info: SymbolInfo;
     let result: Awaited<ReturnType<Datafeed['getBars']>>;
@@ -481,7 +493,10 @@ export class Chart {
       if (token !== this.loadToken) return;
     } finally {
       // Only the latest request reports completion; superseded ones stay silent.
-      if (token === this.loadToken) this.emitter.emit('loadingChange', false);
+      if (token === this.loadToken) {
+        this.symbolLoading = false;
+        this.emitter.emit('loadingChange', false);
+      }
     }
 
     // Drawings belong to a symbol: park the old symbol's, bring back the new one's.
@@ -1842,6 +1857,8 @@ export class Chart {
   private requestHistory(): void {
     const oldest = this.store.first();
     if (!oldest || this.loadingHistory || this.noMoreHistory || oldest.time === this.historyRequestedFor) return;
+    // Mid-load (setSymbol awaiting the next symbol's bars): the bars on screen are on their way out.
+    if (this.symbolLoading) return;
     this.historyRequestedFor = oldest.time;
 
     const feed = this.datafeed;
@@ -1850,6 +1867,8 @@ export class Chart {
       return;
     }
     const token = this.loadToken;
+    const request = ++this.historyRequest;
+    const current = () => token === this.loadToken && request === this.historyRequest;
     this.loadingHistory = true;
     const to = oldest.time - 1;
     feed
@@ -1859,7 +1878,7 @@ export class Chart {
         countBack: this.historyBatchSize,
       })
       .then((result) => {
-        if (token !== this.loadToken) return;
+        if (!current()) return;
         this.prependData(result.bars, { noMoreData: result.noMoreData || result.bars.length === 0 });
         const first = this.store.first();
         if (first) void this.tradingSync.loadOlder(first.time);
@@ -1867,7 +1886,7 @@ export class Chart {
       })
       .catch((error: unknown) => this.emitter.emit('error', error))
       .finally(() => {
-        if (token === this.loadToken) this.loadingHistory = false;
+        if (current()) this.loadingHistory = false;
       });
   }
 

@@ -157,6 +157,34 @@ await page.evaluate(() => {
 await page.waitForTimeout(200);
 await shot('alert-line');
 
+// ── Symbol switch while history pages load (workspace switch bug) ─────
+// Zooming out while the next symbol loads made the old bars ask for older pages; the answer
+// carried the new load token and landed on the new symbol's bars.
+await ready('DEMO:BTCUSDT', '1');
+const foreign = await page.evaluate(async () => {
+  const c = window.chart;
+  const feed = c.datafeed;
+  const getBars = feed.getBars.bind(feed);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  feed.getBars = async (info, res, req) => {
+    await wait(400);
+    const result = await getBars(info, res, req);
+    return { ...result, bars: result.bars.map((b) => ({ ...b, from: info.symbol })) };
+  };
+  const loading = c.setSymbol('DEMO:005930', '1');
+  c.timeScale.barSpacing = 0.5;
+  c.invalidate();
+  await wait(100);
+  await loading;
+  c.timeScale.barSpacing = 0.5;
+  c.invalidate();
+  await wait(2500);
+  feed.getBars = getBars;
+  return c.bars.filter((b) => b.from && b.from !== 'DEMO:005930').length;
+});
+check(foreign === 0, `no bars of the previous symbol after a switch (${foreign} foreign)`);
+await shot('switch-race');
+
 await browser.close();
 if (errors.length) {
   console.error(`\n${errors.length} problem(s):\n${errors.join('\n')}`);
