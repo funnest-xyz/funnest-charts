@@ -150,6 +150,9 @@ const CSS = /* css */ `
 /* ── Drawing tool bar (left) ─────────────────────────── */
 .fnc-drawbar-host { flex: none; display: flex; }
 .fnc-drawbar {
+  /* Above the plot, so a tool list tab (it sticks out over the chart) can be clicked. */
+  position: relative;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: center;
