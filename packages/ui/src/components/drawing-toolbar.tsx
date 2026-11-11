@@ -1,31 +1,115 @@
 /** @jsxImportSource preact */
-import type { DrawingType } from '@funnest/charts';
+import type { DrawingDefinition, DrawingType, Locale } from '@funnest/charts';
 import type { JSX } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
-import { STRINGS, type Strings } from '../i18n';
+import { STRINGS } from '../i18n';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  CornerIcon,
   CursorIcon,
   FibonacciIcon,
   HorizontalLineIcon,
   MagnetIcon,
+  SvgIcon,
   TrashIcon,
   TrendLineIcon,
 } from '../icons';
 import { useStore } from '../store';
 
-const TOOLS: { tool: DrawingType | null; label: keyof Strings; icon: () => JSX.Element }[] = [
-  { tool: null, label: 'cursor', icon: CursorIcon },
-  { tool: 'trendline', label: 'trendline', icon: TrendLineIcon },
-  { tool: 'horizontal', label: 'horizontal', icon: HorizontalLineIcon },
-  { tool: 'fibonacci', label: 'fibonacci', icon: FibonacciIcon },
-];
+const BUILTIN_ICONS: Record<string, () => JSX.Element> = {
+  trendline: TrendLineIcon,
+  horizontal: HorizontalLineIcon,
+  fibonacci: FibonacciIcon,
+};
+
+function ToolIcon({ def, locale }: { def: DrawingDefinition; locale: Locale }) {
+  const Builtin = BUILTIN_ICONS[def.type];
+  if (Builtin) return <Builtin />;
+  if (def.icon) return <SvgIcon markup={def.icon} />;
+  return <span class="fnc-tool-letter">{def.name[locale].slice(0, 1)}</span>;
+}
+
+/** Tools grouped by `DrawingDefinition.group`, in definition order. */
+function toolGroups(defs: readonly DrawingDefinition[]): [string, DrawingDefinition[]][] {
+  const groups = new Map<string, DrawingDefinition[]>();
+  for (const def of defs) {
+    const key = def.group ?? def.type;
+    groups.set(key, [...(groups.get(key) ?? []), def]);
+  }
+  return [...groups];
+}
+
+/**
+ * One drawing-bar button per tool group. It arms the group's last-used tool; groups with more
+ * than one tool get a corner button that opens the list (TradingView-style).
+ */
+function ToolGroup({
+  ctx,
+  tools,
+  open,
+  onOpen,
+  onPick,
+}: {
+  ctx: WidgetContext;
+  tools: DrawingDefinition[];
+  open: boolean;
+  onOpen(open: boolean): void;
+  onPick(tool: DrawingType): void;
+}) {
+  const s = useStore(ctx.store);
+  const t = STRINGS[s.locale];
+  const [chosen, setChosen] = useState(tools[0]!.type);
+  const armed = tools.find((d) => d.type === s.drawingTool);
+  const current = armed ?? tools.find((d) => d.type === chosen) ?? tools[0]!;
+  const name = current.name[s.locale];
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && onOpen(false);
+    document.addEventListener('pointerdown', close, true);
+    return () => document.removeEventListener('pointerdown', close, true);
+  }, [open]);
+
+  const pick = (def: DrawingDefinition) => {
+    setChosen(def.type);
+    onOpen(false);
+    onPick(def.type);
+  };
+
+  return (
+    <div class="fnc-tool-group" ref={ref} data-open={open}>
+      <button class="fnc-btn" data-tip={name} aria-label={name} aria-pressed={!!armed} onClick={() => pick(current)}>
+        <ToolIcon def={current} locale={s.locale} />
+      </button>
+      {tools.length > 1 && (
+        <button class="fnc-tool-more" aria-label={`${t.moreTools}: ${name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => onOpen(!open)}>
+          <CornerIcon />
+        </button>
+      )}
+      {open && (
+        <div class="fnc-menu fnc-tool-menu" role="menu">
+          {tools.map((def) => (
+            <button class="fnc-menu-item" role="menuitemradio" aria-checked={def.type === current.type} onClick={() => pick(def)}>
+              <ToolIcon def={def} locale={s.locale} />
+              <span>{def.name[s.locale]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Left vertical tool bar (TradingView layout). On narrow screens it slides in over the chart. */
 export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = STRINGS[s.locale];
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  // Every pane gets the same definitions, so the active pane's list is the widget's list.
+  const groups = toolGroups(ctx.chart.drawingDefinitions());
 
   const pick = (tool: DrawingType | null) => {
     ctx.chart.setDrawingTool(tool);
@@ -50,16 +134,18 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       data-open={s.drawbarOpen}
       data-collapsed={s.drawbarCollapsed}
     >
-      {TOOLS.map(({ tool, label, icon: Icon }) => (
-        <button
-          class="fnc-btn"
-          data-tip={t[label]}
-          aria-label={t[label]}
-          aria-pressed={s.drawingTool === tool}
-          onClick={() => pick(tool)}
-        >
-          <Icon />
-        </button>
+      <button class="fnc-btn" data-tip={t.cursor} aria-label={t.cursor} aria-pressed={s.drawingTool === null} onClick={() => pick(null)}>
+        <CursorIcon />
+      </button>
+      {groups.map(([key, tools]) => (
+        <ToolGroup
+          key={key}
+          ctx={ctx}
+          tools={tools}
+          open={openGroup === key}
+          onOpen={(open) => setOpenGroup(open ? key : null)}
+          onPick={pick}
+        />
       ))}
       <div class="fnc-hsep" />
       <button

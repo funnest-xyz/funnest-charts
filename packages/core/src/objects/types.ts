@@ -6,6 +6,8 @@ export interface PaneCoords {
   plotWidth: number;
   height: number;
   timeToX(time: number): number;
+  /** Fractional bar index of `time` (extrapolated past either end), e.g. to count bars between points. */
+  timeToIndex(time: number): number;
   /** Point under (x, y): time snapped to the nearest bar (extrapolated into the future), price to the tick size. */
   pointAt(x: number, y: number): { time: number; price: number };
   priceToY(price: number): number;

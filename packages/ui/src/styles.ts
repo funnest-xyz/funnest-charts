@@ -760,6 +760,20 @@ const CSS = /* css */ `
 .fnc-action-primary { background: var(--fnc-accent); color: #fff; }
 .fnc-action-danger { flex: 0 0 auto; padding: 0 16px; color: var(--fnc-danger, #F04452); background: none; }
 
+/* ── Narrow widgets (split screens next to side panels): the widget's own width decides, so
+   every toolbar button stays reachable. Ctrl/⌘+Z still undoes when the buttons are hidden. ── */
+.fnc-root { container: fnc / inline-size; }
+@container fnc (max-width: 1100px) {
+  .fnc-btn-undo { display: none; }
+  .fnc-btn-label span { display: none; }
+  .fnc-toolbar .fnc-btn-label { padding: 0 6px; }
+}
+@container fnc (max-width: 940px) {
+  .fnc-intervals { display: none; }
+  .fnc-interval-current { display: inline; }
+  .fnc-btn-screenshot { display: none; }
+}
+
 /* ── Narrow phones (≤ 400px): drop the menu chevrons and separators so every button fits ── */
 @media (max-width: 400px) {
   .fnc-toolbar .fnc-btn-wide > svg:last-child { display: none; }
@@ -864,8 +878,79 @@ const CSS = /* css */ `
 .fnc-switch[data-on='true'] { background: var(--fnc-text-2); }
 .fnc-switch[data-on='true']::after { transform: translateX(16px); }
 
+/* ── Drawing tool groups ─────────────────────────────── */
+.fnc-tool-group { position: relative; display: flex; }
+.fnc-tool-group[data-open='true'] { z-index: 30; }
+.fnc-tool-more {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  width: 14px;
+  height: 14px;
+  padding: 3px;
+  color: var(--fnc-text-2);
+  opacity: 0.7;
+}
+.fnc-tool-more:hover, .fnc-tool-more[aria-expanded='true'] { opacity: 1; color: var(--fnc-text); }
+.fnc-tool-menu { top: 0; left: calc(100% + 8px); min-width: 180px; }
+.fnc-tool-menu .fnc-menu-item { white-space: nowrap; }
+.fnc-tool-letter { font-size: 13px; font-weight: 700; }
+.fnc-svg-icon { display: inline-flex; }
+.fnc-svg-icon svg { width: 20px; height: 20px; }
+
+/* ── Segmented control (price scale, replay speed) ──── */
+.fnc-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: calc(var(--fnc-radius) + 2px); background: var(--fnc-surface); }
+.fnc-seg button {
+  min-width: 56px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--fnc-radius);
+  font-size: 13px;
+  color: var(--fnc-text-2);
+}
+.fnc-seg button[aria-checked='true'] { background: var(--fnc-bg); color: var(--fnc-text); font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+.fnc-seg-sm button { min-width: 36px; height: 26px; padding: 0 6px; font-size: 12px; }
+
+/* ── Compare legend rows ─────────────────────────────── */
+.fnc-cmp { display: flex; align-items: center; gap: 6px; min-height: 22px; font-size: 12px; color: var(--fnc-text-2); pointer-events: auto; }
+.fnc-cmp-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.fnc-cmp-name { color: var(--fnc-text); }
+.fnc-cmp b { color: var(--fnc-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.fnc-cmp .fnc-ind-btn { opacity: 0; }
+.fnc-cmp:hover .fnc-ind-btn, .fnc-cmp .fnc-ind-btn:focus-visible { opacity: 1; }
+@media (hover: none) { .fnc-cmp .fnc-ind-btn { opacity: 1; } }
+
+/* ── Replay ──────────────────────────────────────────── */
+.fnc-replay {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  transform: translateX(-50%);
+  border-radius: calc(var(--fnc-radius) + 4px);
+  background: var(--fnc-bg);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.12), 0 0 0 1px var(--fnc-border);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.fnc-replay .fnc-btn { width: 32px; height: 32px; }
+.fnc-replay .fnc-sep { height: 20px; margin: 0 2px; }
+.fnc-replay-hint { gap: 8px; padding: 4px 4px 4px 12px; font-size: 13px; color: var(--fnc-text); }
+.fnc-replay-hint svg { color: var(--fnc-text-2); }
+.fnc-replay-note { padding: 0 6px; font-size: 12px; color: var(--fnc-text-2); }
+
+/* Indicator picker search (shown when custom indicators make the list long) */
+.fnc-ind-search { height: 48px; padding: 0 16px; }
+.fnc-ind-search input { font-size: 15px; }
+
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 640px) {
+  .fnc-btn-compare, .fnc-btn-replay, .fnc-btn-undo { display: none; }
   .fnc-toolbar { padding: 0 4px; gap: 2px; }
   .fnc-toolbar .fnc-btn { width: 32px; height: 32px; }
   .fnc-toolbar .fnc-btn-wide, .fnc-toolbar .fnc-btn-label { width: auto; padding: 0 6px; }

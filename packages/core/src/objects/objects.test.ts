@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DrawingManager } from './drawings';
+import { DrawingManager, drawingRegistry, type DrawingDefinition } from './drawings';
 import { TradingLayer } from './trading';
 import type { PaneCoords } from './types';
 
@@ -8,6 +8,7 @@ const coords: PaneCoords = {
   plotWidth: 1000,
   height: 1000,
   timeToX: (t) => t / 100,
+  timeToIndex: (t) => t / 1000,
   pointAt: (x, y) => ({ time: Math.round(x / 10) * 1000, price: 1000 - y }),
   priceToY: (p) => 1000 - p,
   yToPrice: (y) => 1000 - y,
@@ -118,5 +119,56 @@ describe('snapToOhlc', () => {
     expect(snapToOhlc(bar, 390, priceToY)).toBe(120);
     expect(snapToOhlc(bar, 460, priceToY)).toBe(110);
     expect(snapToOhlc(bar, 540, priceToY)).toBe(90);
+  });
+});
+
+describe('custom drawing definitions', () => {
+  /** One click → entry, target 10 above, stop 5 below, 3 bars wide; target/stop share their time. */
+  const position: DrawingDefinition = {
+    type: 'position',
+    name: { ko: '포지션', en: 'Position' },
+    clicks: 1,
+    create: ([p]) => [p!, { time: p!.time + 3000, price: p!.price + 10 }, { time: p!.time + 3000, price: p!.price - 5 }],
+    constrain: (pts, i) => (i === 0 ? pts : pts.map((p, j) => (j === 0 ? p : { ...p, time: pts[i]!.time }))),
+    distance: (g, x, y) => Math.abs(y - g.points[0]![1]),
+    render: () => {},
+  };
+
+  it('expands clicks with create() and keeps points consistent with constrain()', () => {
+    const m = new DrawingManager(() => {}, drawingRegistry([position]));
+    m.setTool('position');
+    m.createAt(coords, 100, 500);
+    const d = m.drawings[0]!;
+    expect(d.points).toEqual([
+      { time: 10_000, price: 500 },
+      { time: 13_000, price: 510 },
+      { time: 13_000, price: 495 },
+    ]);
+    // Drag the stop handle (index 2) right: the target follows in time.
+    m.beginDrag(coords, d.id, 2, 130, 505);
+    m.dragTo(coords, 200, 505);
+    m.endDrag(true);
+    expect(m.drawings[0]!.points[1]!.time).toBe(20_000);
+  });
+
+  it('rejects unknown tools and keeps unknown saved drawings without drawing them', () => {
+    const m = new DrawingManager(() => {});
+    expect(() => m.setTool('position')).toThrow();
+    m.set([{ id: 'x', type: 'position', points: [{ time: 0, price: 1 }] }]);
+    expect(m.drawings).toHaveLength(1);
+    expect(m.hitTest(coords, 0, 999, 5)).toBeNull();
+  });
+});
+
+describe('TradingLayer alerts', () => {
+  it('drags alert lines like orders', () => {
+    const layer = new TradingLayer(() => {});
+    const onMove = vi.fn();
+    const handle = layer.addAlert({ price: 100, onMove });
+    expect(layer.hitTest((p) => 1000 - p, 500, 900, 5)).toEqual({ kind: 'order', id: handle.id, part: 'line' });
+    layer.beginDrag(handle.id);
+    layer.dragTo(110);
+    layer.endDrag();
+    expect(onMove).toHaveBeenCalledWith(110);
   });
 });

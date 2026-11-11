@@ -1,15 +1,16 @@
 import { Emitter } from './events';
 import { Interaction, type HitRegion, type InteractionHost } from './interaction';
 import { BarStore } from './model/bar-store';
-import { niceTicks, PriceScale } from './model/price-scale';
+import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/price-scale';
 import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale } from './model/time-format';
 import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleOptions } from './model/time-scale';
 import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price';
-import { INDICATORS, type IndicatorOutput, type IndicatorParams, type IndicatorType } from './indicators/definitions';
-import { IndicatorManager, type IndicatorConfig, type IndicatorPatch } from './indicators/manager';
-import { DrawingManager, type Drawing, type DrawingType } from './objects/drawings';
+import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorType } from './indicators/definitions';
+import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager';
+import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefinition, type DrawingType } from './objects/drawings';
 import {
   TradingLayer,
+  type AlertLineOptions,
   type ExecutionMarker,
   type LineHandle,
   type OrderLineOptions,
@@ -35,6 +36,7 @@ import {
   type Tooltip,
 } from './render/renderer';
 import { DAY_MS, isIntradayResolution, resolutionToMs } from './resolution';
+import { sessionStatus } from './session';
 import { lightTheme, type ThemeTokens } from './theme';
 import type { Bar, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, TickSize, Unsubscribe } from './types';
 
@@ -62,6 +64,32 @@ export interface ChartOptions {
   historyBatchSize?: number;
   /** The user's fills, positions and orders, synced per symbol. See TradingAdapter. */
   trading?: TradingAdapter;
+  /** Extra indicators (same shape as the built-ins). They appear in the widget's indicator picker. */
+  indicatorDefinitions?: readonly IndicatorDefinition[];
+  /** Extra drawing tools. They appear in the widget's drawing bar. */
+  drawingDefinitions?: readonly DrawingDefinition[];
+}
+
+/** A symbol overlaid for comparison. */
+export interface CompareInfo {
+  symbol: string;
+  /** Display name once resolved (the symbol until then). */
+  name: string;
+  color: string;
+  /** Bars are loaded. */
+  ready: boolean;
+}
+
+/** Bar replay: history is cut at a past bar and played forward. */
+export interface ReplayStatus {
+  /** Waiting for the user to click the bar to start from. */
+  selecting: boolean;
+  active: boolean;
+  playing: boolean;
+  /** Bars still hidden to the right. */
+  remaining: number;
+  /** Milliseconds between bars while playing. */
+  interval: number;
 }
 
 export interface ChartEvents {
@@ -94,6 +122,10 @@ export interface ChartEvents {
   /** Realtime connection state/latency reported by the datafeed. */
   connectionChange: ConnectionState;
   indicatorsChange: IndicatorConfig[];
+  /** Undo/redo availability changed (drawings and indicators are tracked). */
+  historyChange: { canUndo: boolean; canRedo: boolean };
+  comparesChange: CompareInfo[];
+  replayChange: ReplayStatus;
   error: unknown;
 }
 
@@ -138,11 +170,49 @@ const LABELS: Record<Locale, { high: string; low: string }> = {
 };
 
 const TRADING_LABELS: Record<Locale, TradingLabels> = {
-  ko: { buy: '매수', sell: '매도', position: '평균단가' },
-  en: { buy: 'Buy', sell: 'Sell', position: 'Avg' },
+  ko: { buy: '매수', sell: '매도', position: '평균단가', alert: '알림' },
+  en: { buy: 'Buy', sell: 'Sell', position: 'Avg', alert: 'Alert' },
 };
 
 const HIT_TOLERANCE = { mouse: 5, touch: 14 };
+const COMPARE_COLORS = ['#F06595', '#15AABF', '#FF9F0A', '#7048E8', '#12B886'];
+const MAX_COMPARES = COMPARE_COLORS.length;
+const HISTORY_LIMIT = 100;
+
+interface CompareEntry {
+  symbol: string;
+  info: SymbolInfo | null;
+  store: BarStore;
+  color: string;
+  unsubscribe: Unsubscribe | null;
+  loadingOlder: boolean;
+  noMoreOlder: boolean;
+  /** Closes aligned to the main bars (NaN before the compare's first bar). */
+  aligned: { key: string; values: Float64Array } | null;
+}
+
+/** "04:59", "1:04:59", "2d 04:59". */
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const two = (n: number) => String(n).padStart(2, '0');
+  if (d > 0) return `${d}d ${two(h)}:${two(m)}`;
+  return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${two(m)}:${two(s)}`;
+}
+
+function formatPercent(v: number, decimals: number): string {
+  const rounded = Number(v.toFixed(decimals));
+  return `${rounded > 0 ? '+' : ''}${rounded.toFixed(decimals)}%`;
+}
+
+/** First non-NaN value at or after `from`. */
+function firstFinite(values: Float64Array, from: number): number {
+  for (let i = Math.max(0, from); i < values.length; i++) if (!Number.isNaN(values[i]!)) return values[i]!;
+  return Number.NaN;
+}
 
 const TOOLTIP_LABELS: Record<Locale, { buy: string; sell: string; fills: (n: number) => string; price: string; avg: string; qty: string }> = {
   ko: { buy: '매수', sell: '매도', fills: (n) => `${n}건`, price: '체결가', avg: '평균가', qty: '수량' },
@@ -173,7 +243,7 @@ export class Chart {
   private readonly store = new BarStore();
   private readonly mainScale = new PriceScale({ top: 0.08, bottom: 0.08 });
   private readonly volumeScale = new PriceScale({ top: 0.2, bottom: 0 });
-  private readonly indicators = new IndicatorManager();
+  private readonly indicators: IndicatorManager;
   private readonly indicatorScales = new Map<string, PriceScale>();
   private readonly emitter = new Emitter<ChartEvents>();
   private readonly colors: ColorResolver;
@@ -228,6 +298,15 @@ export class Chart {
   private loadingHistory = false;
   private noMoreHistory = false;
   private historyRequestedFor = Number.NaN;
+  private countdownLabel: string | null = null;
+  /** Undo/redo of drawings + indicators, as JSON snapshots. */
+  private readonly history = { undo: [] as string[], redo: [] as string[], current: '', applying: false };
+  private readonly compares = new Map<string, CompareEntry>();
+  private compareVersion = 0;
+  /** Base bar index of the % axis and compare lines (the first visible bar). */
+  private percentBaseIndex = 0;
+  private replayState: { future: Bar[]; timer: ReturnType<typeof setInterval> | null; interval: number } | null = null;
+  private replaySelecting = false;
 
   constructor(container: HTMLElement, options: ChartOptions = {}) {
     this.theme = { ...lightTheme, ...options.theme };
@@ -261,11 +340,13 @@ export class Chart {
     container.appendChild(this.root);
 
     this.colors = new ColorResolver(probe);
+    this.indicators = new IndicatorManager(indicatorRegistry(options.indicatorDefinitions));
     this.drawings = new DrawingManager((change) => {
       this.invalidate();
       if (change === 'commit') {
         this.emitter.emit('drawingsChange', this.getDrawings());
         this.stateChanged();
+        this.recordHistory();
       }
       if (change === 'tool') this.emitter.emit('drawingToolChange', this.drawings.tool);
       if (change !== 'preview') {
@@ -273,7 +354,8 @@ export class Chart {
         const d = this.drawings.selected;
         this.emitter.emit('selectionChange', d ? { ...d, points: d.points.map((p) => ({ ...p })) } : null);
       }
-    });
+    }, drawingRegistry(options.drawingDefinitions));
+    this.history.current = this.historySnapshot();
     this.trading = new TradingLayer(() => this.invalidate());
     this.tradingSync = new TradingSync(this.trading, (error) => this.emitter.emit('error', error));
     this.tradingSync.adapter = options.trading ?? null;
@@ -284,12 +366,14 @@ export class Chart {
     this.observeSize();
     this.observeThemeVariables();
     this.observeKeyboard();
+    this.observeCountdown();
   }
 
   // ── Public API ──────────────────────────────────────────────────────
 
   /** Replaces all bars and scrolls to the latest. */
   setData(bars: readonly Bar[]): void {
+    this.endReplay(false);
     this.store.set(bars);
     this.timeScale.barCount = this.store.length;
     this.timeScale.rightOffset = this.timeScale.options.rightOffset;
@@ -303,6 +387,14 @@ export class Chart {
 
   /** Realtime tick: same time as the last bar updates it, a newer time appends a bar. */
   update(bar: Bar): void {
+    const replay = this.replayState;
+    if (replay && (replay.future.length > 0 || bar.time > (this.store.last()?.time ?? -Infinity))) {
+      // Replaying: live bars queue up behind the hidden ones.
+      const tail = replay.future[replay.future.length - 1];
+      if (tail && tail.time === bar.time) replay.future[replay.future.length - 1] = bar;
+      else if (!tail || bar.time > tail.time) replay.future.push(bar);
+      return;
+    }
     const result = this.store.upsert(bar);
     if (result === 'ignored') return;
     if (result === 'append') {
@@ -336,6 +428,7 @@ export class Chart {
     const feed = this.datafeed;
     if (!feed) throw new Error('funnest-charts: setSymbol() requires the `datafeed` option');
     const token = ++this.loadToken;
+    this.endReplay(false);
     this.unsubscribeBars?.();
     this.unsubscribeBars = null;
     // Same symbol at another interval: market stats (price, 24h, open interest, funding) don't
@@ -408,6 +501,8 @@ export class Chart {
           this.emitter.emit('quoteChange', this.latestQuote);
         }) ?? null;
     }
+    // Compared symbols follow the interval (and get bars covering the new history).
+    for (const entry of this.compares.values()) void this.reloadCompare(entry);
     this.emitter.emit('symbolChange', info);
     this.stateChanged();
   }
@@ -553,7 +648,7 @@ export class Chart {
    */
   private async resync(token: number): Promise<void> {
     const feed = this.datafeed;
-    if (!feed || !this.symbol || !this.resolution) return;
+    if (!feed || !this.symbol || !this.resolution || this.replayState) return;
     try {
       const to = Date.now();
       const result = await feed.getBars(this.symbol, this.resolution, {
@@ -618,6 +713,7 @@ export class Chart {
       indicators: this.getIndicators(),
       drawings: JSON.parse(JSON.stringify(drawings)) as Record<string, Drawing[]>,
       view: { barSpacing: this.timeScale.barSpacing, rightOffset: this.timeScale.rightOffset },
+      compares: [...this.compares.keys()],
     };
   }
 
@@ -643,6 +739,10 @@ export class Chart {
     this.timeScale.barSpacing = state.view.barSpacing;
     this.timeScale.rightOffset = state.view.rightOffset;
     this.timeScale.clamp();
+    const compares = state.compares ?? [];
+    for (const symbol of [...this.compares.keys()]) if (!compares.includes(symbol)) this.removeCompare(symbol);
+    if (this.datafeed) for (const symbol of compares) void this.addCompare(symbol);
+    this.resetHistory();
     this.invalidate();
     this.stateChanged();
   }
@@ -652,6 +752,8 @@ export class Chart {
     const list = this.drawingsBySymbol.get(symbol) ?? [];
     this.drawingsBySymbol.delete(symbol);
     this.drawings.set(list);
+    // Undo history belongs to one symbol's drawings.
+    this.resetHistory();
   }
 
   private stateChanged(): void {
@@ -752,7 +854,7 @@ export class Chart {
   /** Formatted indicator values at a bar index (default: the last bar), for legends. */
   indicatorLegend(index = this.store.length - 1): IndicatorLegendItem[] {
     return this.indicators.list.map((cfg) => {
-      const def = INDICATORS[cfg.type];
+      const def = this.indicators.def(cfg.type);
       const output = this.indicators.output(cfg, this.store.bars, this.dataVersion);
       const precision = output.precision ?? this.pricePrecision;
       return {
@@ -762,7 +864,7 @@ export class Chart {
         overlay: def.overlay,
         visible: cfg.visible !== false,
         values: output.series.filter((series) => series.visible).map((series) => {
-          const v = series.values[index];
+          const v = series.values[index - (series.shift ?? 0)];
           return {
             key: series.key,
             label: series.label,
@@ -778,7 +880,384 @@ export class Chart {
     this.invalidate();
     this.emitter.emit('indicatorsChange', this.getIndicators());
     this.stateChanged();
+    this.recordHistory();
   }
+
+  /** Built-in and custom indicators this chart can add. */
+  indicatorDefinitions(): IndicatorDefinition[] {
+    return [...this.indicators.registry.values()];
+  }
+
+  indicatorDefinition(type: IndicatorType): IndicatorDefinition | undefined {
+    return this.indicators.registry.get(type);
+  }
+
+  /** Built-in and custom drawing tools, in drawing-bar order. */
+  drawingDefinitions(): DrawingDefinition[] {
+    return [...this.drawings.registry.values()];
+  }
+
+  // ── Undo / redo ────────────────────────────────────────────────────
+
+  get canUndo(): boolean {
+    return this.history.undo.length > 0;
+  }
+
+  get canRedo(): boolean {
+    return this.history.redo.length > 0;
+  }
+
+  /** Reverts the last drawing or indicator change. */
+  undo(): void {
+    const previous = this.history.undo.pop();
+    if (previous === undefined) return;
+    this.history.redo.push(this.history.current);
+    this.applyHistory(previous);
+  }
+
+  redo(): void {
+    const next = this.history.redo.pop();
+    if (next === undefined) return;
+    this.history.undo.push(this.history.current);
+    this.applyHistory(next);
+  }
+
+  private historySnapshot(): string {
+    return JSON.stringify([this.drawings.drawings, this.indicators.list]);
+  }
+
+  private recordHistory(): void {
+    const h = this.history;
+    if (h.applying) return;
+    const next = this.historySnapshot();
+    if (next === h.current) return;
+    h.undo.push(h.current);
+    if (h.undo.length > HISTORY_LIMIT) h.undo.shift();
+    h.redo = [];
+    h.current = next;
+    this.emitHistory();
+  }
+
+  private resetHistory(): void {
+    this.history.undo = [];
+    this.history.redo = [];
+    this.history.current = this.historySnapshot();
+    this.emitHistory();
+  }
+
+  private applyHistory(snapshot: string): void {
+    const [drawings, indicators] = JSON.parse(snapshot) as [Drawing[], IndicatorConfig[]];
+    this.history.applying = true;
+    try {
+      this.drawings.set(drawings);
+      this.setIndicators(indicators);
+    } finally {
+      this.history.applying = false;
+    }
+    this.history.current = snapshot;
+    this.emitHistory();
+  }
+
+  private emitHistory(): void {
+    this.emitter.emit('historyChange', { canUndo: this.canUndo, canRedo: this.canRedo });
+  }
+
+  // ── Compare ────────────────────────────────────────────────────────
+
+  /**
+   * Overlays another symbol's closes as a line, rebased to the first visible bar. The price
+   * axis switches to % while any symbol is compared. Needs the `datafeed` option.
+   */
+  async addCompare(symbol: string): Promise<void> {
+    if (!this.datafeed) throw new Error('funnest-charts: addCompare() requires the `datafeed` option');
+    if (this.compares.has(symbol) || this.compares.size >= MAX_COMPARES || symbol === this.symbol?.symbol) return;
+    const used = new Set([...this.compares.values()].map((e) => e.color));
+    const entry: CompareEntry = {
+      symbol,
+      info: null,
+      store: new BarStore(),
+      color: COMPARE_COLORS.find((c) => !used.has(c)) ?? COMPARE_COLORS[0]!,
+      unsubscribe: null,
+      loadingOlder: false,
+      noMoreOlder: false,
+      aligned: null,
+    };
+    this.compares.set(symbol, entry);
+    this.comparesChanged();
+    await this.reloadCompare(entry);
+  }
+
+  removeCompare(symbol: string): void {
+    const entry = this.compares.get(symbol);
+    if (!entry) return;
+    entry.unsubscribe?.();
+    this.compares.delete(symbol);
+    this.comparesChanged();
+  }
+
+  getCompares(): CompareInfo[] {
+    return [...this.compares.values()].map((e) => ({
+      symbol: e.symbol,
+      name: e.info?.name ?? e.symbol,
+      color: e.color,
+      ready: e.store.length > 0,
+    }));
+  }
+
+  /** Each compared symbol's % change from the first visible bar, at `index` (default: the last bar). */
+  compareLegend(index = this.store.length - 1): (CompareInfo & { value: string })[] {
+    return this.getCompares().map((info) => {
+      const values = this.alignedCompare(this.compares.get(info.symbol)!);
+      const base = firstFinite(values, this.percentBaseIndex);
+      const v = values[index];
+      return { ...info, value: v === undefined || Number.isNaN(v) || !base ? '—' : formatPercent((v / base - 1) * 100, 2) };
+    });
+  }
+
+  private comparesChanged(): void {
+    this.compareVersion++;
+    this.invalidate();
+    this.emitter.emit('comparesChange', this.getCompares());
+    this.stateChanged();
+  }
+
+  /** (Re)loads a compared symbol's bars at the current resolution, back to the main series' first bar. */
+  private async reloadCompare(entry: CompareEntry): Promise<void> {
+    const feed = this.datafeed;
+    const resolution = this.resolution;
+    if (!feed || !resolution) return;
+    const token = this.loadToken;
+    const current = () => this.compares.get(entry.symbol) === entry && token === this.loadToken;
+    entry.unsubscribe?.();
+    entry.unsubscribe = null;
+    try {
+      const info = entry.info ?? (await feed.resolveSymbol(entry.symbol));
+      if (!current()) return;
+      entry.info = info;
+      const to = Date.now();
+      const from = this.store.first()?.time ?? to - resolutionToMs(resolution) * this.historyBatchSize;
+      const result = await feed.getBars(info, resolution, {
+        from,
+        to,
+        countBack: Math.max(this.historyBatchSize, this.store.length + 1),
+      });
+      if (!current()) return;
+      entry.store.set(result.bars);
+      entry.noMoreOlder = result.noMoreData;
+      entry.unsubscribe = feed.subscribeBars(
+        info,
+        resolution,
+        (bar) => {
+          if (!current()) return;
+          entry.store.upsert(bar);
+          this.compareVersion++;
+          this.invalidate();
+        },
+        () => {},
+      );
+      this.comparesChanged();
+      void this.loadOlderCompare(entry);
+    } catch (error) {
+      if (!current()) return;
+      this.removeCompare(entry.symbol);
+      this.emitter.emit('error', error);
+    }
+  }
+
+  /** Pages a compared symbol's history back until it covers the main series' first bar. */
+  private async loadOlderCompare(entry: CompareEntry): Promise<void> {
+    const feed = this.datafeed;
+    const first = entry.store.first();
+    const mainFirst = this.store.first();
+    if (!feed || !entry.info || !this.resolution || !first || !mainFirst) return;
+    if (entry.loadingOlder || entry.noMoreOlder || first.time <= mainFirst.time) return;
+    const token = this.loadToken;
+    entry.loadingOlder = true;
+    try {
+      const to = first.time - 1;
+      const result = await feed.getBars(entry.info, this.resolution, { from: mainFirst.time, to, countBack: this.historyBatchSize });
+      if (this.compares.get(entry.symbol) !== entry || token !== this.loadToken) return;
+      entry.store.prepend(result.bars);
+      entry.noMoreOlder = result.noMoreData || result.bars.length === 0;
+      this.compareVersion++;
+      this.invalidate();
+    } catch (error) {
+      this.emitter.emit('error', error);
+    } finally {
+      entry.loadingOlder = false;
+    }
+  }
+
+  /** Compare closes at each main bar (the compare bar at or before its time). */
+  private alignedCompare(entry: CompareEntry): Float64Array {
+    const key = `${this.dataVersion}:${this.compareVersion}`;
+    if (entry.aligned?.key === key) return entry.aligned.values;
+    const bars = this.store.bars;
+    const other = entry.store.bars;
+    const values = new Float64Array(bars.length).fill(Number.NaN);
+    let j = -1;
+    for (let i = 0; i < bars.length; i++) {
+      const t = bars[i]!.time;
+      while (j + 1 < other.length && other[j + 1]!.time <= t) j++;
+      if (j >= 0) values[i] = other[j]!.close;
+    }
+    entry.aligned = { key, values };
+    return values;
+  }
+
+  /** Compare lines in main-price space, each rebased so its first visible value sits on the main close there. */
+  private compareOverlays(baseIndex: number): IndicatorOutput[] {
+    const mainBase = this.store.bars[baseIndex]?.close;
+    if (mainBase === undefined) return [];
+    const out: IndicatorOutput[] = [];
+    for (const entry of this.compares.values()) {
+      if (entry.store.length === 0) continue;
+      const aligned = this.alignedCompare(entry);
+      const base = firstFinite(aligned, baseIndex);
+      if (!base) continue;
+      out.push({
+        series: [
+          {
+            key: entry.symbol,
+            label: entry.info?.name ?? entry.symbol,
+            values: aligned.map((v) => (mainBase * v) / base),
+            color: entry.color,
+            width: 2,
+            visible: true,
+            kind: 'line',
+          },
+        ],
+        precision: null,
+      });
+    }
+    return out;
+  }
+
+  // ── Replay ─────────────────────────────────────────────────────────
+
+  get replay(): ReplayStatus {
+    const r = this.replayState;
+    return {
+      selecting: this.replaySelecting,
+      active: r !== null,
+      playing: r?.timer != null,
+      remaining: r?.future.length ?? 0,
+      interval: r?.interval ?? 1000,
+    };
+  }
+
+  /** Arms start picking: the next click on the chart starts a replay from that bar. Esc cancels. */
+  setReplaySelecting(on: boolean): void {
+    if (on === this.replaySelecting) return;
+    if (on && this.drawings.tool) this.drawings.setTool(null);
+    this.replaySelecting = on;
+    this.invalidate(false);
+    this.emitReplay();
+  }
+
+  /** Hides every bar after `time` (UTC ms); reveal them with replayStep/replayPlay. */
+  startReplay(time: number): void {
+    const all = this.replayState ? [...this.store.bars, ...this.replayState.future] : [...this.store.bars];
+    let cut = -1;
+    while (cut + 1 < all.length && all[cut + 1]!.time <= time) cut++;
+    // Keep at least one bar visible and one to replay.
+    cut = Math.max(0, cut);
+    if (cut >= all.length - 1) return;
+    const interval = this.replayState?.interval ?? 1000;
+    this.stopReplayTimer();
+    this.replaySelecting = false;
+    this.replayState = { future: all.slice(cut + 1), timer: null, interval };
+    this.store.set(all.slice(0, cut + 1));
+    this.timeScale.barCount = this.store.length;
+    this.timeScale.rightOffset = Math.max(this.timeScale.options.rightOffset, 10);
+    this.timeScale.clamp();
+    this.mainScale.autoScale = true;
+    this.dataVersion++;
+    this.invalidate();
+    this.emitReplay();
+  }
+
+  /** Reveals the next `count` hidden bars. */
+  replayStep(count = 1): void {
+    const r = this.replayState;
+    if (!r) return;
+    for (let k = 0; k < count && r.future.length > 0; k++) {
+      this.store.upsert(r.future.shift()!);
+      if (this.timeScale.rightOffset < 0) this.timeScale.rightOffset -= 1;
+    }
+    this.timeScale.barCount = this.store.length;
+    this.dataVersion++;
+    if (r.future.length === 0) this.stopReplayTimer();
+    this.invalidate();
+    this.emitReplay();
+  }
+
+  /** Plays one bar every `interval` ms (default: the last speed used, initially 1000). */
+  replayPlay(interval?: number): void {
+    const r = this.replayState;
+    if (!r || r.future.length === 0) return;
+    if (interval !== undefined) r.interval = Math.max(16, interval);
+    if (r.timer) clearInterval(r.timer);
+    r.timer = setInterval(() => this.replayStep(), r.interval);
+    this.emitReplay();
+  }
+
+  /** Changes the playback speed (ms per bar), also while playing. */
+  setReplayInterval(interval: number): void {
+    const r = this.replayState;
+    if (!r) return;
+    r.interval = Math.max(16, interval);
+    if (r.timer) {
+      clearInterval(r.timer);
+      r.timer = setInterval(() => this.replayStep(), r.interval);
+    }
+    this.emitReplay();
+  }
+
+  replayPause(): void {
+    this.stopReplayTimer();
+    this.emitReplay();
+  }
+
+  /** Leaves replay and shows every bar again (including live ones that arrived meanwhile). */
+  stopReplay(): void {
+    this.endReplay(true);
+  }
+
+  private endReplay(restore: boolean): void {
+    const r = this.replayState;
+    const wasSelecting = this.replaySelecting;
+    this.replaySelecting = false;
+    if (!r) {
+      if (wasSelecting) {
+        this.invalidate(false);
+        this.emitReplay();
+      }
+      return;
+    }
+    this.stopReplayTimer();
+    this.replayState = null;
+    if (restore) {
+      for (const bar of r.future) this.store.upsert(bar);
+      this.timeScale.barCount = this.store.length;
+      this.timeScale.rightOffset = this.timeScale.options.rightOffset;
+      this.timeScale.clamp();
+      this.dataVersion++;
+      this.invalidate();
+    }
+    this.emitReplay();
+  }
+
+  private stopReplayTimer(): void {
+    const r = this.replayState;
+    if (r?.timer) clearInterval(r.timer);
+    if (r) r.timer = null;
+  }
+
+  private emitReplay(): void {
+    this.emitter.emit('replayChange', this.replay);
+  }
+
 
   private indicatorScale(id: string): PriceScale {
     let scale = this.indicatorScales.get(id);
@@ -807,6 +1286,11 @@ export class Chart {
   /** Pending order line. Pass `onMove` to make it draggable and `onCancel` for an × button. */
   addOrderLine(options: OrderLineOptions): LineHandle<OrderLineOptions> {
     return this.trading.addOrder(options);
+  }
+
+  /** Price alert line (dotted, gray, "알림" label). Pass `onMove` to make it draggable and `onCancel` for an ×. */
+  addAlertLine(options: AlertLineOptions): LineHandle<AlertLineOptions> {
+    return this.trading.addAlert(options);
   }
 
   /** Fill markers (▲ buy under the bar, ▼ sell above). Replaces the previous set. */
@@ -877,6 +1361,8 @@ export class Chart {
     this.loadToken++;
     this.unsubscribeBars?.();
     this.unsubscribeQuotes?.();
+    for (const entry of this.compares.values()) entry.unsubscribe?.();
+    this.stopReplayTimer();
     this.tradingSync.detach();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     this.interaction.destroy();
@@ -919,6 +1405,7 @@ export class Chart {
       formatCrosshairTime: (t) => this.formatter.crosshairLabel(t, this.isIntraday()),
       labels: LABELS[this.locale],
       chartType: this.chartType,
+      replaySelecting: this.replaySelecting,
       objects: {
         coords: this.paneCoords(),
         drawings: this.drawings,
@@ -946,6 +1433,7 @@ export class Chart {
       plotWidth: ts.width,
       height: scale.height,
       timeToX: (time) => ts.indexToX(this.store.indexFloatOfTime(time, interval)),
+      timeToIndex: (time) => this.store.indexFloatOfTime(time, interval),
       pointAt: (x, y) => {
         const index = Math.round(ts.xToIndexFloat(x));
         const bar = this.magnet ? this.store.at(index) : undefined;
@@ -958,7 +1446,8 @@ export class Chart {
       priceToY: (p) => scale.priceToY(p),
       yToPrice: (y) => scale.yToPrice(y),
       snapPrice: (p) => roundToTick(p, this.tickSize),
-      formatPrice: (p) => formatPrice(p, this.pricePrecision),
+      // Drawing and order badges follow the axis (a % axis labels them in %).
+      formatPrice: this.mainScale.mode === 'percent' ? this.mainValueFormat() : (p) => formatPrice(p, this.pricePrecision),
     };
   }
 
@@ -988,6 +1477,14 @@ export class Chart {
       return fill && shown(fill.upper) && shown(fill.lower) ? { ...out, series, fill } : { ...out, series };
     };
     const overlays = this.indicators.overlays.map((config) => ({ config, output: drawable(config) }));
+    // Comparing symbols only makes sense on a % axis.
+    const mode: PriceScaleMode = this.compares.size > 0 ? 'percent' : this.settingsValue.priceScale;
+    if (this.mainScale.mode !== mode) {
+      this.mainScale.mode = mode;
+      this.mainScale.autoScale = true;
+    }
+    let compareOverlays: IndicatorOutput[] = [];
+    this.countdownLabel = this.countdownText();
     const subPanes = indicatorPanes.map((config) => {
       const scale = this.indicatorScale(config.id);
       scale.height = indicatorHeight;
@@ -1019,18 +1516,14 @@ export class Chart {
       this.timeScale.width = Math.max(0, width - this.priceAxisWidth);
       this.timeScale.clamp();
       range = this.timeScale.visibleRange();
-      highLow = this.autoScale(range, overlays.map((o) => o.output));
+      this.percentBaseIndex = Math.max(0, range.from);
+      compareOverlays = this.compareOverlays(this.percentBaseIndex);
+      highLow = this.autoScale(range, [...overlays.map((o) => o.output), ...compareOverlays]);
       for (const pane of subPanes) this.autoScaleIndicator(pane.scale, pane.output, range);
 
-      const mid = (this.mainScale.min + this.mainScale.max) / 2;
       // Ticks span the pane's whole visible price range (margins and legend inset included),
       // so the grid covers the full background like TradingView, not just the data band.
-      priceTicks = niceTicks(
-        this.mainScale.yToPrice(mainHeight),
-        this.mainScale.yToPrice(0),
-        Math.max(2, Math.floor(mainHeight / PRICE_TICK_SPACING)),
-        resolveTickSize(this.tickSize, mid),
-      );
+      priceTicks = this.mainTicks(mainHeight);
       subTicks = subPanes.map((p) => {
         // Fixed-range indicators (RSI 0–100) keep labels inside their range.
         const [lo, hi] = p.output.range ?? [p.scale.yToPrice(indicatorHeight), p.scale.yToPrice(0)];
@@ -1040,7 +1533,10 @@ export class Chart {
       let labelWidth = 0;
       const measure = (text: string) => (labelWidth = Math.max(labelWidth, ctx.measureText(text).width));
       const last = this.store.last();
-      for (const v of last ? [...priceTicks, last.close] : priceTicks) measure(formatPrice(v, this.pricePrecision));
+      const tickLabel = this.mainTickFormat(priceTicks);
+      for (const v of priceTicks) measure(tickLabel(v));
+      if (last) measure(this.mainValueFormat()(last.close));
+      if (this.countdownLabel) measure(this.countdownLabel);
       subPanes.forEach((p, i) => subTicks[i]!.forEach((v) => measure(tickFormat(subTicks[i]!, p.output)(v))));
       const needed = Math.max(MIN_PRICE_AXIS_WIDTH, Math.ceil((labelWidth + 20) / 8) * 8);
       if (needed === this.priceAxisWidth) break;
@@ -1056,7 +1552,8 @@ export class Chart {
         height: mainHeight,
         scale: this.mainScale,
         ticks: priceTicks,
-        format: (v) => formatPrice(roundToTick(v, this.tickSize), this.pricePrecision),
+        format: this.mainValueFormat(),
+        tickFormat: this.mainTickFormat(priceTicks),
       },
     ];
     let top = mainHeight;
@@ -1099,11 +1596,68 @@ export class Chart {
       timeTicks: computeTimeTicks(this.store.bars, this.timeScale, this.formatter, TIME_LABEL_MIN_GAP),
       highLow,
       settings: this.settingsValue,
-      overlays: overlays.map((o) => o.output),
+      overlays: [...overlays.map((o) => o.output), ...compareOverlays],
       palette: this.resolvePalette(),
       font,
       radius: this.theme.radius,
+      countdown: this.countdownLabel,
     };
+  }
+
+  /** Price-pane tick values for the current axis mode. */
+  private mainTicks(height: number): number[] {
+    const s = this.mainScale;
+    const lo = s.yToPrice(height);
+    const hi = s.yToPrice(0);
+    const count = Math.max(2, Math.floor(height / PRICE_TICK_SPACING));
+    const minStep = resolveTickSize(this.tickSize, (lo + hi) / 2);
+    if (s.mode === 'log') return logTicks(s, PRICE_TICK_SPACING, minStep);
+    if (s.mode === 'percent') {
+      const base = this.percentBase();
+      const pct = (p: number) => (p / base - 1) * 100;
+      return niceTicks(pct(lo), pct(hi), count).map((t) => base * (1 + t / 100));
+    }
+    return niceTicks(lo, hi, count, minStep);
+  }
+
+  private percentBase(): number {
+    return this.store.at(this.percentBaseIndex)?.close || 1;
+  }
+
+  /** Price-axis tick labels: prices, or "+2.5%" on a % axis (decimals follow the step). */
+  private mainTickFormat(ticks: readonly number[]): (v: number) => string {
+    if (this.mainScale.mode !== 'percent') return (v) => formatPrice(v, this.pricePrecision);
+    const base = this.percentBase();
+    const step = ticks.length > 1 ? (Math.abs(ticks[1]! - ticks[0]!) / base) * 100 : 1;
+    const decimals = Math.min(2, decimalsOf(Number(step.toPrecision(6))));
+    return (v) => formatPercent((v / base - 1) * 100, decimals);
+  }
+
+  /** Crosshair and last-price label of the price pane. */
+  private mainValueFormat(): (v: number) => string {
+    if (this.mainScale.mode !== 'percent') return (v) => formatPrice(roundToTick(v, this.tickSize), this.pricePrecision);
+    const base = this.percentBase();
+    return (v) => formatPercent((v / base - 1) * 100, 2);
+  }
+
+  /** Time left in the last bar, when it's still forming (null otherwise). */
+  private countdownText(now = Date.now()): string | null {
+    const s = this.settingsValue;
+    const last = this.store.last();
+    const info = this.symbol;
+    if (!s.countdown || !s.lastPriceLine || this.replayState || !this.resolution || !info || !last) return null;
+    let end: number | null = null;
+    if (isIntradayResolution(this.resolution)) {
+      end = last.time + resolutionToMs(this.resolution);
+    } else if (resolutionToMs(this.resolution) === DAY_MS) {
+      if (info.session.trim().toLowerCase() === '24x7') end = last.time + DAY_MS;
+      else {
+        // A session market's daily bar closes with the session — while today's bar is the last one.
+        const status = sessionStatus(info.session, info.timezone, now);
+        end = status.open && now - last.time < DAY_MS ? status.nextChange : null;
+      }
+    }
+    return end !== null && end > now ? formatCountdown(end - now) : null;
   }
 
   /** Auto-scales the price pane to visible candles and overlay indicators; returns the candle extremes. */
@@ -1131,8 +1685,9 @@ export class Chart {
       let max = high;
       for (const output of overlays) {
         for (const series of output.series) {
+          const shift = series.shift ?? 0;
           for (let i = range.from; i <= range.to; i++) {
-            const v = series.values[i]!;
+            const v = series.values[i - shift]!;
             if (v < min) min = v;
             if (v > max) max = v;
           }
@@ -1157,8 +1712,9 @@ export class Chart {
         min = Math.min(min, 0);
         max = Math.max(max, 0);
       }
+      const shift = series.shift ?? 0;
       for (let i = range.from; i <= range.to; i++) {
-        const v = series.values[i]!;
+        const v = series.values[i - shift]!;
         if (v < min) min = v;
         if (v > max) max = v;
       }
@@ -1236,6 +1792,7 @@ export class Chart {
         this.prependData(result.bars, { noMoreData: result.noMoreData || result.bars.length === 0 });
         const first = this.store.first();
         if (first) void this.tradingSync.loadOlder(first.time);
+        for (const entry of this.compares.values()) void this.loadOlderCompare(entry);
       })
       .catch((error: unknown) => this.emitter.emit('error', error))
       .finally(() => {
@@ -1357,7 +1914,7 @@ export class Chart {
       },
       resetView: () => this.resetView(),
 
-      toolActive: () => this.drawings.tool !== null && this.store.length > 0,
+      toolActive: () => (this.drawings.tool !== null || this.replaySelecting) && this.store.length > 0,
       hitObject: (x, y, touch) => {
         if (y > this.mainScale.height) return null;
         const tolerance = touch ? HIT_TOLERANCE.touch : HIT_TOLERANCE.mouse;
@@ -1366,9 +1923,20 @@ export class Chart {
           this.drawings.hitTest(this.paneCoords(), x, y, tolerance)
         );
       },
-      drawAt: (x, y) => this.drawings.createAt(this.paneCoords(), x, y),
-      drawPreview: (x, y) => this.drawings.previewAt(this.paneCoords(), x, y),
-      drawRelease: (x, y, moved) => this.drawings.releaseAt(this.paneCoords(), x, y, moved),
+      drawAt: (x, y) => {
+        if (this.replaySelecting) {
+          const bars = this.store.bars;
+          this.startReplay(bars[Math.min(bars.length - 1, Math.max(0, this.timeScale.xToIndex(x)))]!.time);
+          return;
+        }
+        this.drawings.createAt(this.paneCoords(), x, y);
+      },
+      drawPreview: (x, y) => {
+        if (!this.replaySelecting) this.drawings.previewAt(this.paneCoords(), x, y);
+      },
+      drawRelease: (x, y, moved) => {
+        if (!this.replaySelecting) this.drawings.releaseAt(this.paneCoords(), x, y, moved);
+      },
       objectDown: (hit, x, y) => {
         this.objectDrag = hit;
         if (hit.kind === 'drawing') this.drawings.beginDrag(this.paneCoords(), hit.id, hit.part, x, y);
@@ -1404,7 +1972,9 @@ export class Chart {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
-      if (e.key === 'Escape' && (this.drawings.tool || this.drawings.selectedId)) {
+      if (e.key === 'Escape' && this.replaySelecting) {
+        this.setReplaySelecting(false);
+      } else if (e.key === 'Escape' && (this.drawings.tool || this.drawings.selectedId)) {
         this.drawings.cancel();
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && this.drawings.selectedId) {
         e.preventDefault();
@@ -1416,6 +1986,15 @@ export class Chart {
   }
 
   // ── Environment observers ──────────────────────────────────────────
+
+  /** Repaints when the bar-close countdown ticks over (once a second, only while it shows or changes). */
+  private observeCountdown(): void {
+    const timer = setInterval(() => {
+      if (this.destroyed || document.hidden) return;
+      if (this.countdownText() !== this.countdownLabel) this.invalidate();
+    }, 1000);
+    this.cleanups.push(() => clearInterval(timer));
+  }
 
   private observeSize(): void {
     const apply = (width: number, height: number) => {

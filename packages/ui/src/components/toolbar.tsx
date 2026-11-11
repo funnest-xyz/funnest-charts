@@ -1,7 +1,20 @@
 /** @jsxImportSource preact */
 import type { WidgetContext } from '../context';
 import { STRINGS } from '../i18n';
-import { CameraIcon, ChevronDownIcon, CollapseIcon, ExpandIcon, IndicatorIcon, PencilIcon, SearchIcon, SettingsIcon } from '../icons';
+import {
+  CameraIcon,
+  ChevronDownIcon,
+  CollapseIcon,
+  CompareIcon,
+  ExpandIcon,
+  IndicatorIcon,
+  PencilIcon,
+  RedoIcon,
+  ReplayIcon,
+  SearchIcon,
+  SettingsIcon,
+  UndoIcon,
+} from '../icons';
 import { useStore } from '../store';
 import { ChartTypeMenu } from './chart-type-menu';
 import { Dialogs } from './indicator-dialogs';
@@ -15,6 +28,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = STRINGS[s.locale];
   const canSearch = typeof ctx.datafeed.searchSymbols === 'function';
+  const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
   return (
     <div class="fnc-toolbar" role="toolbar">
@@ -23,7 +37,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
         disabled={!canSearch}
         data-tip={canSearch ? t.searchSymbol : undefined}
         aria-haspopup="dialog"
-        onClick={() => ctx.setSearchOpen(true)}
+        onClick={() => ctx.setSearchOpen(true, 'symbol')}
       >
         {ctx.showLogo && s.symbol ? (
           <SymbolAvatar info={s.symbol} size={24} />
@@ -63,6 +77,27 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           <IndicatorIcon />
           <span>{t.indicators}</span>
         </button>
+        {canSearch && (
+          <button
+            class="fnc-btn fnc-btn-compare"
+            data-tip={t.compareSymbol}
+            aria-label={t.compareSymbol}
+            aria-haspopup="dialog"
+            disabled={s.compares.length >= 5}
+            onClick={() => ctx.setSearchOpen(true, 'compare')}
+          >
+            <CompareIcon />
+          </button>
+        )}
+        <button
+          class="fnc-btn fnc-btn-replay"
+          data-tip={s.replay.selecting ? t.replayPick : t.replay}
+          aria-label={t.replay}
+          aria-pressed={s.replay.selecting || s.replay.active}
+          onClick={() => (s.replay.active ? ctx.chart.stopReplay() : ctx.chart.setReplaySelecting(!s.replay.selecting))}
+        >
+          <ReplayIcon />
+        </button>
         {ctx.multi && <LayoutMenu ctx={ctx} multi={ctx.multi} />}
       </div>
       <div class="fnc-sep" />
@@ -78,6 +113,12 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           <PencilIcon />
         </button>
       )}
+      <button class="fnc-btn fnc-btn-undo" data-tip={`${t.undo} (${mod}+Z)`} aria-label={t.undo} disabled={!s.canUndo} onClick={() => ctx.chart.undo()}>
+        <UndoIcon />
+      </button>
+      <button class="fnc-btn fnc-btn-undo" data-tip={`${t.redo} (${mod}+Shift+Z)`} aria-label={t.redo} disabled={!s.canRedo} onClick={() => ctx.chart.redo()}>
+        <RedoIcon />
+      </button>
       <Slot el={ctx.slots.toolbarEnd} fixed />
       <button
         class="fnc-btn fnc-btn-settings"

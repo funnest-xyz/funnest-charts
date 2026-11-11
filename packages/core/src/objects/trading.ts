@@ -26,6 +26,17 @@ export interface OrderLineOptions {
   onCancel?: () => void;
 }
 
+/** A price alert shown as a dotted line with a bell label. The alert logic itself is yours. */
+export interface AlertLineOptions {
+  price: number;
+  /** Overrides the default "알림" / "Alert" text. */
+  label?: string;
+  /** Called when the user drags the line; same contract as OrderLineOptions.onMove. */
+  onMove?: (price: number) => void | boolean | Promise<void | boolean>;
+  /** Shows an × button on the label. */
+  onCancel?: () => void;
+}
+
 export interface ExecutionMarker {
   time: number;
   price: number;
@@ -57,16 +68,21 @@ export interface TradingLabels {
   buy: string;
   sell: string;
   position: string;
+  alert: string;
 }
+
+type LineEntry = OrderLineOptions & { alert?: boolean };
 
 const LABEL_X = 12;
 const LABEL_HEIGHT = 20;
 const ORDER_DASH: readonly [number, number] = [6, 4];
+const ALERT_DASH: readonly [number, number] = [2, 3];
 
 /** Position (average price) lines, draggable order lines and execution markers. */
 export class TradingLayer {
   private readonly positions = new Map<string, PositionLineOptions>();
-  private readonly orders = new Map<string, OrderLineOptions>();
+  /** Order lines and alert lines (same dragging and × behavior). */
+  private readonly orders = new Map<string, LineEntry>();
   private executions: ExecutionMarker[] = [];
   private labelRects = new Map<string, { label: Rect; cancel: Rect | null }>();
   private drag: { id: string; price: number } | null = null;
@@ -86,6 +102,13 @@ export class TradingLayer {
     this.orders.set(id, { ...options });
     this.onChange();
     return this.handle(id, this.orders);
+  }
+
+  addAlert(options: AlertLineOptions): LineHandle<AlertLineOptions> {
+    const id = newId('alert');
+    this.orders.set(id, { ...options, quantity: 0, side: 'buy', alert: true });
+    this.onChange();
+    return this.handle(id, this.orders) as LineHandle<AlertLineOptions>;
   }
 
   setExecutions(markers: readonly ExecutionMarker[]): void {
@@ -258,12 +281,13 @@ export class TradingLayer {
     for (const [id, order] of this.orders) {
       const price = this.drag?.id === id ? this.drag.price : order.price;
       const y = c.priceToY(price);
-      const color = order.side === 'buy' ? palette.up : palette.down;
+      const color = order.alert ? palette.textSecondary : order.side === 'buy' ? palette.up : palette.down;
       badges.push({ y, text: c.formatPrice(price), bg: color, fg: '#FFFFFF' });
       if (!visible(y)) continue;
-      p.hLine(y, 0, c.plotWidth, color, ORDER_DASH);
-      const side = order.side === 'buy' ? labels.buy : labels.sell;
-      const main = [side, order.label, String(order.quantity)].filter(Boolean).join(' ');
+      p.hLine(y, 0, c.plotWidth, color, order.alert ? ALERT_DASH : ORDER_DASH);
+      const main = order.alert
+        ? (order.label ?? labels.alert)
+        : [order.side === 'buy' ? labels.buy : labels.sell, order.label, String(order.quantity)].filter(Boolean).join(' ');
       const segments: PillSegment[] = [{ text: main, bg: color, fg: '#FFFFFF' }];
       if (order.onCancel) segments.push({ text: '×', bg: color, fg: '#FFFFFF', padding: 7 });
       const rects = p.pill(segments, LABEL_X, y, LABEL_HEIGHT);

@@ -60,6 +60,8 @@ export interface Frame {
   palette: Palette;
   font: string;
   radius: number;
+  /** Time left in the current bar ("04:59"), shown under the last-price badge. */
+  countdown: string | null;
 }
 
 export interface CrosshairInfo {
@@ -92,6 +94,8 @@ export interface RenderModel {
   formatCrosshairTime(time: number): string;
   labels: { high: string; low: string };
   chartType: ChartType;
+  /** Replay start picking: the area right of the crosshair is shaded. */
+  replaySelecting?: boolean;
   objects: {
     coords: PaneCoords;
     drawings: DrawingManager;
@@ -189,31 +193,45 @@ function drawLineSeries(ctx: CanvasRenderingContext2D, m: RenderModel, pane: Pan
 function drawIndicator(ctx: CanvasRenderingContext2D, p: Painter, m: RenderModel, pane: PaneFrame, output: IndicatorOutput): void {
   const { timeScale, frame } = m;
   const pal = frame.palette;
-  const from = Math.max(0, frame.range.from - 1);
-  const to = Math.min(m.bars.length - 1, frame.range.to + 1);
-  if (to < from) return;
+  const n = m.bars.length;
+  if (frame.range.to < frame.range.from) return;
+  /** Data indices to draw for a series shifted right by `shift` bars (into the empty space past the last bar). */
+  const span = (shift: number): [number, number] => {
+    const lastX = Math.ceil(timeScale.xToIndexFloat(frame.plotWidth)) + 1;
+    return [Math.max(0, frame.range.from - 1 - shift), Math.min(n - 1, (shift > 0 ? lastX : frame.range.to + 1) - shift)];
+  };
+  const [from, to] = span(0);
   const yOf = (v: number) => pane.top + pane.scale.priceToY(v);
-  const byKey = (key: string) => output.series.find((s) => s.key === key)?.values;
+  const byKey = (key: string) => output.series.find((s) => s.key === key);
 
   for (const level of output.levels ?? []) p.hLine(yOf(level), 0, frame.plotWidth, pal.textSecondary, [3, 4]);
 
   if (output.fill) {
-    const upper = byKey(output.fill.upper);
-    const lower = byKey(output.fill.lower);
-    if (upper && lower) {
+    const upperSeries = byKey(output.fill.upper);
+    const lower = byKey(output.fill.lower)?.values;
+    if (upperSeries && lower) {
+      const upper = upperSeries.values;
+      const shift = upperSeries.shift ?? 0;
+      const [f0, f1] = span(shift);
+      const { color, downColor } = output.fill;
+      const sideOf = (j: number) => (downColor && lower[j]! > upper[j]! ? 1 : 0);
+      const valid = (j: number) => !Number.isNaN(upper[j]!) && !Number.isNaN(lower[j]!);
       ctx.save();
       ctx.globalAlpha = 0.07;
-      ctx.fillStyle = output.fill.color;
-      // One polygon per contiguous run of valid values.
-      let i = from;
-      while (i <= to) {
-        while (i <= to && (Number.isNaN(upper[i]!) || Number.isNaN(lower[i]!))) i++;
+      // One polygon per contiguous run of valid values on the same side (cloud color flips).
+      let i = f0;
+      while (i <= f1) {
+        while (i <= f1 && !valid(i)) i++;
         const start = i;
-        while (i <= to && !Number.isNaN(upper[i]!) && !Number.isNaN(lower[i]!)) i++;
-        if (i - start < 2) continue;
+        const side = valid(i) ? sideOf(i) : 0;
+        while (i <= f1 && valid(i) && sideOf(i) === side) i++;
+        // Overlap one bar into the next run so there's no gap where the color flips.
+        const end = i <= f1 && valid(i) ? i + 1 : i;
+        if (end - start < 2) continue;
+        ctx.fillStyle = side ? downColor! : color;
         ctx.beginPath();
-        for (let j = start; j < i; j++) ctx.lineTo(timeScale.indexToX(j), yOf(upper[j]!));
-        for (let j = i - 1; j >= start; j--) ctx.lineTo(timeScale.indexToX(j), yOf(lower[j]!));
+        for (let j = start; j < end; j++) ctx.lineTo(timeScale.indexToX(j + shift), yOf(upper[j]!));
+        for (let j = end - 1; j >= start; j--) ctx.lineTo(timeScale.indexToX(j + shift), yOf(lower[j]!));
         ctx.closePath();
         ctx.fill();
       }
@@ -251,13 +269,15 @@ function drawIndicator(ctx: CanvasRenderingContext2D, p: Painter, m: RenderModel
     ctx.lineWidth = series.width;
     ctx.beginPath();
     let pen = false;
-    for (let i = from; i <= to; i++) {
+    const shift = series.shift ?? 0;
+    const [s0, s1] = span(shift);
+    for (let i = s0; i <= s1; i++) {
       const v = series.values[i]!;
       if (Number.isNaN(v)) {
         pen = false;
         continue;
       }
-      const x = timeScale.indexToX(i);
+      const x = timeScale.indexToX(i + shift);
       if (pen) ctx.lineTo(x, yOf(v));
       else ctx.moveTo(x, yOf(v));
       pen = true;
@@ -416,8 +436,8 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   for (const price of f.priceTicks) {
     const y = main.scale.priceToY(price);
     if (y < 8 || y > main.height - 8) continue;
-    if (last && Math.abs(y - lastY) < BADGE_HEIGHT) continue;
-    p.text(m.formatPrice(price), labelX, y, pal.textSecondary);
+    if (last && y > lastY - BADGE_HEIGHT && y < lastY + (f.countdown ? BADGE_HEIGHT * 2 - 4 : BADGE_HEIGHT)) continue;
+    p.text((main.tickFormat ?? m.formatPrice)(price), labelX, y, pal.textSecondary);
   }
 
   // Indicator pane axis labels
@@ -439,9 +459,17 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
 
   // Last price badge (on top: the most important number on the axis)
   if (last && lastY >= 0 && lastY <= main.height) {
-    const y = Math.min(main.height - BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, lastY));
-    p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, lastColor);
-    p.text(m.formatPrice(last.close), labelX, y, '#FFFFFF');
+    // With a countdown the badge grows downward: price on top, time left below.
+    const h = f.countdown ? BADGE_HEIGHT * 2 - 4 : BADGE_HEIGHT;
+    const y = Math.min(main.height - h + BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, lastY));
+    p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, h, 4, lastColor);
+    p.text(main.format(last.close), labelX, y, '#FFFFFF');
+    if (f.countdown) {
+      p.ctx.save();
+      p.ctx.globalAlpha = 0.85;
+      p.text(f.countdown, labelX, y + BADGE_HEIGHT - 4, '#FFFFFF');
+      p.ctx.restore();
+    }
   }
 
   // Time axis labels
@@ -485,6 +513,15 @@ export function drawOverlay(layer: CanvasLayer, m: RenderModel, ch: CrosshairInf
   ctx.font = f.font;
   if (tooltip) drawTooltip(p, f, tooltip);
   if (!ch) return;
+
+  if (m.replaySelecting) {
+    // Everything right of the pointer is what the replay will hide.
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = pal.text;
+    ctx.fillRect(ch.x, 0, f.plotWidth - ch.x, f.panesHeight);
+    ctx.restore();
+  }
 
   p.vLine(ch.x, 0, f.panesHeight, pal.crosshair, DASH);
   if (ch.source !== 'sync') drawCrosshairValue(p, m, ch);

@@ -2,11 +2,13 @@ import type {
   Chart,
   ChartLayout,
   ChartType,
+  CompareInfo,
   Datafeed,
   Drawing,
   DrawingType,
   IndicatorConfig,
   Locale,
+  ReplayStatus,
   Resolution,
   SymbolInfo,
 } from '@funnest/charts';
@@ -23,6 +25,8 @@ export interface UiState {
   atRealtime: boolean;
   fullscreen: boolean;
   searchOpen: boolean;
+  /** What a pick in the symbol search does: switch the symbol, or add it as a comparison. */
+  searchTarget: 'symbol' | 'compare';
   chartType: ChartType;
   drawingTool: DrawingType | null;
   selection: Drawing | null;
@@ -37,6 +41,10 @@ export interface UiState {
   favoriteIntervals: Resolution[];
   /** Desktop: the left drawing bar folded away (a small tab brings it back). */
   drawbarCollapsed: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  compares: CompareInfo[];
+  replay: ReplayStatus;
 }
 
 export interface IntervalGroup {
@@ -72,7 +80,7 @@ export interface WidgetContext {
   selectSymbol(symbol: string): void;
   selectResolution(resolution: Resolution): void;
   toggleFavoriteInterval(resolution: Resolution): void;
-  setSearchOpen(open: boolean): void;
+  setSearchOpen(open: boolean, target?: 'symbol' | 'compare'): void;
   screenshot(): void;
   toggleFullscreen(): void;
   /** Present in the multi-chart widget: split layout and sync controls for the toolbar. */

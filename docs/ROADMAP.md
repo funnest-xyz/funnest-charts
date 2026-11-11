@@ -27,6 +27,22 @@
 | 관심종목, 알림, 레이아웃 서버 저장 | 사이트 | 계정·서버가 필요 |
 | 다중 차트(분할 화면) — 2026-11-11 재분류 | 라이브러리 (0.5 `createMultiChart`/`FnMultiChart`) | 화면 분할·동기화는 서버 없이 동작하는 범용 UI. 서버 저장만 사이트 |
 
+## 2-1. 2026-11-11 요청 분류 (0.6)
+
+| 요청 | 위치 | 이유 |
+|---|---|---|
+| 지표 6개(스토캐스틱, DMI/ADX, ATR, OBV, VWAP, 일목균형표) | **사이트 전용** (funnest `apps/app/lib/chart-plugins`) | 라이브러리가 무거워지지 않게. 라이브러리에는 끼워 넣는 자리(`indicatorDefinitions`)만 |
+| 그리기 도구 7개(반직선, 평행 채널, 수직선, 사각형, 가격·기간 측정, 롱/숏 포지션) | **사이트 전용** (같은 폴더) | 같은 이유. 라이브러리는 `drawingDefinitions` + 그리기 바의 그룹 메뉴만 |
+| 가격 축 일반/로그/% | 라이브러리 | 엔진 좌표계 기능 |
+| 봉 마감 카운트다운 | 라이브러리 | 해상도·세션만으로 계산 (거래소 무관) |
+| 되돌리기/다시 실행 | 라이브러리 | 그리기·지표 상태 스냅샷. Ctrl/⌘+Z, Ctrl+Shift+Z, Ctrl+Y |
+| 종목 비교 | 라이브러리 | Datafeed 인터페이스만 사용 |
+| 바 리플레이 | 라이브러리 | 엔진의 데이터 창을 자르는 기능 |
+| 가격 알림 | 사이트 (라이브러리는 `addAlertLine` 표시만) | 저장·감시·알림 발송은 서비스 몫. 계정 생기면 서버에서 감시 |
+| 호가·체결·주문 패널 | 사이트 | 거래소 데이터 연결. 체결은 0.6 시점에 `호가 | 체결` 탭으로 추가 |
+
+0.6에서 늘어난 배포 크기(gzip): core 37.5 → 43.5KB, ui 39.3 → 42.9KB.
+
 ## 3. WebGL2 전환에 대한 판단
 
 **결론: 지금 엔진을 WebGL2로 바꾸지 않는다. 대신 렌더러를 플러그인으로 교체 가능하게 만들고, WebGL2가 실제로 필요한 기능에만 쓴다.**
@@ -50,6 +66,9 @@
 
 - ✅ 0.5: 분할 화면(1~8칸, 12가지 모양, 활성 칸, 경계 끌기, 크게 보기, 좁은 화면은 칸 탭). 동기화는 십자선·시간 범위·종목·주기. 엔진 `setSyncedCrosshair`·`getVisibleTimeRange`·`setVisibleTimeRange`. 슬롯 `bottom`(그리기 도구 오른쪽, 차트 아래). 차트 설정 '확대·이동 버튼'.
 - 다음: 칸 사이 그리기 공유, 색 링크 그룹(일부 칸만 묶기).
+
+- ✅ 0.6: 플러그인 지표·그리기(`indicatorDefinitions`/`drawingDefinitions`, 그리기 바 그룹 메뉴, 지표 검색), 가격 축 일반/로그/%, 봉 마감 카운트다운, 되돌리기, 종목 비교(최대 5개, % 축), 바 리플레이(시작 봉 고르기·재생·한 봉씩·속도), 알림선(`addAlertLine`), 툴바가 위젯 폭에 맞춰 버튼을 접음(container query).
+- 다음: 텍스트·화살표 그리기, 알림 서버 감시(계정), 리플레이 중 모의 주문.
 
 - ✅ `@funnest/charts-viz` + React SVG 차트 컴포넌트 12종 (CartesianChart, XAxis, YAxis, LineChart, AreaChart, BarChart, PercentageBarChart, Scrubber, ReferenceLine, Point, Legend, PeriodSelector). Sparkline은 작은 LineChart로 대체.
 - ✅ 문서: 사이트 안 `/docs` (시작하기 4쪽 + 컴포넌트 13쪽, 라이브 데모·코드·속성 표). GitBook 대신 사이트 내장 — 예제가 실제로 동작해야 해서.

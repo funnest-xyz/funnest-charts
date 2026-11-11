@@ -1,5 +1,6 @@
 import type { Drawing } from './objects/drawings';
 import type { IndicatorConfig } from './indicators/manager';
+import type { PriceScaleMode } from './model/price-scale';
 import type { ChartType } from './render/renderer';
 import type { Resolution } from './types';
 
@@ -15,6 +16,10 @@ export interface ChartSettings {
   volume: boolean;
   /** Zoom/scroll buttons at the bottom center of the chart (@funnest/charts-ui). */
   navigationButtons: boolean;
+  /** Price axis: linear prices, log scale, or % change from the first visible bar. Comparing symbols forces '%'. */
+  priceScale: PriceScaleMode;
+  /** Time left until the current bar closes, under the last-price badge. */
+  countdown: boolean;
   /** Up/down candle colors; null follows the theme. */
   upColor: string | null;
   downColor: string | null;
@@ -27,6 +32,8 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   gridVertical: true,
   volume: true,
   navigationButtons: true,
+  priceScale: 'normal',
+  countdown: true,
   upColor: null,
   downColor: null,
 };
@@ -46,6 +53,8 @@ export interface ChartState {
   /** Drawings keyed by symbol ('' when the chart has no symbol, e.g. manual data). */
   drawings: Record<string, Drawing[]>;
   view: { barSpacing: number; rightOffset: number };
+  /** Symbols overlaid for comparison (see `Chart.addCompare`). */
+  compares?: string[];
 }
 
 const CHART_TYPES: readonly ChartType[] = ['candles', 'line', 'area'];
@@ -62,6 +71,7 @@ export function parseChartState(input: unknown): ChartState {
     settings: { ...DEFAULT_CHART_SETTINGS, ...(s.settings ?? {}) },
     indicators: Array.isArray(s.indicators) ? s.indicators : [],
     drawings: s.drawings && typeof s.drawings === 'object' ? s.drawings : {},
+    compares: Array.isArray(s.compares) ? s.compares.filter((x): x is string => typeof x === 'string') : [],
     view: {
       barSpacing: Number(s.view?.barSpacing) || 8,
       rightOffset: Number.isFinite(Number(s.view?.rightOffset)) ? Number(s.view?.rightOffset) : 5,

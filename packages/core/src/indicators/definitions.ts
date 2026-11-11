@@ -2,7 +2,10 @@ import type { Locale } from '../model/time-format';
 import type { Bar } from '../types';
 import { bollinger, ema, macd, rsi, sma } from './math';
 
-export type IndicatorType = 'ma' | 'ema' | 'bb' | 'rsi' | 'macd';
+/** Built-in indicators. */
+export type BuiltinIndicatorType = 'ma' | 'ema' | 'bb' | 'rsi' | 'macd';
+/** A built-in type, or the `type` of a definition passed in `ChartOptions.indicators`. */
+export type IndicatorType = BuiltinIndicatorType | (string & {});
 
 /** Which price an indicator reads from each bar. */
 export type PriceSource = 'close' | 'open' | 'high' | 'low' | 'hl2' | 'hlc3' | 'ohlc4';
@@ -53,12 +56,20 @@ export interface IndicatorSeries {
   width: number;
   visible: boolean;
   kind: 'line' | 'histogram';
+  /**
+   * Draw `values[i]` this many bars to the right (Ichimoku spans lead by 25). Points past the
+   * last bar land in the empty space on the right. Default 0.
+   */
+  shift?: number;
 }
 
 export interface IndicatorOutput {
   series: IndicatorSeries[];
-  /** Shaded area between two series (Bollinger band). */
-  fill?: { upper: string; lower: string; color: string };
+  /**
+   * Shaded area between two series (Bollinger band). With `downColor`, stretches where
+   * `lower` is above `upper` use it instead (Ichimoku cloud).
+   */
+  fill?: { upper: string; lower: string; color: string; downColor?: string };
   /** Horizontal reference lines (RSI 30/70). */
   levels?: number[];
   /** Fixed value range instead of auto-scaling (RSI 0–100). */
@@ -140,7 +151,7 @@ function movingAverages(bars: readonly Bar[], p: IndicatorParams, prefix: string
 const PARAM = (ko: string, en: string): IndicatorParamSpec['label'] => ({ ko, en });
 const SOURCE_PARAM: IndicatorParamSpec = { key: 'source', label: PARAM('가격 기준', 'Source'), kind: 'source' };
 
-export const INDICATORS: Record<IndicatorType, IndicatorDefinition> = {
+export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
   ma: {
     type: 'ma',
     name: { ko: '이동평균선', en: 'Moving Average' },

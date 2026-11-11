@@ -55,6 +55,11 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     layout: chart.layout,
     atRealtime: true,
     searchOpen: false,
+    searchTarget: 'symbol',
+    canUndo: chart.canUndo,
+    canRedo: chart.canRedo,
+    compares: chart.getCompares(),
+    replay: chart.replay,
     chartType: config.chartType,
     drawingTool: null,
     selection: null,
@@ -79,6 +84,9 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     chart.on('indicatorsChange', (indicators) => store.set({ indicators })),
     chart.on('magnetChange', (magnet) => store.set({ magnet })),
     chart.on('chartTypeChange', (chartType) => store.set({ chartType })),
+    chart.on('historyChange', ({ canUndo, canRedo }) => store.set({ canUndo, canRedo })),
+    chart.on('comparesChange', (compares) => store.set({ compares })),
+    chart.on('replayChange', (replay) => store.set({ replay })),
   ];
 
   const load = (sym: string, res: Resolution) => {
@@ -110,7 +118,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
       if (current) void load(current.symbol, res);
     },
     toggleFavoriteInterval: shell.toggleFavoriteInterval,
-    setSearchOpen: (open) => store.set({ searchOpen: open }),
+    setSearchOpen: (open, target = 'symbol') => store.set(open ? { searchOpen: true, searchTarget: target } : { searchOpen: false }),
     screenshot: () => {
       const s = store.get();
       chart.takeScreenshot().toBlob((blob) => {

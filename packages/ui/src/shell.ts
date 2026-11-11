@@ -290,15 +290,27 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
  */
 export function bindWidgetKeys(
   shell: Shell,
-  active: () => { store: Store<UiState>; canSearch: boolean } | null,
+  active: () => { store: Store<UiState>; canSearch: boolean; chart: { undo(): void; redo(): void } } | null,
   searchHotkey: boolean,
   extra?: (e: KeyboardEvent) => boolean,
 ): () => void {
   const { root } = shell;
+  // Undo/redo only when the user last clicked inside this widget (pages may host several, or forms).
+  let focused = false;
+  const onPointerDown = (e: PointerEvent) => (focused = root.contains(e.target as Node));
   const onKeyDown = (e: KeyboardEvent) => {
     const pane = active();
     if (!pane) return;
     const s = pane.store.get();
+    const target = e.target as HTMLElement | null;
+    const typing = !!target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+    const key = e.key.toLowerCase();
+    if (focused && !typing && !s.dialog && !s.searchOpen && (e.ctrlKey || e.metaKey) && !e.altKey && (key === 'z' || key === 'y')) {
+      e.preventDefault();
+      if (key === 'y' || e.shiftKey) pane.chart.redo();
+      else pane.chart.undo();
+      return;
+    }
     // Ctrl/⌘ + K opens symbol search from anywhere on the page.
     if (searchHotkey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && pane.canSearch && !s.dialog) {
       e.preventDefault();
@@ -328,8 +340,10 @@ export function bindWidgetKeys(
   };
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('keyup', onKeyUp);
+  document.addEventListener('pointerdown', onPointerDown, true);
   return () => {
     document.removeEventListener('keydown', onKeyDown);
     document.removeEventListener('keyup', onKeyUp);
+    document.removeEventListener('pointerdown', onPointerDown, true);
   };
 }

@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { DEFAULT_CHART_SETTINGS, type ChartSettings } from '@funnest/charts';
+import { DEFAULT_CHART_SETTINGS, type ChartSettings, type PriceScaleMode } from '@funnest/charts';
 import { useEffect, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
 import { STRINGS, type Strings } from '../i18n';
@@ -23,6 +23,7 @@ const SECTIONS: { title: keyof Strings; toggles: { key: Toggle; label: keyof Str
     toggles: [
       { key: 'highLowMarkers', label: 'settingHighLow' },
       { key: 'lastPriceLine', label: 'settingLastPrice' },
+      { key: 'countdown', label: 'settingCountdown' },
       { key: 'volume', label: 'settingVolume' },
       { key: 'navigationButtons', label: 'settingNavButtons' },
     ],
@@ -34,6 +35,12 @@ const SECTIONS: { title: keyof Strings; toggles: { key: Toggle; label: keyof Str
       { key: 'gridVertical', label: 'settingGridV' },
     ],
   },
+];
+
+const SCALES: { mode: PriceScaleMode; label: keyof Strings }[] = [
+  { mode: 'normal', label: 'scaleNormal' },
+  { mode: 'log', label: 'scaleLog' },
+  { mode: 'percent', label: 'scalePercent' },
 ];
 
 /**
@@ -78,6 +85,21 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
               )}
             </label>
           ))}
+          <div class="fnc-section">{t.settingsScale}</div>
+          <div class="fnc-row">
+            <div class="fnc-seg" role="radiogroup" aria-label={t.settingsScale}>
+              {SCALES.map(({ mode, label }) => (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={settings.priceScale === mode}
+                  onClick={() => set({ priceScale: mode })}
+                >
+                  {t[label]}
+                </button>
+              ))}
+            </div>
+          </div>
           {SECTIONS.map((section) => (
             <>
               <div class="fnc-section">{t[section.title]}</div>

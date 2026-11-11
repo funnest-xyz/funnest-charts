@@ -61,7 +61,8 @@ type View = { kind: 'all' } | { kind: 'favorites' };
  * returns them — price, change and a sparkline per row. Keyboard: ↑↓ Enter Esc.
  */
 export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
-  const { locale, symbol: current } = useStore(ctx.store);
+  const { locale, symbol: current, searchTarget } = useStore(ctx.store);
+  const comparing = searchTarget === 'compare';
   const t = STRINGS[locale];
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(ctx.searchCategories[0]?.id ?? 'all');
@@ -129,7 +130,8 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
     if (!info) return;
     save(RECENT_KEY, [toStored(info), ...recent.filter((r) => r.symbol !== info.symbol)].slice(0, MAX_RECENT), setRecent);
     close();
-    ctx.selectSymbol(info.symbol);
+    if (comparing) ctx.chart.addCompare(info.symbol).catch((error: unknown) => console.error('funnest-charts: compare failed', error));
+    else ctx.selectSymbol(info.symbol);
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -219,7 +221,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
 
   return (
     <div class="fnc-backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div class="fnc-dialog fnc-search-dialog" role="dialog" aria-modal="true" aria-label={t.searchSymbol} onKeyDown={onKeyDown}>
+      <div class="fnc-dialog fnc-search-dialog" role="dialog" aria-modal="true" aria-label={comparing ? t.compareSymbol : t.searchSymbol} onKeyDown={onKeyDown}>
         <div class="fnc-search">
           <SearchIcon />
           {exchange && (
@@ -233,7 +235,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
           <input
             ref={inputRef}
             value={query}
-            placeholder={t.searchPlaceholder}
+            placeholder={comparing ? t.compareSymbol : t.searchPlaceholder}
             role="combobox"
             aria-expanded="true"
             aria-controls="fnc-search-results"

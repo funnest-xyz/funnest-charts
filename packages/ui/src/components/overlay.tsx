@@ -14,10 +14,14 @@ import {
   GearIcon,
   MaximizeIcon,
   MinusIcon,
+  PauseIcon,
+  PlayIcon,
   PlusIcon,
+  ReplayIcon,
   ResetIcon,
   RestoreIcon,
   SmallCloseIcon,
+  StepIcon,
   ToRealtimeIcon,
 } from '../icons';
 import { useStore } from '../store';
@@ -96,6 +100,8 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
         setHover(info ? { bar: info.bar, prev: ctx.chart.bars[info.index - 1], index: info.index } : null),
       ),
       ctx.chart.on('dataChange', () => refresh(undefined)),
+      // Compare values are % from the first visible bar, so they change while scrolling.
+      ctx.chart.on('visibleRangeChange', () => ctx.store.get().compares.length > 0 && refresh(undefined)),
     ];
     return () => offs.forEach((off) => off());
   }, [ctx.chart]);
@@ -172,6 +178,22 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
           {s.loading && <span class="fnc-spinner" role="status" />}
         </div>
         {values}
+        {s.compares.length > 0 &&
+          ctx.chart.compareLegend(hover?.index).map((c) => (
+            <div class="fnc-cmp">
+              <i class="fnc-cmp-dot" style={{ background: c.color }} />
+              <span class="fnc-cmp-name">{c.name}</span>
+              <b>{c.value}</b>
+              <button
+                class="fnc-ind-btn"
+                data-tip={t.removeCompare}
+                aria-label={`${c.name} ${t.removeCompare}`}
+                onClick={() => ctx.chart.removeCompare(c.symbol)}
+              >
+                <SmallCloseIcon />
+              </button>
+            </div>
+          ))}
         {!collapsed && overlayItems.map((item) => <IndicatorItem ctx={ctx} item={item} />)}
         {/* Collapse to the left at the end of the list; collapsed, a small bar brings it back. */}
         {overlayItems.length > 0 &&
@@ -214,9 +236,10 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
     </button>
   );
 
+  const replaying = s.replay.active || s.replay.selecting;
   return (
     <>
-      {showButtons && (
+      {showButtons && !replaying && (
       <div class="fnc-nav" style={{ left: `${plotWidth / 2}px`, top: `${top}px` }}>
         {button(t.zoomOut, () => ctx.chart.zoom(1 / ZOOM_STEP), <MinusIcon />)}
         {button(t.zoomIn, () => ctx.chart.zoom(ZOOM_STEP), <PlusIcon />)}
@@ -293,12 +316,72 @@ function PaneMaximize({ ctx, multi }: { ctx: WidgetContext; multi: MultiControls
   );
 }
 
+/** Bars per second ↔ ms per bar. */
+const REPLAY_SPEEDS = [
+  { label: '1x', interval: 1000 },
+  { label: '3x', interval: 333 },
+  { label: '10x', interval: 100 },
+];
+
+/** Bottom-center bar while replaying (or a hint while picking the start bar). */
+function ReplayBar({ ctx }: { ctx: WidgetContext }) {
+  const s = useStore(ctx.store);
+  const t = STRINGS[s.locale];
+  const r = s.replay;
+  const { plotWidth, panesHeight } = s.layout;
+  if (plotWidth <= 0 || (!r.active && !r.selecting)) return null;
+  const style = { left: `${plotWidth / 2}px`, top: `${panesHeight - CONTROL_OFFSET}px` };
+
+  if (!r.active) {
+    return (
+      <div class="fnc-replay fnc-replay-hint" style={style} role="status">
+        <ReplayIcon />
+        <span>{t.replayPick}</span>
+        <button class="fnc-ind-btn" aria-label={t.cancel} data-tip={`${t.cancel} (Esc)`} onClick={() => ctx.chart.setReplaySelecting(false)}>
+          <SmallCloseIcon />
+        </button>
+      </div>
+    );
+  }
+  const done = r.remaining === 0;
+  const button = (label: string, onClick: () => void, icon: JSX.Element, disabled = false) => (
+    <button class="fnc-btn" data-tip={label} aria-label={label} disabled={disabled} onClick={onClick}>
+      {icon}
+    </button>
+  );
+  return (
+    <div class="fnc-replay" style={style} role="toolbar" aria-label={t.replay}>
+      {r.playing
+        ? button(t.replayPause, () => ctx.chart.replayPause(), <PauseIcon />)
+        : button(t.replayPlay, () => ctx.chart.replayPlay(), <PlayIcon />, done)}
+      {button(t.replayStep, () => ctx.chart.replayStep(), <StepIcon />, done)}
+      <div class="fnc-seg fnc-seg-sm" role="radiogroup" aria-label={t.replaySpeed}>
+        {REPLAY_SPEEDS.map((speed) => (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={r.interval === speed.interval}
+            onClick={() => ctx.chart.setReplayInterval(speed.interval)}
+          >
+            {speed.label}
+          </button>
+        ))}
+      </div>
+      {done && <span class="fnc-replay-note">{t.replayDone}</span>}
+      <div class="fnc-sep" />
+      {button(t.replayRestart, () => ctx.chart.setReplaySelecting(true), <ReplayIcon />)}
+      {button(t.replayExit, () => ctx.chart.stopReplay(), <SmallCloseIcon />)}
+    </div>
+  );
+}
+
 export function Overlay({ ctx }: { ctx: WidgetContext }) {
   return (
     <>
       <Attribution ctx={ctx} />
       <Legend ctx={ctx} />
       <NavControls ctx={ctx} />
+      <ReplayBar ctx={ctx} />
       <SelectionBar ctx={ctx} />
       <PaneTools ctx={ctx} />
     </>

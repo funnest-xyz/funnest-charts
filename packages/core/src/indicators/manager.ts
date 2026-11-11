@@ -1,6 +1,6 @@
 import { newId } from '../objects/types';
 import type { Bar } from '../types';
-import { INDICATORS, maLines, type IndicatorOutput, type IndicatorParams, type IndicatorType, type SeriesStyle } from './definitions';
+import { INDICATORS, maLines, type IndicatorDefinition, type IndicatorOutput, type IndicatorParams, type IndicatorType, type SeriesStyle } from './definitions';
 
 export interface IndicatorConfig {
   id: string;
@@ -16,15 +16,11 @@ export type IndicatorPatch = Partial<Pick<IndicatorConfig, 'params' | 'visible' 
 
 const clone = (c: IndicatorConfig): IndicatorConfig => JSON.parse(JSON.stringify(c)) as IndicatorConfig;
 
-function normalize(c: IndicatorConfig): IndicatorConfig {
-  const def = INDICATORS[c.type];
-  const params = { ...def.defaults, ...c.params };
-  // Migrate the legacy `periods: number[]` MA shape.
-  if ((c.type === 'ma' || c.type === 'ema') && !Array.isArray(c.params.lines) && Array.isArray(c.params.periods)) {
-    params.lines = maLines({ periods: c.params.periods });
-  }
-  delete params.periods;
-  return { id: c.id || newId(c.type), type: c.type, params, visible: c.visible ?? true, styles: c.styles ?? {} };
+/** Built-ins plus definitions passed to the chart (`ChartOptions.indicators`); later ones replace earlier ones of the same type. */
+export function indicatorRegistry(extra: readonly IndicatorDefinition[] = []): Map<string, IndicatorDefinition> {
+  const registry = new Map<string, IndicatorDefinition>(Object.entries(INDICATORS));
+  for (const def of extra) registry.set(def.type, def);
+  return registry;
 }
 
 /** Indicator instances plus a cache of computed series keyed by data version + settings. */
@@ -32,9 +28,27 @@ export class IndicatorManager {
   list: IndicatorConfig[] = [];
   private readonly cache = new Map<string, { key: string; output: IndicatorOutput }>();
 
+  constructor(readonly registry: Map<string, IndicatorDefinition> = indicatorRegistry()) {}
+
+  def(type: IndicatorType): IndicatorDefinition {
+    const def = this.registry.get(type);
+    if (!def) throw new Error(`funnest-charts: unknown indicator "${type}"`);
+    return def;
+  }
+
+  private normalize(c: IndicatorConfig): IndicatorConfig {
+    const def = this.def(c.type);
+    const params = { ...def.defaults, ...c.params };
+    // Migrate the legacy `periods: number[]` MA shape.
+    if ((c.type === 'ma' || c.type === 'ema') && !Array.isArray(c.params.lines) && Array.isArray(c.params.periods)) {
+      params.lines = maLines({ periods: c.params.periods });
+    }
+    delete params.periods;
+    return { id: c.id || newId(c.type), type: c.type, params, visible: c.visible ?? true, styles: c.styles ?? {} };
+  }
+
   add(type: IndicatorType, params?: IndicatorParams): string {
-    if (!INDICATORS[type]) throw new Error(`funnest-charts: unknown indicator "${type}"`);
-    const config = normalize({ id: newId(type), type, params: params ?? {} });
+    const config = this.normalize({ id: newId(type), type, params: params ?? {} });
     this.list.push(config);
     return config.id;
   }
@@ -56,8 +70,9 @@ export class IndicatorManager {
     return true;
   }
 
+  /** Unknown types (e.g. a plugin this chart wasn't given) are dropped. */
   set(configs: readonly IndicatorConfig[]): void {
-    this.list = configs.filter((c) => INDICATORS[c.type]).map((c) => normalize(clone(c)));
+    this.list = configs.filter((c) => this.registry.has(c.type)).map((c) => this.normalize(clone(c)));
     this.cache.clear();
   }
 
@@ -66,11 +81,11 @@ export class IndicatorManager {
   }
 
   get overlays(): IndicatorConfig[] {
-    return this.list.filter((c) => INDICATORS[c.type].overlay);
+    return this.list.filter((c) => this.def(c.type).overlay);
   }
 
   get panes(): IndicatorConfig[] {
-    return this.list.filter((c) => !INDICATORS[c.type].overlay);
+    return this.list.filter((c) => !this.def(c.type).overlay);
   }
 
   /** Computed series with user styles applied; recomputed only when data or settings change. */
@@ -78,7 +93,7 @@ export class IndicatorManager {
     const key = `${dataVersion}|${JSON.stringify(cfg.params)}|${JSON.stringify(cfg.styles)}`;
     const hit = this.cache.get(cfg.id);
     if (hit?.key === key) return hit.output;
-    const raw = INDICATORS[cfg.type].compute(bars, cfg.params);
+    const raw = this.def(cfg.type).compute(bars, cfg.params);
     const output: IndicatorOutput = {
       ...raw,
       series: raw.series.map((s) => {

@@ -265,3 +265,77 @@ export const RestoreIcon = () => (
     <path d="M15 9h-4V5M5 11h4v4M11 9l5-5M9 11l-5 5" />
   </Icon>
 );
+
+export const UndoIcon = () => (
+  <Icon size={18}>
+    <path d="M7 5L3.5 8.5 7 12" />
+    <path d="M3.5 8.5h8.5a4.5 4.5 0 0 1 0 9H9" />
+  </Icon>
+);
+
+export const RedoIcon = () => (
+  <Icon size={18}>
+    <path d="M13 5l3.5 3.5L13 12" />
+    <path d="M16.5 8.5H8a4.5 4.5 0 0 0 0 9h3" />
+  </Icon>
+);
+
+/** Two price lines diverging (compare symbols). */
+export const CompareIcon = () => (
+  <Icon>
+    <path d="M3 14l4-4 3 2 7-7" />
+    <path d="M3 9l4 2 3-3 7 5" opacity="0.55" />
+  </Icon>
+);
+
+export const ReplayIcon = () => (
+  <Icon>
+    <path d="M5 4v12" />
+    <path d="M16 4.5v11L8 10z" />
+  </Icon>
+);
+
+export const PlayIcon = () => (
+  <Icon size={18}>
+    <path d="M6 4.5v11l9-5.5z" fill="currentColor" />
+  </Icon>
+);
+
+export const PauseIcon = () => (
+  <Icon size={18}>
+    <path d="M7 4.5v11M13 4.5v11" stroke-width="2.4" />
+  </Icon>
+);
+
+export const StepIcon = () => (
+  <Icon size={18}>
+    <path d="M4.5 4.5v11l8-5.5z" />
+    <path d="M15.5 4.5v11" />
+  </Icon>
+);
+
+/** Plugin tool icon: SVG markup from DrawingDefinition.icon (whole <svg> or just its children). */
+export const SvgIcon = ({ markup }: { markup: string }) =>
+  markup.trim().startsWith('<svg') ? (
+    <span class="fnc-svg-icon" dangerouslySetInnerHTML={{ __html: markup }} />
+  ) : (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
+  );
+
+/** Tiny corner triangle on drawing-bar buttons that hold more tools. */
+export const CornerIcon = () => (
+  <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden="true">
+    <path d="M6 0v6H0z" fill="currentColor" />
+  </svg>
+);

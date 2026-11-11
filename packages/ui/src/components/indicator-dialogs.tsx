@@ -1,9 +1,9 @@
 /** @jsxImportSource preact */
 import {
-  INDICATORS,
   maLines,
   PRICE_SOURCES,
   SERIES_COLORS,
+  type IndicatorDefinition,
   type IndicatorParams,
   type IndicatorType,
   type Locale,
@@ -45,27 +45,51 @@ function Dialog({ title, onClose, children, wide }: { title: string; onClose: ()
   );
 }
 
+/** A search box appears once there are more than this many indicators (custom ones added). */
+const SEARCH_THRESHOLD = 8;
+
 function IndicatorPicker({ ctx }: { ctx: WidgetContext }) {
   const { locale } = useStore(ctx.store);
   const t = STRINGS[locale];
+  const [query, setQuery] = useState('');
   const close = () => ctx.store.set({ dialog: null });
   const add = (type: IndicatorType) => {
     ctx.chart.addIndicator(type);
     close();
   };
-  const groups: [string, IndicatorType[]][] = [
-    [locale === 'ko' ? '가격 차트에 표시' : 'On price', ['ma', 'ema', 'bb']],
-    [locale === 'ko' ? '아래 영역에 표시' : 'Separate pane', ['rsi', 'macd']],
-  ];
+  const all = ctx.chart.indicatorDefinitions();
+  const q = query.trim().toLowerCase();
+  const matches = (d: IndicatorDefinition) =>
+    !q || [d.type, d.name.ko, d.name.en, d.description[locale]].some((s) => s.toLowerCase().includes(q));
+  const groups: [string, IndicatorDefinition[]][] = (
+    [
+      [locale === 'ko' ? '가격 차트에 표시' : 'On price', all.filter((d) => d.overlay && matches(d))],
+      [locale === 'ko' ? '아래 영역에 표시' : 'Separate pane', all.filter((d) => !d.overlay && matches(d))],
+    ] as [string, IndicatorDefinition[]][]
+  ).filter(([, defs]) => defs.length > 0);
+  const first = groups[0]?.[1][0];
 
   return (
     <Dialog title={t.addIndicator} onClose={close}>
+      {all.length > SEARCH_THRESHOLD && (
+        <div class="fnc-search fnc-ind-search">
+          <input
+            value={query}
+            placeholder={t.searchIndicators}
+            aria-label={t.searchIndicators}
+            autocomplete="off"
+            onInput={(e) => setQuery(e.currentTarget.value)}
+            onKeyDown={(e) => e.key === 'Enter' && first && add(first.type)}
+          />
+        </div>
+      )}
       <div class="fnc-sr-list fnc-scroll">
-        {groups.map(([label, types]) => (
+        {groups.length === 0 && <div class="fnc-empty">{t.noResults}</div>}
+        {groups.map(([label, defs]) => (
           <>
             <div class="fnc-sr-section">{label}</div>
-            {types.map((type) => {
-              const def = INDICATORS[type];
+            {defs.map((def) => {
+              const type = def.type;
               return (
                 <button class="fnc-sr-row" onClick={() => add(type)}>
                   <span class="fnc-sr-main">
@@ -102,9 +126,9 @@ interface StyleRow {
 
 const WIDTHS = [1, 2, 3, 4];
 
-function defaultSeries(type: IndicatorType, params: IndicatorParams) {
+function defaultSeries(def: IndicatorDefinition, params: IndicatorParams) {
   // Computing over zero bars is cheap and yields each series' key, label and default style.
-  return INDICATORS[type].compute([], params).series.filter((s) => s.kind === 'line');
+  return def.compute([], params).series.filter((s) => s.kind === 'line');
 }
 
 function StyleControls({
@@ -155,12 +179,12 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
   const { locale, indicators } = useStore(ctx.store);
   const t = STRINGS[locale];
   const config = indicators.find((c) => c.id === id);
-  const def = config ? INDICATORS[config.type] : null;
+  const def = config ? (ctx.chart.indicatorDefinition(config.type) ?? null) : null;
   const hasLines = !!def?.params.some((p) => p.kind === 'lines');
 
   const [lines, setLines] = useState<LineRow[]>(() => {
-    if (!config || !hasLines) return [];
-    const defaults = defaultSeries(config.type, config.params);
+    if (!config || !def || !hasLines) return [];
+    const defaults = defaultSeries(def, config.params);
     return maLines(config.params).map((l, i) => {
       const style = config.styles?.[`l${i}`];
       return {
@@ -176,8 +200,8 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
     Object.fromEntries(Object.entries(config?.params ?? {}).filter(([, v]) => !Array.isArray(v)).map(([k, v]) => [k, String(v)])),
   );
   const [styles, setStyles] = useState<StyleRow[]>(() => {
-    if (!config || hasLines) return [];
-    return defaultSeries(config.type, config.params).map((s) => {
+    if (!config || !def || hasLines) return [];
+    return defaultSeries(def, config.params).map((s) => {
       const style = config.styles?.[s.key];
       return { key: s.key, label: s.label, color: style?.color ?? s.color, width: style?.width ?? s.width, visible: style?.visible ?? true };
     });
