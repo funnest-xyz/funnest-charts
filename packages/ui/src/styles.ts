@@ -764,7 +764,6 @@ const CSS = /* css */ `
    every toolbar button stays reachable. Ctrl/⌘+Z still undoes when the buttons are hidden. ── */
 .fnc-root { container: fnc / inline-size; }
 @container fnc (max-width: 1100px) {
-  .fnc-btn-undo { display: none; }
   .fnc-btn-label span { display: none; }
   .fnc-toolbar .fnc-btn-label { padding: 0 6px; }
 }
@@ -878,6 +877,13 @@ const CSS = /* css */ `
 .fnc-switch[data-on='true'] { background: var(--fnc-text-2); }
 .fnc-switch[data-on='true']::after { transform: translateX(16px); }
 
+/* ── Right-click menu ────────────────────────────────── */
+.fnc-ctx-menu { top: 0; left: 0; z-index: 40; min-width: 220px; pointer-events: auto; }
+.fnc-ctx-menu .fnc-menu-item { justify-content: space-between; gap: 24px; color: var(--fnc-text); }
+.fnc-ctx-menu .fnc-menu-item:disabled { color: var(--fnc-text-2); }
+.fnc-ctx-menu kbd { font: inherit; font-size: 12px; color: var(--fnc-text-2); }
+.fnc-ctx-sep { height: 1px; margin: 4px 6px; background: var(--fnc-border); }
+
 /* ── Drawing tool groups ─────────────────────────────── */
 .fnc-tool-group { position: relative; display: flex; }
 .fnc-tool-group[data-open='true'] { z-index: 30; }
@@ -950,7 +956,7 @@ const CSS = /* css */ `
 
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .fnc-btn-compare, .fnc-btn-replay, .fnc-btn-undo { display: none; }
+  .fnc-btn-compare, .fnc-btn-replay { display: none; }
   .fnc-toolbar { padding: 0 4px; gap: 2px; }
   .fnc-toolbar .fnc-btn { width: 32px; height: 32px; }
   .fnc-toolbar .fnc-btn-wide, .fnc-toolbar .fnc-btn-label { width: auto; padding: 0 6px; }

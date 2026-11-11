@@ -13,7 +13,7 @@ import {
 import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar';
 import { Toolbar } from './components/toolbar';
-import type { IntervalGroup, SearchCategory } from './context';
+import type { ContextMenuItems, IntervalGroup, SearchCategory } from './context';
 import { createPane } from './pane';
 import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell';
 
@@ -77,6 +77,11 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
    * `theme` overrides are applied on top of whichever base is active.
    */
   colorScheme?: ColorScheme;
+  /**
+   * Extra rows for the chart's right-click menu (between undo/redo and the built-in actions),
+   * e.g. "이 가격에 알림 만들기". Called on every right-click with the price and time under the pointer.
+   */
+  contextMenuItems?: ContextMenuItems;
 }
 
 export interface TradingChart {
@@ -121,6 +126,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     chartType = 'candles',
     attribution = true,
     colorScheme = 'system',
+    contextMenuItems,
     theme,
     ...chartOptions
   } = options;
@@ -144,6 +150,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     symbolLogo,
     drawingToolbar,
     attribution,
+    contextMenuItems,
   });
   shell.main.insertBefore(pane.stage, shell.slots.bottom);
   shell.setPanes(() => [pane]);

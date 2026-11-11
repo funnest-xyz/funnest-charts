@@ -16,6 +16,10 @@ export class Emitter<Events extends object> {
     for (const listener of set) (listener as Listener<Events[K]>)(payload);
   }
 
+  has<K extends keyof Events>(event: K): boolean {
+    return (this.listeners.get(event)?.size ?? 0) > 0;
+  }
+
   clear(): void {
     this.listeners.clear();
   }

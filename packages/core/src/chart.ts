@@ -126,7 +126,23 @@ export interface ChartEvents {
   historyChange: { canUndo: boolean; canRedo: boolean };
   comparesChange: CompareInfo[];
   replayChange: ReplayStatus;
+  /**
+   * Right-click on the chart (mouse only). While anything listens, the browser's own menu is
+   * suppressed — the widget shows its menu (undo, horizontal line here, reset…).
+   */
+  contextMenu: ChartContextMenu;
   error: unknown;
+}
+
+export interface ChartContextMenu {
+  /** Pixels relative to the chart element. */
+  x: number;
+  y: number;
+  pane: PaneId;
+  /** Price under the pointer (tick-rounded) when it's over the price pane, else null. */
+  price: number | null;
+  /** Time of the bar under the pointer, or null past the data. */
+  time: number | null;
 }
 
 export interface ChartPaneLayout {
@@ -160,6 +176,10 @@ const TIME_AXIS_HEIGHT = 28;
 const MIN_PRICE_AXIS_WIDTH = 56;
 /** Relative pane heights: the price pane gets 4 parts, volume 1, each indicator pane 1.3. */
 const PANE_WEIGHT = { main: 4, volume: 1, indicator: 1.3 };
+/** No pane can be dragged smaller than this. */
+const MIN_PANE_HEIGHT = 32;
+/** Pointer distance (px) from a pane border that grabs it. */
+const PANE_BORDER_GRAB = 4;
 const HISTORY_TRIGGER_BARS = 20;
 const TIME_LABEL_MIN_GAP = 72;
 const PRICE_TICK_SPACING = 48;
@@ -307,6 +327,9 @@ export class Chart {
   private percentBaseIndex = 0;
   private replayState: { future: Bar[]; timer: ReturnType<typeof setInterval> | null; interval: number } | null = null;
   private replaySelecting = false;
+  /** Pane height weights the user set by dragging borders (unset panes use PANE_WEIGHT). */
+  private readonly paneWeights = new Map<PaneId, number>();
+  private paneWeightTotal = 1;
 
   constructor(container: HTMLElement, options: ChartOptions = {}) {
     this.theme = { ...lightTheme, ...options.theme };
@@ -714,6 +737,7 @@ export class Chart {
       drawings: JSON.parse(JSON.stringify(drawings)) as Record<string, Drawing[]>,
       view: { barSpacing: this.timeScale.barSpacing, rightOffset: this.timeScale.rightOffset },
       compares: [...this.compares.keys()],
+      paneWeights: Object.fromEntries(this.paneWeights),
     };
   }
 
@@ -739,6 +763,8 @@ export class Chart {
     this.timeScale.barSpacing = state.view.barSpacing;
     this.timeScale.rightOffset = state.view.rightOffset;
     this.timeScale.clamp();
+    this.paneWeights.clear();
+    for (const [id, w] of Object.entries(state.paneWeights ?? {})) if (w > 0) this.paneWeights.set(id, w);
     const compares = state.compares ?? [];
     for (const symbol of [...this.compares.keys()]) if (!compares.includes(symbol)) this.removeCompare(symbol);
     if (this.datafeed) for (const symbol of compares) void this.addCompare(symbol);
@@ -800,6 +826,14 @@ export class Chart {
     this.drawings.update(id, patch);
   }
 
+  /** Adds a drawing (e.g. a horizontal line at a price) and selects it. Returns its id. */
+  addDrawing(drawing: Omit<Drawing, 'id'>): string {
+    const id = `d_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    this.drawings.set([...this.drawings.drawings, { ...drawing, id, points: drawing.points.map((p) => ({ ...p })) }]);
+    this.drawings.select(id);
+    return id;
+  }
+
   removeDrawing(id: string): void {
     this.drawings.remove(id);
   }
@@ -828,6 +862,7 @@ export class Chart {
   removeIndicator(id: string): void {
     if (!this.indicators.remove(id)) return;
     this.indicatorScales.delete(id);
+    this.paneWeights.delete(id);
     this.indicatorsChanged();
   }
 
@@ -895,6 +930,36 @@ export class Chart {
   /** Built-in and custom drawing tools, in drawing-bar order. */
   drawingDefinitions(): DrawingDefinition[] {
     return [...this.drawings.registry.values()];
+  }
+
+  // ── Pane sizes ─────────────────────────────────────────────────────
+
+  /**
+   * Moves the border above pane `index` (1 = between the price pane and the next one) by `dy` px.
+   * The two neighbouring panes trade height; the rest keep theirs. Users do this by dragging.
+   */
+  resizePane(index: number, dy: number): void {
+    const panes = this.frame?.panes;
+    const above = panes?.[index - 1];
+    const below = panes?.[index];
+    if (!panes || !above || !below || !this.frame) return;
+    const pair = above.height + below.height;
+    const top = Math.min(pair - MIN_PANE_HEIGHT, Math.max(MIN_PANE_HEIGHT, above.height + dy));
+    // Weights on the current scale, so panes added later still get their default share.
+    const unit = this.paneWeightTotal / Math.max(1, this.frame.panesHeight);
+    for (const p of panes) this.paneWeights.set(p.id, p.height * unit);
+    this.paneWeights.set(above.id, top * unit);
+    this.paneWeights.set(below.id, (pair - top) * unit);
+    this.invalidate();
+    this.stateChanged();
+  }
+
+  /** Back to the default pane heights. */
+  resetPaneSizes(): void {
+    if (this.paneWeights.size === 0) return;
+    this.paneWeights.clear();
+    this.invalidate();
+    this.stateChanged();
   }
 
   // ── Undo / redo ────────────────────────────────────────────────────
@@ -1459,12 +1524,18 @@ export class Chart {
 
     // Pane heights by weight; the price pane absorbs rounding.
     const indicatorPanes = this.indicators.panes;
-    const totalWeight =
-      PANE_WEIGHT.main + (this.settingsValue.volume ? PANE_WEIGHT.volume : 0) + indicatorPanes.length * PANE_WEIGHT.indicator;
-    const share = (w: number) => Math.round((panesHeight * w) / totalWeight);
-    const volumeHeight = this.settingsValue.volume ? share(PANE_WEIGHT.volume) : 0;
-    const indicatorHeight = share(PANE_WEIGHT.indicator);
-    const mainHeight = panesHeight - volumeHeight - indicatorHeight * indicatorPanes.length;
+    // Weights: defaults, or what the user dragged the pane borders to.
+    const weightOf = (id: PaneId, kind: keyof typeof PANE_WEIGHT) => this.paneWeights.get(id) ?? PANE_WEIGHT[kind];
+    const weights: [PaneId, number][] = [['main', weightOf('main', 'main')]];
+    if (this.settingsValue.volume) weights.push(['volume', weightOf('volume', 'volume')]);
+    for (const c of indicatorPanes) weights.push([c.id, weightOf(c.id, 'indicator')]);
+    const totalWeight = weights.reduce((sum, [, w]) => sum + w, 0);
+    this.paneWeightTotal = totalWeight;
+    const heightOf = new Map(weights.map(([id, w]) => [id, Math.max(MIN_PANE_HEIGHT, Math.round((panesHeight * w) / totalWeight))]));
+    const volumeHeight = heightOf.get('volume') ?? 0;
+    const indicatorHeights = indicatorPanes.map((c) => heightOf.get(c.id)!);
+    // The price pane absorbs rounding.
+    const mainHeight = Math.max(MIN_PANE_HEIGHT, panesHeight - volumeHeight - indicatorHeights.reduce((a, b) => a + b, 0));
     this.mainScale.height = mainHeight;
     this.volumeScale.height = volumeHeight;
 
@@ -1487,7 +1558,7 @@ export class Chart {
     this.countdownLabel = this.countdownText();
     const subPanes = indicatorPanes.map((config) => {
       const scale = this.indicatorScale(config.id);
-      scale.height = indicatorHeight;
+      scale.height = heightOf.get(config.id)!;
       return { config, scale, output: drawable(config) };
     });
     const indicatorFormat = (output: IndicatorOutput) => {
@@ -1526,8 +1597,8 @@ export class Chart {
       priceTicks = this.mainTicks(mainHeight);
       subTicks = subPanes.map((p) => {
         // Fixed-range indicators (RSI 0–100) keep labels inside their range.
-        const [lo, hi] = p.output.range ?? [p.scale.yToPrice(indicatorHeight), p.scale.yToPrice(0)];
-        return niceTicks(lo, hi, Math.max(1, Math.floor(indicatorHeight / 36)));
+        const [lo, hi] = p.output.range ?? [p.scale.yToPrice(p.scale.height), p.scale.yToPrice(0)];
+        return niceTicks(lo, hi, Math.max(1, Math.floor(p.scale.height / 36)));
       });
 
       let labelWidth = 0;
@@ -1574,14 +1645,14 @@ export class Chart {
         id: p.config.id,
         kind: 'indicator',
         top,
-        height: indicatorHeight,
+        height: p.scale.height,
         scale: p.scale,
         ticks: subTicks[i]!,
         format: indicatorFormat(p.output),
         tickFormat: tickFormat(subTicks[i]!, p.output),
         indicator: p.output,
       });
-      top += indicatorHeight;
+      top += p.scale.height;
     });
 
     return {
@@ -1878,6 +1949,8 @@ export class Chart {
         const f = this.frame;
         if (!f) return { area: 'none', pane: null };
         if (y >= f.panesHeight) return { area: x < f.plotWidth ? 'timeAxis' : 'none', pane: null };
+        const border = f.panes.findIndex((p, i) => i > 0 && Math.abs(y - p.top) <= PANE_BORDER_GRAB);
+        if (border > 0) return { area: 'paneBorder', pane: f.panes[border]!.id, border };
         return { area: x >= f.plotWidth ? 'priceAxis' : 'plot', pane: this.paneAt(f, y).id };
       },
       plotWidth: () => this.timeScale.width,
@@ -1913,6 +1986,23 @@ export class Chart {
         this.invalidate();
       },
       resetView: () => this.resetView(),
+      resizePane: (index, dy) => this.resizePane(index, dy),
+      contextMenu: (x, y) => {
+        const f = this.frame;
+        if (!this.emitter.has('contextMenu') || !f || x > f.plotWidth || y > f.panesHeight) return false;
+        const pane = this.paneAt(f, y);
+        const index = this.timeScale.xToIndex(x);
+        const bar = this.store.at(index);
+        this.emitter.emit('contextMenu', {
+          x,
+          y,
+          pane: pane.id,
+          price: pane.kind === 'main' ? roundToTick(this.mainScale.yToPrice(y), this.tickSize) : null,
+          time: bar?.time ?? null,
+        });
+        return true;
+      },
+      resetPaneSizes: () => this.resetPaneSizes(),
 
       toolActive: () => (this.drawings.tool !== null || this.replaySelecting) && this.store.length > 0,
       hitObject: (x, y, touch) => {

@@ -25,6 +25,7 @@ import {
   ToRealtimeIcon,
 } from '../icons';
 import { useStore } from '../store';
+import { ContextMenu } from './context-menu';
 import { SelectionBar } from './drawing-toolbar';
 import { SymbolAvatar } from './symbol-avatar';
 
@@ -384,6 +385,7 @@ export function Overlay({ ctx }: { ctx: WidgetContext }) {
       <ReplayBar ctx={ctx} />
       <SelectionBar ctx={ctx} />
       <PaneTools ctx={ctx} />
+      <ContextMenu ctx={ctx} />
     </>
   );
 }

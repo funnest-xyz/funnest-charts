@@ -1,7 +1,7 @@
 export { Chart, createChart, fallbackResolution } from './chart';
 export { DEFAULT_CHART_SETTINGS, parseChartState } from './settings';
 export type { ChartSettings, ChartState } from './settings';
-export type { ChartEvents, ChartLayout, ChartOptions, ChartPaneLayout, CompareInfo, IndicatorLegendItem, ReplayStatus } from './chart';
+export type { ChartContextMenu, ChartEvents, ChartLayout, ChartOptions, ChartPaneLayout, CompareInfo, IndicatorLegendItem, ReplayStatus } from './chart';
 export type { PriceScaleMode } from './model/price-scale';
 export type { CrosshairInfo, PaneId } from './render/renderer';
 export type { Locale } from './model/time-format';

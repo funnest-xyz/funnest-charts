@@ -55,6 +55,8 @@ export interface ChartState {
   view: { barSpacing: number; rightOffset: number };
   /** Symbols overlaid for comparison (see `Chart.addCompare`). */
   compares?: string[];
+  /** Pane heights the user dragged, as weights by pane id ('main', 'volume', indicator ids). */
+  paneWeights?: Record<string, number>;
 }
 
 const CHART_TYPES: readonly ChartType[] = ['candles', 'line', 'area'];
@@ -71,6 +73,10 @@ export function parseChartState(input: unknown): ChartState {
     settings: { ...DEFAULT_CHART_SETTINGS, ...(s.settings ?? {}) },
     indicators: Array.isArray(s.indicators) ? s.indicators : [],
     drawings: s.drawings && typeof s.drawings === 'object' ? s.drawings : {},
+    paneWeights:
+      s.paneWeights && typeof s.paneWeights === 'object'
+        ? Object.fromEntries(Object.entries(s.paneWeights).filter(([, w]) => typeof w === 'number' && w > 0))
+        : {},
     compares: Array.isArray(s.compares) ? s.compares.filter((x): x is string => typeof x === 'string') : [],
     view: {
       barSpacing: Number(s.view?.barSpacing) || 8,

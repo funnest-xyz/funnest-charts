@@ -68,6 +68,7 @@
 - 다음: 칸 사이 그리기 공유, 색 링크 그룹(일부 칸만 묶기).
 
 - ✅ 0.6: 플러그인 지표·그리기(`indicatorDefinitions`/`drawingDefinitions`, 그리기 바 그룹 메뉴, 지표 검색), 가격 축 일반/로그/%, 봉 마감 카운트다운, 되돌리기, 종목 비교(최대 5개, % 축), 바 리플레이(시작 봉 고르기·재생·한 봉씩·속도), 알림선(`addAlertLine`), 툴바가 위젯 폭에 맞춰 버튼을 접음(container query).
+- ✅ 0.6.1: 칸 높이 조절(가격·거래량·지표 칸 경계 끌기, 두 번 클릭 초기화, 레이아웃에 저장), 차트 우클릭 메뉴(되돌리기·다시 실행·이 가격에 수평선·초기화·설정 + 사이트가 끼우는 `contextMenuItems`). 되돌리기 버튼은 툴바에서 빼고 우클릭·단축키로(사용자 결정).
 - 다음: 텍스트·화살표 그리기, 알림 서버 감시(계정), 리플레이 중 모의 주문.
 
 - ✅ `@funnest/charts-viz` + React SVG 차트 컴포넌트 12종 (CartesianChart, XAxis, YAxis, LineChart, AreaChart, BarChart, PercentageBarChart, Scrubber, ReferenceLine, Point, Legend, PeriodSelector). Sparkline은 작은 LineChart로 대체.

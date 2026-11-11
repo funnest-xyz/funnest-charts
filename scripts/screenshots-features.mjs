@@ -64,7 +64,22 @@ check((await count())[0] === before[0] - 1, 'second Ctrl+Z removes the line');
 await page.keyboard.press('Control+Shift+z');
 await page.keyboard.press('Control+y');
 check(JSON.stringify(await count()) === JSON.stringify(before), 'redo restores both');
-check(!(await page.locator('.fnc-btn-undo >> nth=0').isDisabled()), 'undo button enabled');
+check((await page.locator('.fnc-btn-undo').count()) === 0, 'no undo buttons in the toolbar (right-click / Ctrl+Z)');
+// Right-click menu: horizontal line at the clicked price, then undo it from the same menu.
+{
+  const sb = await box();
+  const drawings = () => page.evaluate(() => window.chart.getDrawings().length);
+  const n = await drawings();
+  await page.mouse.click(sb.x + sb.width * 0.5, sb.y + sb.height * 0.35, { button: 'right' });
+  const labels = await page.locator('.fnc-ctx-menu .fnc-menu-item span').allTextContents();
+  check(labels[0] === '되돌리기' && labels.some((l) => l.endsWith('에 수평선 긋기')) && labels.includes('차트 초기화'), `right-click menu (${labels.join(' / ')})`);
+  await shot('context-menu');
+  await page.click('.fnc-ctx-menu .fnc-menu-item:has-text("수평선 긋기")');
+  check((await drawings()) === n + 1 && (await page.locator('.fnc-ctx-menu').count()) === 0, 'menu draws a horizontal line and closes');
+  await page.mouse.click(sb.x + sb.width * 0.3, sb.y + sb.height * 0.6, { button: 'right' });
+  await page.click('.fnc-ctx-menu .fnc-menu-item:has-text("되돌리기")');
+  check((await drawings()) === n, 'menu undo removes it again');
+}
 
 // ── Compare ───────────────────────────────────────────────────────────
 await page.click('.fnc-btn-compare');
@@ -106,6 +121,29 @@ await shot('replay-playing');
 await page.click('.fnc-replay [aria-label="리플레이 종료"]');
 const restored = await page.evaluate(() => [window.chart.bars.length, window.chart.replay.active, window.chart.bars.at(-1).time]);
 check(restored[0] >= total && !restored[1] && restored[2] >= lastTime, `exit restores every bar (${total} → ${restored[0]}, last ${lastTime} → ${restored[2]})`);
+
+// ── Pane resize ───────────────────────────────────────────────────────
+{
+  const panes = () => page.evaluate(() => window.chart.layout.panes.map((p) => ({ id: p.id, top: p.top, height: p.height })));
+  const before = await panes();
+  const vol = before.find((p) => p.id === 'volume');
+  const sb = await box();
+  await page.mouse.move(sb.x + sb.width * 0.4, sb.y + vol.top);
+  const cursor = await page.evaluate(() => document.querySelector('.fnc-stage canvas:last-of-type').style.cursor);
+  check(cursor === 'row-resize', `row-resize cursor on a pane border (${cursor})`);
+  await page.mouse.down();
+  await page.mouse.move(sb.x + sb.width * 0.4, sb.y + vol.top - 80, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  const after = await panes();
+  const v2 = after.find((p) => p.id === 'volume');
+  check(Math.abs(v2.height - vol.height - 80) <= 2 && Math.abs(after[0].height - before[0].height + 80) <= 2, `dragging the border trades height (volume ${vol.height} → ${v2.height})`);
+  check(Object.keys((await page.evaluate(() => window.widget.save().paneWeights)) ?? {}).length > 0, 'pane sizes saved in the layout');
+  await shot('pane-resize');
+  await page.mouse.dblclick(sb.x + sb.width * 0.4, sb.y + v2.top);
+  await page.waitForTimeout(150);
+  check((await panes()).find((p) => p.id === 'volume').height === vol.height, 'double-click on the border resets');
+}
 
 // ── Alert line ────────────────────────────────────────────────────────
 await page.evaluate(() => {

@@ -16,6 +16,8 @@ export type { FnChartProps } from './fn-chart';
 export { FnMultiChart, useFnMultiChart } from './fn-multi-chart';
 export type { FnMultiChartProps } from './fn-multi-chart';
 export type {
+  ContextMenuItem,
+  ContextMenuItems,
   LayoutId,
   LayoutSync,
   MultiChart,

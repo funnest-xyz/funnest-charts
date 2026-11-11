@@ -9,11 +9,9 @@ import {
   ExpandIcon,
   IndicatorIcon,
   PencilIcon,
-  RedoIcon,
   ReplayIcon,
   SearchIcon,
   SettingsIcon,
-  UndoIcon,
 } from '../icons';
 import { useStore } from '../store';
 import { ChartTypeMenu } from './chart-type-menu';
@@ -28,7 +26,6 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = STRINGS[s.locale];
   const canSearch = typeof ctx.datafeed.searchSymbols === 'function';
-  const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
   return (
     <div class="fnc-toolbar" role="toolbar">
@@ -113,12 +110,6 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           <PencilIcon />
         </button>
       )}
-      <button class="fnc-btn fnc-btn-undo" data-tip={`${t.undo} (${mod}+Z)`} aria-label={t.undo} disabled={!s.canUndo} onClick={() => ctx.chart.undo()}>
-        <UndoIcon />
-      </button>
-      <button class="fnc-btn fnc-btn-undo" data-tip={`${t.redo} (${mod}+Shift+Z)`} aria-label={t.redo} disabled={!s.canRedo} onClick={() => ctx.chart.redo()}>
-        <RedoIcon />
-      </button>
       <Slot el={ctx.slots.toolbarEnd} fixed />
       <button
         class="fnc-btn fnc-btn-settings"

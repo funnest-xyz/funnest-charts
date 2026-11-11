@@ -2,7 +2,7 @@
 import { createChart, type Chart, type ChartOptions, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay';
-import type { IntervalGroup, MultiControls, SearchCategory, UiState, WidgetContext } from './context';
+import type { ContextMenuItems, IntervalGroup, MultiControls, SearchCategory, UiState, WidgetContext } from './context';
 import { div, type Shell } from './shell';
 import { Store } from './store';
 
@@ -17,6 +17,7 @@ export interface PaneConfig {
   symbolLogo: boolean;
   drawingToolbar: boolean;
   attribution: boolean;
+  contextMenuItems?: ContextMenuItems | undefined;
   multi?: MultiControls | undefined;
 }
 
@@ -109,6 +110,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     showLogo: config.symbolLogo,
     drawingToolbar: config.drawingToolbar,
     attribution: config.attribution,
+    contextMenuItems: config.contextMenuItems,
     slots: shell.slots,
     multi: config.multi,
     setDrawbarCollapsed: shell.setDrawbarCollapsed,

@@ -1,5 +1,6 @@
 import type {
   Chart,
+  ChartContextMenu,
   ChartLayout,
   ChartType,
   CompareInfo,
@@ -47,6 +48,12 @@ export interface UiState {
   replay: ReplayStatus;
 }
 
+/** A row in the chart's right-click menu, or a divider. */
+export type ContextMenuItem = { label: string; shortcut?: string; disabled?: boolean; onSelect(): void } | 'separator';
+
+/** Extra right-click items for a click on `chart` (e.g. "create an alert at this price"). */
+export type ContextMenuItems = (target: ChartContextMenu & { chart: Chart }) => ContextMenuItem[];
+
 export interface IntervalGroup {
   id: 'minutes' | 'hours' | 'days';
   intervals: Resolution[];
@@ -75,6 +82,7 @@ export interface WidgetContext {
   drawingToolbar: boolean;
   /** Show the Funnest logo badge on the chart. */
   attribution: boolean;
+  contextMenuItems: ContextMenuItems | undefined;
   slots: { toolbar: HTMLElement; toolbarEnd: HTMLElement; belowToolbar: HTMLElement; footer: HTMLElement };
   setDrawbarCollapsed(collapsed: boolean): void;
   selectSymbol(symbol: string): void;

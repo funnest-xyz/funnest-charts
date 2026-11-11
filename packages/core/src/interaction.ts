@@ -2,8 +2,10 @@ import type { ObjectHit } from './objects/types';
 import type { PaneId } from './render/renderer';
 
 export interface HitRegion {
-  area: 'plot' | 'priceAxis' | 'timeAxis' | 'none';
+  area: 'plot' | 'priceAxis' | 'timeAxis' | 'paneBorder' | 'none';
   pane: PaneId | null;
+  /** paneBorder: index of the pane below the border. */
+  border?: number;
 }
 
 /** What the interaction layer needs from the chart. Kept narrow so gestures stay testable. */
@@ -19,6 +21,9 @@ export interface InteractionHost {
   scalePrice(pane: PaneId, factor: number): void;
   resetPriceScale(pane: PaneId): void;
   resetView(): void;
+  /** Drag of the border above pane `index`. */
+  resizePane(index: number, dy: number): void;
+  resetPaneSizes(): void;
 
   // Objects (drawings, order lines)
   /** A drawing tool is armed: presses create drawings instead of panning. */
@@ -33,6 +38,8 @@ export interface InteractionHost {
   /** Mouse hover over an object (or nothing) — e.g. to show a fill tooltip. */
   hoverObject(hit: ObjectHit | null): void;
   clearSelection(): void;
+  /** Mouse right-click at (x, y). Return true to suppress the browser's own menu. */
+  contextMenu(x: number, y: number): boolean;
 }
 
 type Mode =
@@ -43,6 +50,7 @@ type Mode =
   | 'pinch'
   | 'priceScale'
   | 'timeScale'
+  | 'paneResize'
   | 'draw'
   | 'object';
 interface Point {
@@ -156,6 +164,9 @@ export class Interaction {
       case 'timeAxis':
         this.mode = 'timeScale';
         break;
+      case 'paneBorder':
+        this.mode = 'paneResize';
+        break;
       case 'plot': {
         if (this.host.toolActive()) {
           this.mode = 'draw';
@@ -230,6 +241,9 @@ export class Interaction {
       case 'timeScale':
         this.host.zoomTime(this.host.plotWidth(), Math.exp((p.x - this.last.x) * AXIS_DRAG_SPEED));
         break;
+      case 'paneResize':
+        if (this.region.border) this.host.resizePane(this.region.border, p.y - this.last.y);
+        break;
     }
     this.last = p;
   }
@@ -246,7 +260,7 @@ export class Interaction {
     }
     if (this.mode === 'draw') this.host.drawRelease(p.x, p.y, this.moved);
     if (this.mode === 'object') this.host.objectUp(this.moved);
-    const tapModes: Mode[] = ['pending', 'priceScale', 'timeScale'];
+    const tapModes: Mode[] = ['pending', 'priceScale', 'timeScale', 'paneResize'];
     if (this.touch && !this.moved && tapModes.includes(this.mode)) this.handleTap(p);
     if (this.mode === 'pan') this.startKinetic();
     if (this.mode === 'crosshair') this.host.clearCrosshair();
@@ -277,7 +291,8 @@ export class Interaction {
 
   private hover(p: Point): void {
     const region = this.host.hitTest(p.x, p.y);
-    let cursor = region.area === 'priceAxis' ? 'ns-resize' : region.area === 'timeAxis' ? 'ew-resize' : 'crosshair';
+    let cursor =
+      region.area === 'priceAxis' ? 'ns-resize' : region.area === 'timeAxis' ? 'ew-resize' : region.area === 'paneBorder' ? 'row-resize' : 'crosshair';
     let hovered: ObjectHit | null = null;
     if (region.area === 'plot') {
       if (this.host.toolActive()) {
@@ -310,6 +325,7 @@ export class Interaction {
     if (isDouble) {
       this.lastTap.t = 0;
       if (this.region.area === 'priceAxis' && this.region.pane) this.host.resetPriceScale(this.region.pane);
+      else if (this.region.area === 'paneBorder') this.host.resetPaneSizes();
       else this.host.resetView();
     } else {
       this.lastTap = { t, x: p.x, y: p.y };
@@ -412,6 +428,7 @@ export class Interaction {
     const p = this.local(e);
     const region = this.host.hitTest(p.x, p.y);
     if (region.area === 'priceAxis' && region.pane) this.host.resetPriceScale(region.pane);
+    else if (region.area === 'paneBorder') this.host.resetPaneSizes();
     else if (region.area !== 'none') this.host.resetView();
   }
 
@@ -421,6 +438,11 @@ export class Interaction {
   }
 
   private onContextMenu(e: MouseEvent): void {
-    if (this.touch) e.preventDefault(); // long-press would otherwise open the context menu
+    if (this.touch) {
+      e.preventDefault(); // long-press would otherwise open the context menu
+      return;
+    }
+    const p = this.local(e);
+    if (this.host.contextMenu(p.x, p.y)) e.preventDefault();
   }
 }
