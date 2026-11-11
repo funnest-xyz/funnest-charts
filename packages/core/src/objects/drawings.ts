@@ -51,6 +51,11 @@ export interface DrawingDefinition {
   icon?: string;
   /** Tools with the same group share one drawing-bar button with a menu. Default: the type. */
   group?: string;
+  /**
+   * A heading in that menu (피보나치, 갠, 엘리어트 파동…): consecutive tools with the same section
+   * are listed under it, with a divider between sections. Default: no heading.
+   */
+  section?: Record<Locale, string>;
   /** Clicks (or drag ends) needed to place it. */
   clicks: number;
   /**
@@ -112,6 +117,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     type: 'fibonacci',
     name: { ko: '피보나치 되돌림', en: 'Fib retracement' },
     group: 'fib',
+    section: { ko: '피보나치', en: 'Fibonacci' },
     clicks: 2,
     distance: (g, x, y) => {
       // Nearest level line within its horizontal span, or the diagonal.

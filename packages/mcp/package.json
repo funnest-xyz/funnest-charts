@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts-mcp",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "description": "MCP server for Funnest Charts: chart list, JSON schemas, spec validation, PNG/SVG rendering with React code, chart suggestions, Datafeed templates",
   "keywords": [
     "mcp",

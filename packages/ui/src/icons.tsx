@@ -115,9 +115,11 @@ export const HorizontalLineIcon = () => (
   </Icon>
 );
 
+/** Retracement levels at their real (uneven) spacing, with the swing they're drawn on. */
 export const FibonacciIcon = () => (
   <Icon>
-    <path d="M3 4.5h14M3 8.2h14M3 11.8h14M3 15.5h14" />
+    <path d="M3 3.5h14M3 7.4h14M3 9.9h14M3 12.3h14M3 16.5h14" />
+    <path d="M4.5 16.5 15.5 3.5" stroke-dasharray="1.6 1.8" opacity="0.7" />
   </Icon>
 );
 

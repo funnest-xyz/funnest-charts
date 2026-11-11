@@ -911,7 +911,9 @@ const CSS = /* css */ `
   opacity: 0.7;
 }
 .fnc-tool-more:hover, .fnc-tool-more[aria-expanded='true'] { opacity: 1; color: var(--fnc-text); }
-.fnc-tool-menu { top: 0; left: calc(100% + 8px); min-width: 180px; }
+.fnc-tool-menu { top: 0; left: calc(100% + 8px); min-width: 200px; max-height: min(640px, calc(100vh - 120px)); overflow-y: auto; }
+.fnc-tool-section { padding: 8px 10px 4px; color: var(--fnc-text-2); font-size: 11px; font-weight: 600; }
+.fnc-tool-section.is-after { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--fnc-border); }
 .fnc-tool-menu .fnc-menu-item { white-space: nowrap; }
 .fnc-tool-letter { font-size: 13px; font-weight: 700; }
 .fnc-svg-icon { display: inline-flex; }

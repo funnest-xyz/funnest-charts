@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import type { DrawingDefinition, DrawingType, Locale } from '@funnest/charts';
-import type { JSX } from 'preact';
+import { Fragment, type JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
 import { STRINGS } from '../i18n';
@@ -91,12 +91,23 @@ function ToolGroup({
       )}
       {open && (
         <div class="fnc-menu fnc-tool-menu" role="menu">
-          {tools.map((def) => (
-            <button class="fnc-menu-item" role="menuitemradio" aria-checked={def.type === current.type} onClick={() => pick(def)}>
-              <ToolIcon def={def} locale={s.locale} />
-              <span>{def.name[s.locale]}</span>
-            </button>
-          ))}
+          {tools.map((def, i) => {
+            const section = def.section?.[s.locale];
+            const heading = section && section !== tools[i - 1]?.section?.[s.locale];
+            return (
+              <Fragment key={def.type}>
+                {heading && (
+                  <div class={`fnc-tool-section${i > 0 ? ' is-after' : ''}`} role="presentation">
+                    {section}
+                  </div>
+                )}
+                <button class="fnc-menu-item" role="menuitemradio" aria-checked={def.type === current.type} onClick={() => pick(def)}>
+                  <ToolIcon def={def} locale={s.locale} />
+                  <span>{def.name[s.locale]}</span>
+                </button>
+              </Fragment>
+            );
+          })}
         </div>
       )}
     </div>
