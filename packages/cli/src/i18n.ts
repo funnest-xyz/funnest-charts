@@ -72,3 +72,10 @@ Every command accepts --locale ko|en.`,
 } as const;
 
 export const messages = (locale: CliLocale = 'ko') => MESSAGES[locale];
+
+/** The machine's language: Korean when the system says so (LC_ALL / LC_MESSAGES / LANG, then Intl), else English. */
+export function systemLocale(): CliLocale {
+  const env = typeof process !== 'undefined' ? process.env : {};
+  const tag = env.LC_ALL || env.LC_MESSAGES || env.LANG || Intl.DateTimeFormat().resolvedOptions().locale || '';
+  return tag.toLowerCase().startsWith('ko') ? 'ko' : 'en';
+}

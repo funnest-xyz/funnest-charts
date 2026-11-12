@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve } from 'node:path';
 import { parseData, suggestCharts } from './data';
-import { messages, type CliLocale } from './i18n';
+import { messages, systemLocale, type CliLocale } from './i18n';
 import { reactCode, renderHtml, renderPng, renderSvg, type RenderOptions } from './render';
 import { CHARTS, CHART_TYPES, chartSchema, closest, exampleSpec, validateSpec, type ChartSpec, type ChartType } from './spec';
 
@@ -56,7 +56,7 @@ function chartType(name: string | undefined, locale: CliLocale): ChartType {
 
 async function main() {
   const { _: [command, ...rest], flags } = parseArgs(process.argv.slice(2));
-  const locale: CliLocale = flags.locale === 'en' ? 'en' : 'ko';
+  const locale: CliLocale = flags.locale === 'en' || flags.locale === 'ko' ? flags.locale : systemLocale();
   const t = messages(locale);
   const json = (v: unknown) => JSON.stringify(v, null, 2);
 

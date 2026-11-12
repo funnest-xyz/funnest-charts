@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseCsv, suggestCharts } from './data';
 import { reactCode, renderSvg } from './render';
+import { systemLocale } from './i18n';
 import { CHART_TYPES, chartSchema, closest, exampleSpec, validateSpec } from './spec';
 
 describe('spec validation', () => {
@@ -85,5 +86,19 @@ describe('render', () => {
     expect((svg.match(/<path/g) ?? []).length).toBe(2);
     expect(svg).toContain('>A<');
     expect(reactCode(spec)).toContain('layout="horizontal"');
+  });
+});
+
+describe('message language', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it('follows the machine: Korean for a Korean system, English otherwise', () => {
+    vi.stubEnv('LC_ALL', '');
+    vi.stubEnv('LC_MESSAGES', '');
+    vi.stubEnv('LANG', 'ko_KR.UTF-8');
+    expect(systemLocale()).toBe('ko');
+    vi.stubEnv('LANG', 'en_US.UTF-8');
+    expect(systemLocale()).toBe('en');
+    vi.stubEnv('LC_ALL', 'ko_KR.UTF-8');
+    expect(systemLocale()).toBe('ko');
   });
 });

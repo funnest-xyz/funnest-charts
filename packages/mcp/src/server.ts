@@ -17,6 +17,7 @@ import {
   renderPng,
   renderSvg,
   suggestCharts,
+  systemLocale,
   validateSpec,
   type ChartSpec,
   type CliLocale,
@@ -25,9 +26,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const server = new McpServer({ name: 'funnest-charts', version: '0.6.19' });
+const server = new McpServer({ name: 'funnest-charts', version: '0.6.20' });
 
-const locale = z.enum(['ko', 'en']).optional().describe('Message language (default ko)');
+/** Messages follow the machine's language unless a tool call asks for one. */
+const DEFAULT_LOCALE = systemLocale();
+const locale = z.enum(['ko', 'en']).optional().describe("Message language (default: the machine's, English unless it's Korean)");
 const chartType = z.enum(CHART_TYPES as [string, ...string[]]);
 const text = (value: unknown) => ({ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) });
 
@@ -39,7 +42,7 @@ server.registerTool(
       'List Funnest Charts chart types (line, area, bar, candlestick, donut, treemap, percentage-bar, sparkline) with what each is for and the React component it maps to. For a full trading chart (candles, indicators, drawing tools) use <FnChart /> with a Datafeed — see get_datafeed_template.',
     inputSchema: { locale },
   },
-  async ({ locale: l = 'ko' }) => ({
+  async ({ locale: l = DEFAULT_LOCALE }) => ({
     content: [text(CHART_TYPES.map((t) => ({ type: t, description: CHARTS[t][l as CliLocale], component: CHARTS[t].component })))],
   }),
 );
@@ -51,7 +54,7 @@ server.registerTool(
     description: 'JSON Schema and an example spec for one chart type. Read this before writing a spec.',
     inputSchema: { type: chartType, locale },
   },
-  async ({ type, locale: l = 'ko' }) => ({
+  async ({ type, locale: l = DEFAULT_LOCALE }) => ({
     content: [text({ schema: chartSchema(type as ChartSpec['type'], l as CliLocale), example: exampleSpec(type as ChartSpec['type']) })],
   }),
 );
@@ -63,7 +66,7 @@ server.registerTool(
     description: 'Check a chart spec. Returns problems with "did you mean" hints for misspelled fields and missing data columns.',
     inputSchema: { spec: z.record(z.string(), z.unknown()).describe('Chart spec object'), locale },
   },
-  async ({ spec, locale: l = 'ko' }) => {
+  async ({ spec, locale: l = DEFAULT_LOCALE }) => {
     const issues = validateSpec(spec, l as CliLocale);
     return { content: [text(issues.length ? { valid: false, issues } : { valid: true })] };
   },
@@ -81,7 +84,7 @@ server.registerTool(
       locale,
     },
   },
-  async ({ spec, theme, locale: l = 'ko' }) => {
+  async ({ spec, theme, locale: l = DEFAULT_LOCALE }) => {
     const issues = validateSpec(spec, l as CliLocale);
     if (issues.length) return { isError: true, content: [text({ valid: false, issues })] };
     const s = { ...(spec as unknown as ChartSpec), ...(l ? { locale: l as CliLocale } : {}) };
@@ -106,7 +109,7 @@ server.registerTool(
     description: 'Given data rows, propose fitting charts (ready-to-render specs with reasons).',
     inputSchema: { data: z.array(z.record(z.string(), z.unknown())).min(1).describe('Data rows'), locale },
   },
-  async ({ data, locale: l = 'ko' }) => ({
+  async ({ data, locale: l = DEFAULT_LOCALE }) => ({
     content: [
       text(
         suggestCharts(data).map((s) => ({

@@ -1,8 +1,6 @@
 # @funnest/charts-ui
 
-툴바·심볼 검색·지표·그리기 도구가 있는 트레이딩 차트 위젯
-
-Full trading chart widget (toolbar, symbol search, indicators, drawing tools). Framework-free.
+The full trading chart widget: toolbar, symbol search, indicators and drawing tools. Framework-free.
 
 ```bash
 npm i @funnest/charts-ui
@@ -13,18 +11,19 @@ import { createTradingChart } from '@funnest/charts-ui';
 
 const widget = createTradingChart(document.getElementById('chart')!, {
   datafeed: myDatafeed,
-  symbol: '005930',
+  symbol: 'AAPL',
   resolution: '1D',
-  colorScheme: 'system', // OS 라이트/다크 설정을 따라요
+  colorScheme: 'system', // follows the OS light/dark setting
 });
 ```
 
-- 프레임워크와 상관없이 동작해요. React는 `@funnest/charts-react`의 `<FnChart />`를 쓰세요.
-- 슬롯(`toolbar`, `toolbarEnd`, `belowToolbar`, `footer`)으로 내 UI를 끼워 넣어요.
-- `save()` / `load()`로 레이아웃(지표, 그리기, 설정)을 JSON으로 저장·복원해요.
+- Works with any framework. In React, use `<FnChart />` from `@funnest/charts-react`.
+- Put your own UI into slots: `toolbar`, `toolbarEnd`, `belowToolbar`, `footer`.
+- `save()` / `load()` keep the layout (indicators, drawings, settings) as JSON.
+- English by default, Korean for a Korean browser; replace any word with the `strings` option.
 
-## 링크
+## Links
 
-- 문서: https://charts.funnest.xyz/docs/
-- GitHub: https://github.com/funnest-xyz/funnest-charts
-- 라이선스: Apache-2.0
+- Docs: https://charts.funnest.xyz/docs/
+- GitHub: https://github.com/funnest-xyz/funnest-charts ([한국어](https://github.com/funnest-xyz/funnest-charts/blob/main/README.ko.md))
+- License: Apache-2.0

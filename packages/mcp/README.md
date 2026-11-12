@@ -1,8 +1,6 @@
 # @funnest/charts-mcp
 
-AI 도구(Claude Code, Cursor 등)용 MCP 서버
-
-MCP server for AI tools: chart schemas, spec validation, rendering with React code, Datafeed templates.
+MCP server for AI tools (Claude Code, Cursor and others): chart schemas, spec validation, rendering with React code and Datafeed templates.
 
 Claude Code:
 
@@ -16,11 +14,12 @@ Claude Desktop, Cursor:
 { "mcpServers": { "funnest-charts": { "command": "npx", "args": ["-y", "@funnest/charts-mcp"] } } }
 ```
 
-도구: `list_charts`, `get_chart_schema`, `validate_spec`, `render_chart`(PNG + SVG + React 코드), `suggest_chart`, `get_datafeed_template`.
-데이터는 도구에 직접 넘겨요. 서버가 외부 주소에서 데이터를 가져오지 않아요.
+Tools: `list_charts`, `get_chart_schema`, `validate_spec`, `render_chart` (PNG + SVG + React code), `suggest_chart`, `get_datafeed_template`.
+Data goes to the tools inline; the server never fetches from outside addresses.
+Messages follow the machine's language (English, or Korean on a Korean system); any tool takes `locale: 'en' | 'ko'`.
 
-## 링크
+## Links
 
-- 문서: https://charts.funnest.xyz/docs/
-- GitHub: https://github.com/funnest-xyz/funnest-charts
-- 라이선스: Apache-2.0
+- Docs: https://charts.funnest.xyz/docs/
+- GitHub: https://github.com/funnest-xyz/funnest-charts ([한국어](https://github.com/funnest-xyz/funnest-charts/blob/main/README.ko.md))
+- License: Apache-2.0

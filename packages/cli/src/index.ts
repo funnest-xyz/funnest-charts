@@ -23,5 +23,5 @@ export {
 } from './spec';
 export { reactCode, renderHtml, renderPng, renderSvg, valueFormatter, type RenderOptions } from './render';
 export { parseCsv, parseData, suggestCharts, type Suggestion } from './data';
-export { messages, type CliLocale } from './i18n';
+export { messages, systemLocale, type CliLocale } from './i18n';
 export { datafeedTemplate, type DatafeedTemplateKind } from './templates';
