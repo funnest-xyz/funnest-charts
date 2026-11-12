@@ -6,8 +6,8 @@ import { Logo } from './logo';
 export const NPM_URL = 'https://www.npmjs.com/package/@funnest/charts-react';
 
 const TEXT = {
-  ko: { home: '/', app: 'https://funnest.xyz/', docs: '문서', homeLabel: 'Funnest Charts 홈', appLabel: 'Funnest 서비스로 가기' },
-  en: { home: '/en/', app: 'https://funnest.xyz/en/', docs: 'Docs', homeLabel: 'Funnest Charts home', appLabel: 'Go to the Funnest app' },
+  ko: { home: '/', app: 'https://funnest.xyz/trade/', start: '시작하기', docs: '문서', homeLabel: 'Funnest Charts 홈', appLabel: 'Funnest 시작하기 (트레이딩 화면)' },
+  en: { home: '/en/', app: 'https://funnest.xyz/trade/', start: 'Get started', docs: 'Docs', homeLabel: 'Funnest Charts home', appLabel: 'Get started with Funnest (trading terminal)' },
 } as const;
 
 /** Top navigation shared by the landing pages (ko/en) and the docs. */
@@ -19,11 +19,11 @@ export function SiteNav({ solid = false, lang = 'ko' }: { solid?: boolean; lang?
         <Link href={t.home} aria-label={t.homeLabel}>
           <Logo suffix="charts" />
         </Link>
-        {/* The product (funnest.xyz), right next to the brand. */}
-        <a className="app-link" href={t.app} aria-label={t.appLabel}>
-          App
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3.5 8.5l5-5M4.5 3.5h4v4" />
+        {/* Into the product (funnest.xyz/trade), right next to the brand: a turning glow ring like funnest.xyz's 시작하기. */}
+        <a className="app-link start-pill" href={t.app} aria-label={t.appLabel}>
+          {t.start}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
         </a>
         <div className="nav-actions">
