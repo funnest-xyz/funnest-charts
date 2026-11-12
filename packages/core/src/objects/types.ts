@@ -29,6 +29,11 @@ export interface ObjectRenderContext {
  */
 export interface ChartOverlay {
   render(rc: ObjectRenderContext): void;
+  /**
+   * 'below': painted right after the grid, under the candles and indicators (an order-book
+   * heatmap, session shading). Default 'above'.
+   */
+  layer?: 'above' | 'below';
 }
 
 export type ObjectHit =

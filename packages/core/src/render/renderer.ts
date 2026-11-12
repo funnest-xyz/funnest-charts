@@ -370,6 +370,27 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   }
   if (f.settings.gridVertical) for (const tick of f.timeTicks) p.vLine(tick.x, 0, f.panesHeight, pal.grid);
 
+  // App overlays that sit under the series (layer: 'below')
+  const o = m.objects;
+  const rc = { painter: p, coords: o.coords, palette: pal };
+  const runOverlay = (overlay: (typeof o.overlays)[number]) => {
+    ctx.save();
+    try {
+      overlay.render(rc);
+    } catch (error) {
+      console.error('[fnc] overlay', error);
+    }
+    ctx.restore();
+  };
+  if (o.overlays.some((x) => x.layer === 'below')) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, main.top, f.plotWidth, main.height);
+    ctx.clip();
+    for (const overlay of o.overlays) if (overlay.layer === 'below') runOverlay(overlay);
+    ctx.restore();
+  }
+
   // Series
   const hasBars = f.range.to >= f.range.from;
   if (hasBars) {
@@ -415,17 +436,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   ctx.beginPath();
   ctx.rect(0, main.top, f.plotWidth, main.height);
   ctx.clip();
-  const o = m.objects;
-  const rc = { painter: p, coords: o.coords, palette: pal };
-  for (const overlay of o.overlays) {
-    ctx.save();
-    try {
-      overlay.render(rc);
-    } catch (error) {
-      console.error('[fnc] overlay', error);
-    }
-    ctx.restore();
-  }
+  for (const overlay of o.overlays) if (overlay.layer !== 'below') runOverlay(overlay);
   o.trading.render(rc, m.bars, o.barIndexAt, (i) => m.timeScale.indexToX(i), o.tradingLabels, badges);
   o.drawings.render(rc, badges, m.bars, o.barIndexAt);
   ctx.restore();
