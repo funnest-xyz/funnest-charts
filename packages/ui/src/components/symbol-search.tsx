@@ -175,8 +175,27 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
   const favoriteRows = filter(favorites).filter((f) => !q || f.name.toLowerCase().includes(q) || f.symbol.toLowerCase().includes(q));
   const showRecent = view.kind === 'all' && !q && recent.length > 0;
   const recentRows = showRecent ? filter(recent) : [];
-  const resultRows = view.kind === 'favorites' ? favoriteRows : filter(results ?? []);
+  const allResults = view.kind === 'favorites' ? favoriteRows : filter(results ?? []);
+  // Without an exchange picked, each exchange shows its first few (searchPreviewPerExchange) and
+  // a "모두 보기" row; picking the exchange (row or sidebar) lists all of them.
+  const preview = ctx.searchPreviewPerExchange;
+  const more = new Map<number, { exchange: string; count: number }>();
+  let resultRows = allResults;
+  if (preview > 0 && view.kind === 'all' && !exchange) {
+    const seen = new Map<string, number>();
+    const total = new Map<string, number>();
+    for (const r of allResults) total.set(r.exchange, (total.get(r.exchange) ?? 0) + 1);
+    resultRows = [];
+    for (const r of allResults) {
+      const n = (seen.get(r.exchange) ?? 0) + 1;
+      seen.set(r.exchange, n);
+      if (n > preview) continue;
+      resultRows.push(r);
+      if (n === preview && (total.get(r.exchange) ?? 0) > preview) more.set(resultRows.length - 1, { exchange: r.exchange, count: total.get(r.exchange)! });
+    }
+  }
   const rows = [...recentRows, ...resultRows];
+  const exchangeLabel = (name: string) => ctx.searchExchanges.find((e) => e.name === name)?.label?.[locale] ?? name;
 
   useEffect(() => setActive(0), [query, category, exchange, view, results]);
   useEffect(() => {
@@ -358,7 +377,19 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
             )}
             {loading && !results && view.kind === 'all'
               ? Array.from({ length: 6 }, () => <div class="fnc-sr-skeleton" aria-hidden="true" />)
-              : resultRows.map((info, i) => row(info, recentRows.length + i, false))}
+              : resultRows.map((info, i) => {
+                  const m = more.get(i);
+                  return m ? (
+                    <>
+                      {row(info, recentRows.length + i, false)}
+                      <button class="fnc-sr-more" onClick={() => (setView({ kind: 'all' }), setExchange(m.exchange))}>
+                        {t.showAllIn.replace('{exchange}', exchangeLabel(m.exchange)).replace('{n}', m.count.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US'))}
+                      </button>
+                    </>
+                  ) : (
+                    row(info, recentRows.length + i, false)
+                  );
+                })}
             {!loading && rows.length === 0 && (
               <div class="fnc-empty">{view.kind === 'favorites' && favorites.length === 0 ? t.noFavorites : t.noResults}</div>
             )}

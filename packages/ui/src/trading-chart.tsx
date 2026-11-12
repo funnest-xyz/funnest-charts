@@ -56,6 +56,11 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
   /** Exchanges listed in the symbol search sidebar from the start, with logos (counts fill in as results come). */
   searchExchanges?: readonly SearchExchange[];
   /**
+   * Symbol search: rows per exchange shown at first, each followed by "N개 모두 보기" when there
+   * are more (picking the exchange lists them all). Default 0: everything at once.
+   */
+  searchPreviewPerExchange?: number;
+  /**
    * localStorage key prefix for UI preferences (favorite intervals, recent searches).
    * Default 'funnest-charts'. Pass null to keep them in memory only.
    */
@@ -127,6 +132,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     onFavoriteIntervalsChange,
     searchCategories = DEFAULT_SEARCH_CATEGORIES,
     searchExchanges = [],
+    searchPreviewPerExchange = 0,
     storageKey = 'funnest-charts',
     searchHotkey = true,
     symbolLogo = true,
@@ -157,6 +163,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     intervalGroups,
     searchCategories,
     searchExchanges,
+    searchPreviewPerExchange,
     symbolLogo,
     searchHotkey,
     drawingToolbar,

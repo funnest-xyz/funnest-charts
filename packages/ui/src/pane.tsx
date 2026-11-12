@@ -15,6 +15,7 @@ export interface PaneConfig {
   intervalGroups: readonly IntervalGroup[];
   searchCategories: readonly SearchCategory[];
   searchExchanges?: readonly SearchExchange[];
+  searchPreviewPerExchange?: number;
   symbolLogo: boolean;
   drawingToolbar: boolean;
   attribution: boolean;
@@ -134,6 +135,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     intervalGroups: config.intervalGroups,
     searchCategories: config.searchCategories,
     searchExchanges: config.searchExchanges ?? [],
+    searchPreviewPerExchange: config.searchPreviewPerExchange ?? 0,
     displayTimezone: config.displayTimezone,
     showLogo: config.symbolLogo,
     searchHotkey: config.searchHotkey,

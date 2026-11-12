@@ -87,6 +87,8 @@ export interface WidgetContext {
   intervalGroups: readonly IntervalGroup[];
   searchCategories: readonly SearchCategory[];
   searchExchanges: readonly SearchExchange[];
+  /** Rows per exchange before a "모두 보기" (0: all). */
+  searchPreviewPerExchange: number;
   /** IANA zone used for the status-bar clock (KST for Korean users by default). */
   displayTimezone: string;
   showLogo: boolean;
