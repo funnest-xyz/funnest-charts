@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import { formatPrice, type SymbolInfo, type SymbolSearchResult } from '@funnest/charts';
-import type { ComponentChildren } from 'preact';
+import { Fragment, type ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
 import { STRINGS } from '../i18n';
@@ -12,6 +12,9 @@ const DEBOUNCE_MS = 150;
 const RECENT_KEY = 'recent-symbols';
 const FAVORITE_KEY = 'favorite-symbols';
 const MAX_RECENT = 8;
+/** Rows drawn at first, and how many more each time the list is scrolled near its end. */
+const FIRST_ROWS = 40;
+const MORE_ROWS = 80;
 
 /** combineDatafeeds namespaces ids ("UPBIT:KRW-BTC"); the exchange column already says where. */
 const displayCode = (symbol: string) => symbol.slice(symbol.lastIndexOf(':') + 1);
@@ -118,8 +121,11 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
   const [recent, setRecent] = useState<SymbolSearchResult[]>(() => ctx.storage.get(RECENT_KEY, []));
   const [favorites, setFavorites] = useState<SymbolSearchResult[]>(() => ctx.storage.get(FAVORITE_KEY, []));
   const [active, setActive] = useState(0);
+  // A long list (one exchange's 500 symbols) is drawn as it is scrolled, not all at once.
+  const [limit, setLimit] = useState(FIRST_ROWS);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => inputRef.current?.focus(), []);
 
@@ -154,7 +160,8 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
 
   const matchCategory = ctx.searchCategories.find((c) => c.id === category)?.match ?? (() => true);
   const categoryOf = (info: SymbolInfo) => ctx.searchCategories.find((c) => c.id !== 'all' && c.match(info));
-  const isFavorite = (info: SymbolInfo) => favorites.some((f) => f.symbol === info.symbol);
+  const favoriteSet = useMemo(() => new Set(favorites.map((f) => f.symbol)), [favorites]);
+  const isFavorite = (info: SymbolInfo) => favoriteSet.has(info.symbol);
   const filter = (list: SymbolSearchResult[]) =>
     list.filter((i) => matchCategory(i) && (!exchange || i.exchange === exchange));
 
@@ -195,12 +202,40 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
     }
   }
   const rows = [...recentRows, ...resultRows];
+  const shownRows = resultRows.length > limit ? resultRows.slice(0, limit) : resultRows;
   const exchangeLabel = (name: string) => ctx.searchExchanges.find((e) => e.name === name)?.label?.[locale] ?? name;
 
   useEffect(() => setActive(0), [query, category, exchange, view, results]);
   useEffect(() => {
-    listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+    setLimit(FIRST_ROWS);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [query, category, exchange, view]);
+  // Near the end of what is drawn: draw the next batch.
+  const hasMore = resultRows.length > limit;
+  useEffect(() => {
+    const end = endRef.current;
+    if (!hasMore || !end) return;
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setLimit((l) => l + MORE_ROWS), {
+      root: listRef.current,
+      rootMargin: '0px 0px 600px 0px',
+    });
+    io.observe(end);
+    return () => io.disconnect();
+  }, [hasMore, limit]);
+  const scrollToActive = useRef(false);
+  useEffect(() => {
+    // The keyboard can go past what is drawn (↑ from the top wraps to the last row): draw up to
+    // it first, then scroll once it is there.
+    if (active - recentRows.length >= limit - 1) {
+      scrollToActive.current = true;
+      setLimit(active - recentRows.length + MORE_ROWS);
+    } else listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [active]);
+  useEffect(() => {
+    if (!scrollToActive.current) return;
+    scrollToActive.current = false;
+    listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [limit]);
 
   const close = () => ctx.setSearchOpen(false);
   const save = (key: string, next: SymbolSearchResult[], set: (v: SymbolSearchResult[]) => void) => {
@@ -236,6 +271,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
     const trend = change > 0 ? 'fnc-up' : change < 0 ? 'fnc-down' : 'fnc-flat';
     return (
       <div
+        key={(isRecent ? 'recent:' : '') + info.symbol}
         class="fnc-sr-row"
         role="option"
         aria-selected={index === active}
@@ -377,19 +413,20 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
             )}
             {loading && !results && view.kind === 'all'
               ? Array.from({ length: 6 }, () => <div class="fnc-sr-skeleton" aria-hidden="true" />)
-              : resultRows.map((info, i) => {
+              : shownRows.map((info, i) => {
                   const m = more.get(i);
                   return m ? (
-                    <>
+                    <Fragment key={info.symbol}>
                       {row(info, recentRows.length + i, false)}
                       <button class="fnc-sr-more" onClick={() => (setView({ kind: 'all' }), setExchange(m.exchange))}>
                         {t.showAllIn.replace('{exchange}', exchangeLabel(m.exchange)).replace('{n}', m.count.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US'))}
                       </button>
-                    </>
+                    </Fragment>
                   ) : (
                     row(info, recentRows.length + i, false)
                   );
                 })}
+            {hasMore && <div ref={endRef} class="fnc-sr-end" aria-hidden="true" />}
             {!loading && rows.length === 0 && (
               <div class="fnc-empty">{view.kind === 'favorites' && favorites.length === 0 ? t.noFavorites : t.noResults}</div>
             )}

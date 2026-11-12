@@ -392,6 +392,7 @@ const CSS = /* css */ `
 .fnc-sr-spark-slot { display: inline-flex; flex: none; width: 72px; height: 24px; }
 .fnc-sr-more { display: block; width: calc(100% - 16px); margin: 2px 8px 8px; padding: 8px 12px; border-radius: var(--fnc-radius); background: var(--fnc-surface); color: var(--fnc-text-2); font-size: 13px; font-weight: 600; text-align: left; }
 .fnc-sr-more:hover { color: var(--fnc-text); }
+.fnc-sr-end { height: 1px; }
 .fnc-sr-side-item:hover { background: var(--fnc-surface); }
 .fnc-sr-side-item[aria-pressed='true'] { background: var(--fnc-surface); font-weight: 700; }
 .fnc-chip-token {
