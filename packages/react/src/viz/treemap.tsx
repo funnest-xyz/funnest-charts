@@ -62,11 +62,101 @@ const mix = (a: string, b: string, t: number) => {
 };
 
 const defaultChange = (c: number) => `${c > 0 ? '+' : ''}${c.toFixed(2)}%`;
-const textWidth = (t: string, size: number) => [...t].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? size : size * 0.6), 0);
+/** Width estimate without a canvas (server render): CJK a full em, the rest 0.62. */
+const estimate = (t: string, size: number) => [...t].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? size : size * 0.62), 0);
+type Measure = (text: string, size: number, weight: number) => number;
+
+let canvasCtx: CanvasRenderingContext2D | null | undefined;
+/** Real text widths in `family` (a canvas); the estimate where there's none. */
+function measurer(family: string | null): Measure {
+  if (canvasCtx === undefined) {
+    try {
+      canvasCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+    } catch {
+      canvasCtx = null;
+    }
+  }
+  const ctx = canvasCtx;
+  if (!ctx || !family) return (t, size) => estimate(t, size);
+  const cache = new Map<string, number>();
+  return (t, size, weight) => {
+    const key = `${weight}|${t}`;
+    let w1 = cache.get(key);
+    if (w1 === undefined) {
+      ctx.font = `${weight} 100px ${family}`;
+      w1 = ctx.measureText(t).width / 100;
+      cache.set(key, w1);
+    }
+    return w1 * size;
+  };
+}
+
+const MIN_FONT = 7;
+const isHangul = (ch: string) => /[\u3131-\u318e\uac00-\ud7a3]/.test(ch);
+
+/** Two-line splits of a label: at spaces, between Hangul, or where Latin meets Hangul — never inside a Latin word. */
+function splits(label: string): [string, string][] {
+  const chars = [...label];
+  const out: [string, string][] = [];
+  for (let i = 1; i < chars.length; i++) {
+    const a = chars[i - 1]!;
+    const b = chars[i]!;
+    if (b === ' ') out.push([chars.slice(0, i).join(''), chars.slice(i + 1).join('')]);
+    else if (a !== ' ' && (isHangul(a) || isHangul(b))) out.push([chars.slice(0, i).join(''), chars.slice(i).join('')]);
+  }
+  return out.filter(([x, y]) => x.trim() && y.trim());
+}
+
+export interface TileLabel {
+  lines: string[];
+  size: number;
+  /** The second line (change or sublabel) and its size, when it fits too. */
+  sub?: { text: string; size: number };
+}
+
+/**
+ * How a tile's label fits: one line as big as the tile allows (up to 22px); if that's under 7px,
+ * the label on two lines (a narrow, tall tile); still not, cut short with "…". The change goes
+ * under it when there's room. Null when not even two letters fit.
+ */
+export function fitLabel(label: string, sub: string | undefined, width: number, height: number, measure: Measure): TileLabel | null {
+  const w = width - 8;
+  const h = height - 6;
+  if (w < MIN_FONT * 1.5 || h < MIN_FONT * 1.1) return null;
+  const base = Math.min(22, Math.sqrt(width * height) / 6);
+  const sizeFor = (lines: string[]) => {
+    const widest = Math.max(...lines.map((l) => measure(l, 1, 700)));
+    return Math.min(base, w / Math.max(widest, 0.01), h / (lines.length * 1.2));
+  };
+  let best: { lines: string[]; size: number } | null = null;
+  const one = sizeFor([label]);
+  if (one >= Math.min(base, 9)) best = { lines: [label], size: one };
+  else {
+    const candidates = [[label], ...splits(label)].map((lines) => ({ lines, size: sizeFor(lines) }));
+    for (const c of candidates) if (c.size >= MIN_FONT && (!best || c.size > best.size + 0.5)) best = c;
+  }
+  if (!best) {
+    // Cut short: as many letters as fit at the smallest size, then "…".
+    const size = Math.max(MIN_FONT, Math.min(base, h / 1.2));
+    const chars = [...label];
+    let n = chars.length - 1;
+    while (n >= 2 && measure(`${chars.slice(0, n).join('')}…`, size, 700) > w) n--;
+    if (n < 2 || size > h / 1.1) return null;
+    return { lines: [`${chars.slice(0, n).join('')}…`], size };
+  }
+  const out: TileLabel = { lines: best.lines, size: best.size };
+  if (sub) {
+    const size = Math.min(best.size * 0.78, w / Math.max(measure(sub, 1, 600), 0.01));
+    const used = best.lines.length * best.size * 1.2;
+    if (size >= MIN_FONT && used + size * 1.3 <= h) out.sub = { text: sub, size };
+  }
+  return out;
+}
 
 /**
  * Tiles sized by value and colored by change: market maps, sector heatmaps, holdings by weight.
- * Labels shrink with the tile and hide when they don't fit.
+ * Labels shrink with the tile, wrap onto two lines in narrow ones and are cut short with "…" in
+ * small ones; only tiles too small for two letters go without.
  */
 export function TreemapChart({
   data,
@@ -92,6 +182,13 @@ export function TreemapChart({
   const [measured, setMeasured] = useState(fixedWidth ?? 0);
   const [active, setActive] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
+  // Labels are fitted with real text widths once the font is known (estimated on the server).
+  const [family, setFamily] = useState<string | null>(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (el) setFamily(getComputedStyle(el).fontFamily || null);
+  }, []);
+  const measure = useMemo(() => measurer(family), [family]);
   useEffect(() => {
     if (fixedWidth !== undefined) return setMeasured(fixedWidth);
     const el = wrapRef.current;
@@ -144,7 +241,7 @@ export function TreemapChart({
   if (enableTooltip && hit && hitItem) {
     const rows: [string, string][] = [[hitItem.label, valueFormatter(hitItem.value)]];
     if (hitItem.change !== undefined) rows.push(['', changeFormatter(hitItem.change)]);
-    const tw = Math.max(...rows.map(([a, b]) => textWidth(a, 12) + textWidth(b, 12) + 28)) + 8;
+    const tw = Math.max(...rows.map(([a, b]) => measure(a, 12, 400) + measure(b, 12, 700) + 28)) + 8;
     const th = rows.length * 18 + 14;
     const cx = hit.x + hit.width / 2;
     let tx = cx - tw / 2;
@@ -174,13 +271,11 @@ export function TreemapChart({
         {rects.map((r) => {
           const { d, i } = byId.get(r.id)!;
           const on = active === r.id;
-          // Label size follows the tile: big tiles get big type.
-          // …then shrinks to fit the tile width (down to 9px) before giving up.
-          const fs = Math.max(9, Math.min(22, Math.sqrt(r.width * r.height) / 6, (r.width - 10) / Math.max(1, textWidth(d.label, 1))));
-          const sub = d.change !== undefined ? changeFormatter(d.change) : d.sublabel;
-          const fitsLabel = r.width >= textWidth(d.label, fs) + 10 && r.height >= fs + 8;
-          const fitsSub = !!sub && fitsLabel && r.height >= fs * 2 + 14 && r.width >= textWidth(sub, fs * 0.8) + 10;
-          const cy = r.y + r.height / 2;
+          // Label size follows the tile; a narrow one wraps, a tiny one cuts short (the tooltip has it all).
+          const fit = fitLabel(d.label, d.change !== undefined ? changeFormatter(d.change) : d.sublabel, r.width, r.height, measure);
+          const lineH = fit ? fit.size * 1.2 : 0;
+          const block = fit ? fit.lines.length * lineH + (fit.sub ? fit.sub.size * 1.3 : 0) : 0;
+          const top = r.y + r.height / 2 - block / 2;
           return (
             <g key={r.id} onPointerEnter={() => setActive(r.id)} onClick={onItemClick ? () => onItemClick(d) : undefined} style={{ cursor: onItemClick ? 'pointer' : 'default' }}>
               <rect
@@ -204,32 +299,25 @@ export function TreemapChart({
                   style={{ stroke: '#fff' }}
                 />
               )}
-              {fitsLabel && (
-                <text
-                  x={r.x + r.width / 2}
-                  y={fitsSub ? cy - fs * 0.45 : cy}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={fs}
-                  fontWeight={700}
-                  pointerEvents="none"
-                  style={{ fill: '#fff' }}
-                >
-                  {d.label}
-                </text>
-              )}
-              {fitsSub && (
-                <text
-                  x={r.x + r.width / 2}
-                  y={cy + fs * 0.65}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={fs * 0.78}
-                  fontWeight={600}
-                  pointerEvents="none"
-                  style={{ fill: 'rgba(255,255,255,0.88)', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {sub}
+              {fit && (
+                <text textAnchor="middle" pointerEvents="none" fontWeight={700} fontSize={fit.size} style={{ fill: '#fff' }}>
+                  {fit.lines.map((line, k) => (
+                    <tspan key={k} x={r.x + r.width / 2} y={top + lineH * (k + 0.5)} dominantBaseline="central">
+                      {line}
+                    </tspan>
+                  ))}
+                  {fit.sub && (
+                    <tspan
+                      x={r.x + r.width / 2}
+                      y={top + fit.lines.length * lineH + fit.sub.size * 0.65}
+                      dominantBaseline="central"
+                      fontSize={fit.sub.size}
+                      fontWeight={600}
+                      style={{ fill: 'rgba(255,255,255,0.88)', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {fit.sub.text}
+                    </tspan>
+                  )}
                 </text>
               )}
             </g>

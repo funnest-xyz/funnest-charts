@@ -7,7 +7,7 @@ import { BarChart, LineChart, PercentageBarChart } from './charts';
 import { useCartesianChart } from './context';
 import { CandlestickChart } from './candles';
 import { DonutChart } from './donut';
-import { TreemapChart } from './treemap';
+import { fitLabel, TreemapChart } from './treemap';
 
 const render = (el: ReturnType<typeof h>) => renderToStaticMarkup(el);
 
@@ -121,6 +121,28 @@ describe('donut, treemap, candles', () => {
     expect(html).toContain('+2.50%');
     expect(html).toContain('#3182f6'); // full down color at |change| >= maxChange
     expect(html).toContain('#8B95A1'); // flat
+  });
+  it('fits treemap labels: one line, two lines in a narrow tile, cut short in a small one', () => {
+    // Estimate widths: Hangul a full em, the rest 0.62.
+    const measure = (t: string, size: number) => [...t].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? size : size * 0.62), 0);
+    const wide = fitLabel('삼성전자', '+1.84%', 300, 160, measure)!;
+    expect(wide.lines).toEqual(['삼성전자']);
+    expect(wide.size).toBe(22);
+    expect(wide.sub?.text).toBe('+1.84%');
+    // Narrow and tall: two lines, split where Hangul meets Latin or between Hangul.
+    const narrow = fitLabel('LG에너지솔루션', '-2.31%', 52, 120, measure)!;
+    expect(narrow.lines).toHaveLength(2);
+    expect(narrow.lines.join('')).toBe('LG에너지솔루션');
+    expect(narrow.size).toBeGreaterThanOrEqual(7);
+    // A Latin word never breaks in the middle.
+    const latin = fitLabel('NAVER', undefined, 30, 60, measure);
+    expect(latin?.lines.every((l) => l === 'NAVER' || l.endsWith('…'))).toBe(true);
+    // Small: cut short with … rather than nothing.
+    const small = fitLabel('한화에어로스페이스', '+5.60%', 40, 16, measure)!;
+    expect(small.lines[0]).toMatch(/…$/);
+    expect(small.sub).toBeUndefined();
+    // Too small for two letters: nothing.
+    expect(fitLabel('카카오', '-3.40%', 9, 9, measure)).toBeNull();
   });
   it('draws a wick and body per candle plus volume bars', () => {
     const data = [
