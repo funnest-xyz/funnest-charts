@@ -2,7 +2,7 @@
 import type { Resolution } from '@funnest/charts';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { IntervalGroup, WidgetContext } from '../context';
-import { resolutionLabel, STRINGS, type Strings } from '../i18n';
+import { resolutionLabel, stringsOf, type Strings } from '../i18n';
 import { ChevronDownIcon, StarIcon } from '../icons';
 import { useStore } from '../store';
 import { useKeepInView } from './keep-in-view';
@@ -20,7 +20,7 @@ const GROUP_LABEL: Record<IntervalGroup['id'], keyof Strings> = {
  */
 export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useKeepInView<HTMLDivElement>(open);

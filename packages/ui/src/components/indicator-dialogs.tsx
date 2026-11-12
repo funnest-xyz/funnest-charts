@@ -13,7 +13,7 @@ import {
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
-import { STRINGS, type Strings } from '../i18n';
+import { stringsOf, type Strings } from '../i18n';
 import { CloseIcon, SmallCloseIcon } from '../icons';
 import { useStore } from '../store';
 import { SettingsDialog } from './settings-dialog';
@@ -50,7 +50,7 @@ const SEARCH_THRESHOLD = 8;
 
 function IndicatorPicker({ ctx }: { ctx: WidgetContext }) {
   const { locale } = useStore(ctx.store);
-  const t = STRINGS[locale];
+  const t = stringsOf(ctx.store.get());
   const [query, setQuery] = useState('');
   const close = () => ctx.store.set({ dialog: null });
   const add = (type: IndicatorType) => {
@@ -177,7 +177,7 @@ function SourceSelect({ value, locale, label, onChange }: { value: PriceSource; 
 
 function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
   const { locale, indicators } = useStore(ctx.store);
-  const t = STRINGS[locale];
+  const t = stringsOf(ctx.store.get());
   const config = indicators.find((c) => c.id === id);
   const def = config ? (ctx.chart.indicatorDefinition(config.type) ?? null) : null;
   const hasLines = !!def?.params.some((p) => p.kind === 'lines');

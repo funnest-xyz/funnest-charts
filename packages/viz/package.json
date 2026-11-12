@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts-viz",
-  "version": "0.6.16",
+  "version": "0.6.17",
   "description": "Platform-neutral chart math (scales, ticks, paths, scrubbing) shared by Funnest Charts web and React Native components",
   "keywords": [
     "chart",

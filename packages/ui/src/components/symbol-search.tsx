@@ -3,7 +3,7 @@ import { formatPrice, type SymbolInfo, type SymbolSearchResult } from '@funnest/
 import { Fragment, type ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
-import { STRINGS } from '../i18n';
+import { stringsOf } from '../i18n';
 import { SearchIcon, SmallCloseIcon, StarIcon } from '../icons';
 import { useStore } from '../store';
 import { SymbolAvatar } from './symbol-avatar';
@@ -109,7 +109,7 @@ type View = { kind: 'all' } | { kind: 'favorites' };
 export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
   const { locale, symbol: current, searchTarget } = useStore(ctx.store);
   const comparing = searchTarget === 'compare';
-  const t = STRINGS[locale];
+  const t = stringsOf(ctx.store.get());
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(ctx.searchCategories[0]?.id ?? 'all');
   const [view, setView] = useState<View>({ kind: 'all' });

@@ -5,6 +5,7 @@ export type { ChartContextMenu, ChartEvents, ChartLayout, ChartOptions, ChartPan
 export type { PriceScaleMode } from './model/price-scale';
 export type { CrosshairInfo, PaneId } from './render/renderer';
 export type { Locale } from './model/time-format';
+export { browserLocale } from './model/time-format';
 export type { IndexRange, TimeScaleOptions } from './model/time-scale';
 export type {
   Bar,
@@ -21,7 +22,7 @@ export type {
   ConnectionState,
 } from './types';
 export type { DirectionPreset, ThemeTokens } from './theme';
-export { createTheme, darkTheme, lightTheme } from './theme';
+export { createTheme, darkTheme, directionColors, lightTheme } from './theme';
 export type { FormatPriceOptions } from './price';
 export { decimalsOf, formatCompact, formatPrice, krxTickSize, resolveTickSize, roundToTick } from './price';
 export { isIntradayResolution, resolutionToMs } from './resolution';

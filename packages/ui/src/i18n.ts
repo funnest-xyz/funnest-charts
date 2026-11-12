@@ -297,6 +297,18 @@ export const STRINGS = {
 
 export type Strings = (typeof STRINGS)['ko'];
 
+const merged = new WeakMap<Partial<Strings>, Partial<Record<Locale, Strings>>>();
+/**
+ * The widget's words: the built-in ones for its locale with the app's `strings` on top (a few
+ * replaced, or every one for a language of your own).
+ */
+export function stringsOf(s: { locale: Locale; strings?: Partial<Strings> | undefined }): Strings {
+  if (!s.strings) return STRINGS[s.locale];
+  let byLocale = merged.get(s.strings);
+  if (!byLocale) merged.set(s.strings, (byLocale = {}));
+  return (byLocale[s.locale] ??= { ...STRINGS[s.locale], ...s.strings } as Strings);
+}
+
 /**
  * '1' → 1분, '60' → 1시간, '1D' → 일 (short) / 1일 (long), '12M' → 1년.
  * Short labels are for the toolbar chips, long ones for the interval menu.

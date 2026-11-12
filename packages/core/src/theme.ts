@@ -55,6 +55,9 @@ export const darkTheme: ThemeTokens = {
   crosshair: '#7E7E87',
 };
 
+/** Up/down candle colors: 'kr' red up · blue down (Korea), 'global' green up · red down. */
+export const directionColors = (preset: DirectionPreset): Pick<ThemeTokens, 'up' | 'down'> => ({ ...DIRECTION_COLORS[preset] });
+
 export function createTheme(
   base: ThemeTokens,
   overrides: Partial<ThemeTokens> = {},

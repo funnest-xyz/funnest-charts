@@ -1,4 +1,4 @@
-import { darkTheme, lightTheme, type Resolution, type ThemeTokens } from '@funnest/charts';
+import { darkTheme, directionColors, lightTheme, type DirectionPreset, type Resolution, type ThemeTokens } from '@funnest/charts';
 import type { UiState } from './context';
 import { createStorage, type WidgetStorage } from './storage';
 import type { Store } from './store';
@@ -63,6 +63,8 @@ export interface ShellPane {
 export interface ShellOptions {
   colorScheme: ColorScheme;
   theme: Partial<ThemeTokens> | undefined;
+  /** Up/down colors under `theme` (TradingChartOptions.direction, resolved from the locale). */
+  direction: DirectionPreset;
   storageKey: string | null;
   drawingToolbar: boolean;
   favoriteIntervals: readonly Resolution[];
@@ -186,7 +188,7 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
   let themePatch: Partial<ThemeTokens> = { ...options.theme };
   let panes: () => readonly ShellPane[] = () => [];
   const isDark = () => (scheme === 'system' ? !!darkQuery?.matches : scheme === 'dark');
-  const resolveTheme = (): ThemeTokens => ({ ...(isDark() ? darkTheme : lightTheme), ...themePatch });
+  const resolveTheme = (): ThemeTokens => ({ ...(isDark() ? darkTheme : lightTheme), ...directionColors(options.direction), ...themePatch });
   let theme = resolveTheme();
 
   const root = div('fnc-root', container);

@@ -3,6 +3,16 @@ import type { TimeScale } from './time-scale';
 
 export type Locale = 'ko' | 'en';
 
+/**
+ * The locale when none is given: Korean for a browser set to Korean, English for everyone else
+ * (and outside a browser).
+ */
+export function browserLocale(): Locale {
+  const nav = typeof navigator === 'undefined' ? undefined : navigator;
+  const first = nav?.languages?.[0] ?? nav?.language ?? '';
+  return /^ko\b/i.test(first) ? 'ko' : 'en';
+}
+
 export interface TimeParts {
   year: number;
   /** 1–12 */

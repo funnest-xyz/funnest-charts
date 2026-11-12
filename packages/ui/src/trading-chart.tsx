@@ -1,9 +1,11 @@
 /** @jsxImportSource preact */
 import {
+  browserLocale,
   type Chart,
   type ChartOptions,
   type ChartType,
   type Datafeed,
+  type DirectionPreset,
   type Locale,
   type ChartState,
   type Resolution,
@@ -14,6 +16,7 @@ import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar';
 import { Toolbar } from './components/toolbar';
 import type { ContextMenuItems, IntervalGroup, SearchCategory, SearchExchange } from './context';
+import type { Strings } from './i18n';
 import { createPane } from './pane';
 import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell';
 
@@ -94,6 +97,21 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
    * indicator browser). Called with the pane's chart; add indicators with chart.addIndicator().
    */
   onIndicatorsClick?: (chart: Chart) => void;
+  /**
+   * Language of the toolbar, menus and dates. Default: Korean when the browser is set to Korean,
+   * English otherwise.
+   */
+  locale?: Locale;
+  /**
+   * Replace built-in words: a few (`{ indicators: 'Studies' }`) or all of them for a language of
+   * your own (start from `STRINGS.en`). Applied over whichever locale is active.
+   */
+  strings?: Partial<Strings>;
+  /**
+   * Up/down colors: 'kr' red up · blue down, 'global' green up · red down. Default follows the
+   * locale ('kr' for Korean, 'global' otherwise). `theme.up` / `theme.down` still win.
+   */
+  direction?: DirectionPreset;
 }
 
 export interface TradingChart {
@@ -143,12 +161,16 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     contextMenuItems,
     onIndicatorsClick,
     theme,
+    strings,
+    direction,
     ...chartOptions
   } = options;
-  const displayTimezone = defaultDisplayTimezone(chartOptions.locale ?? 'ko', chartOptions.displayTimezone);
+  const locale = (chartOptions.locale ??= browserLocale());
+  const displayTimezone = defaultDisplayTimezone(locale, chartOptions.displayTimezone);
   const shell = createShell(container, {
     colorScheme,
     theme,
+    direction: direction ?? (locale === 'ko' ? 'kr' : 'global'),
     storageKey,
     drawingToolbar,
     favoriteIntervals: favoriteIntervals ?? DEFAULT_FAVORITE_INTERVALS,
@@ -170,6 +192,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     attribution,
     contextMenuItems,
     onIndicatorsClick,
+    strings,
   });
   shell.main.insertBefore(pane.stage, shell.slots.bottom);
   shell.setPanes(() => [pane]);

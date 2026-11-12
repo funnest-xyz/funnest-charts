@@ -2,7 +2,7 @@
 import { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, type ChartSettings, type PriceScaleMode } from '@funnest/charts';
 import { useEffect, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
-import { STRINGS, type Strings } from '../i18n';
+import { stringsOf, type Strings } from '../i18n';
 import { CloseIcon } from '../icons';
 import { useStore } from '../store';
 
@@ -49,7 +49,7 @@ const SCALES: { mode: PriceScaleMode; label: keyof Strings }[] = [
  */
 export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
   const { locale } = useStore(ctx.store);
-  const t = STRINGS[locale];
+  const t = stringsOf(ctx.store.get());
   const [settings, setSettings] = useState(ctx.chart.settings);
   useEffect(() => ctx.chart.on('settingsChange', setSettings), [ctx.chart]);
 

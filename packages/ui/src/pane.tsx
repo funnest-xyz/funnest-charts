@@ -1,9 +1,10 @@
 /** @jsxImportSource preact */
-import { createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
+import { browserLocale, createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay';
 import type { ContextMenuItems, IntervalGroup, MultiControls, SearchCategory, SearchExchange, UiState, WidgetContext } from './context';
 import { div, type Shell } from './shell';
+import type { Strings } from './i18n';
 import { Store } from './store';
 
 export interface PaneConfig {
@@ -24,6 +25,7 @@ export interface PaneConfig {
   contextMenuItems?: ContextMenuItems | undefined;
   onIndicatorsClick?: ((chart: Chart) => void) | undefined;
   multi?: MultiControls | undefined;
+  strings?: Partial<Strings> | undefined;
 }
 
 /**
@@ -77,7 +79,8 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
   chart.on('settingsChange', canvasVars);
 
   const store = new Store<UiState>({
-    locale: config.chartOptions.locale ?? 'ko',
+    locale: config.chartOptions.locale ?? browserLocale(),
+    strings: config.strings,
     symbol: null,
     resolution: config.resolution,
     loading: false,

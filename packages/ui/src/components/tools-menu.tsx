@@ -3,7 +3,7 @@ import type { ChartType, PriceScaleMode } from '@funnest/charts';
 import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { LayoutSync, MultiControls, WidgetContext } from '../context';
-import { STRINGS, type Strings } from '../i18n';
+import { stringsOf, type Strings } from '../i18n';
 import {
   AreaChartIcon,
   CameraIcon,
@@ -43,7 +43,7 @@ const SYNC_KEYS: { key: keyof LayoutSync; label: 'syncCrosshair' | 'syncTime' | 
 function LayoutSection({ ctx, multi, close }: { ctx: WidgetContext; multi: MultiControls; close(): void }) {
   const s = useStore(ctx.store);
   const m = useStore(multi.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   return (
     <>
       <div class="fnc-tools-section">{t.layout}</div>
@@ -94,7 +94,7 @@ function LayoutSection({ ctx, multi, close }: { ctx: WidgetContext; multi: Multi
  */
 export function ToolsMenu({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const [open, setOpen] = useState(false);
   const [scale, setScale] = useState(ctx.chart.settings.priceScale);
   const ref = useRef<HTMLDivElement>(null);

@@ -3,7 +3,7 @@ import { formatCompact, formatPrice, type Bar, type IndicatorLegendItem } from '
 import type { JSX } from 'preact';
 import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
 import type { MultiControls, WidgetContext } from '../context';
-import { resolutionLabel, STRINGS } from '../i18n';
+import { resolutionLabel, stringsOf } from '../i18n';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -35,7 +35,7 @@ const CONTROL_OFFSET = 52; // px above the time axis
 const dirClass = (v: number) => (v > 0 ? 'fnc-up' : v < 0 ? 'fnc-down' : 'fnc-flat');
 
 function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegendItem }) {
-  const t = STRINGS[ctx.store.get().locale];
+  const t = stringsOf(ctx.store.get());
   return (
     <div
       class={item.visible ? 'fnc-ind' : 'fnc-ind fnc-ind-hidden'}
@@ -90,7 +90,7 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
 
 function Legend({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const [hover, setHover] = useState<{ bar: Bar; prev: Bar | undefined; index: number } | null>(null);
   const [, refresh] = useReducer((n: number) => n + 1, 0);
   const [collapsed, setCollapsed] = useState(false);
@@ -222,7 +222,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
 
 function NavControls({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   // Chart settings → "확대·이동 버튼" hides the zoom/scroll group (the jump-to-latest button stays).
   const [showButtons, setShowButtons] = useState(ctx.chart.settings.navigationButtons);
   useEffect(() => ctx.chart.on('settingsChange', (settings) => setShowButtons(settings.navigationButtons)), [ctx.chart]);
@@ -297,7 +297,7 @@ function PaneMaximize({ ctx, multi }: { ctx: WidgetContext; multi: MultiControls
   const s = useStore(ctx.store);
   const m = useStore(multi.store);
   if (s.layout.plotWidth <= 0 || m.narrow || (m.layout === '1' && m.maximized === null)) return null;
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const maximized = m.maximized !== null;
   const label = maximized ? t.restorePane : t.maximizePane;
   return (
@@ -327,7 +327,7 @@ const REPLAY_SPEEDS = [
 /** Bottom-center bar while replaying (or a hint while picking the start bar). */
 function ReplayBar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const r = s.replay;
   const { plotWidth, panesHeight } = s.layout;
   if (plotWidth <= 0 || (!r.active && !r.selecting)) return null;

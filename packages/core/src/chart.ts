@@ -2,7 +2,7 @@ import { Emitter } from './events';
 import { Interaction, type HitRegion, type InteractionHost } from './interaction';
 import { BarStore } from './model/bar-store';
 import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/price-scale';
-import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale } from './model/time-format';
+import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale, browserLocale } from './model/time-format';
 import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleOptions } from './model/time-scale';
 import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price';
 import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorType } from './indicators/definitions';
@@ -343,7 +343,7 @@ export class Chart {
 
   constructor(container: HTMLElement, options: ChartOptions = {}) {
     this.theme = { ...lightTheme, ...options.theme };
-    this.locale = options.locale ?? 'ko';
+    this.locale = options.locale ?? browserLocale();
     this.formatter = new TimeFormatter(options.timezone ?? defaultTimeZone(), this.locale);
     this.pricePrecision = options.pricePrecision ?? 2;
     this.tickSize = options.tickSize ?? 0;

@@ -22,7 +22,8 @@ A pro-grade trading chart and lightweight dashboard charts, with your data and y
   Background, fonts and up/down colors follow your design tokens.
 - Positions, open orders and fills on the chart, with drag-to-modify orders.
 - Mouse and touch: pinch zoom, long-press crosshair, inertial scrolling.
-- Korean market defaults: KST, KRX sessions and tick sizes, red-up / blue-down.
+- Speaks your user's language: English, or Korean for a Korean browser, with matching up/down colors.\
+  Korean market defaults when it's Korean: KST, KRX sessions and tick sizes, red-up / blue-down.
 - No exchange code inside.\
   Connect any exchange or broker through one `Datafeed` interface.
 
@@ -96,6 +97,18 @@ A summary for LLMs is at [`/llms.txt`](https://charts.funnest.xyz/llms.txt).
 The trading chart follows the OS light/dark setting by default and switches live (`colorScheme: 'system'`).\
 Pin it with `'light'` or `'dark'`, or override colors with `theme`.\
 The SVG components follow the page's `color-scheme` and the `--fnv-*` CSS variables.
+
+## Language
+
+With no `locale`, the widget uses Korean for a browser set to Korean and English for everyone else.
+Up/down colors follow it: red up · blue down for Korean, green up · red down otherwise (`direction: 'kr' | 'global'` to choose).
+Replace any word with `strings`, or translate all of them for your language (start from `STRINGS.en`):
+
+```tsx
+import { STRINGS } from '@funnest/charts-ui';
+
+<FnChart datafeed={myDatafeed} symbol="AAPL" locale="en" strings={{ addIndicator: 'Add study' }} />
+```
 
 ## Logo badge
 

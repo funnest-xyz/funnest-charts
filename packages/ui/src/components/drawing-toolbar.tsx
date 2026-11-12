@@ -3,7 +3,7 @@ import type { DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funn
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
-import { STRINGS } from '../i18n';
+import { stringsOf } from '../i18n';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -63,7 +63,7 @@ function ToolGroup({
   onPick(tool: DrawingType): void;
 }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const [chosen, setChosen] = useState(tools[0]!.type);
   const armed = tools.find((d) => d.type === s.drawingTool);
   const current = armed ?? tools.find((d) => d.type === chosen) ?? tools[0]!;
@@ -131,7 +131,7 @@ function ToolGroup({
 /** Left vertical tool bar (TradingView layout). On narrow screens it slides in over the chart. */
 export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   // Every pane gets the same definitions, so the active pane's list is the widget's list.
   const groups = toolGroups(ctx.chart.drawingDefinitions());
@@ -242,7 +242,7 @@ function DashGlyph({ dash }: { dash: NonNullable<DrawingStyle['dash']> }) {
  */
 export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));

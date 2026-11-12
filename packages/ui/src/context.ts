@@ -15,10 +15,13 @@ import type {
 } from '@funnest/charts';
 import type { LayoutId } from './layouts';
 import type { WidgetStorage } from './storage';
+import type { Strings } from './i18n';
 import type { Store } from './store';
 
 export interface UiState {
   locale: Locale;
+  /** The app's replacements for built-in words (TradingChartOptions.strings). */
+  strings?: Partial<Strings> | undefined;
   symbol: SymbolInfo | null;
   resolution: Resolution;
   loading: boolean;

@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import type { WidgetContext } from '../context';
-import { STRINGS } from '../i18n';
+import { stringsOf } from '../i18n';
 import { ChevronDownIcon, CollapseIcon, ExpandIcon, IndicatorIcon, PencilIcon, SearchIcon } from '../icons';
 import { useStore } from '../store';
 import { Dialogs } from './indicator-dialogs';
@@ -12,7 +12,7 @@ import { ToolsMenu } from './tools-menu';
 
 export function Toolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const canSearch = typeof ctx.datafeed.searchSymbols === 'function';
 
   return (

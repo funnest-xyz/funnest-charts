@@ -15,4 +15,4 @@ export { LAYOUT_GROUPS, LAYOUTS, MAX_PANES, paneCount } from './layouts';
 export type { LayoutId, SplitNode, SplitSizes } from './layouts';
 export type { ContextMenuItem, ContextMenuItems, IntervalGroup, LayoutSync, SearchCategory, SearchExchange } from './context';
 export type { ColorScheme, TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart';
-export { resolutionLabel } from './i18n';
+export { resolutionLabel, STRINGS, stringsOf, type Strings } from './i18n';

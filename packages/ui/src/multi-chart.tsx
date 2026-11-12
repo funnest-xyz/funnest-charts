@@ -1,10 +1,10 @@
 /** @jsxImportSource preact */
-import { parseChartState, type Chart, type ChartState, type Locale, type Resolution, type ThemeTokens } from '@funnest/charts';
+import { browserLocale, parseChartState, type Chart, type ChartState, type Locale, type Resolution, type ThemeTokens } from '@funnest/charts';
 import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar';
 import { Toolbar } from './components/toolbar';
 import type { LayoutSync, MultiControls, MultiState } from './context';
-import { resolutionLabel, STRINGS } from './i18n';
+import { resolutionLabel, stringsOf } from './i18n';
 import { isLayoutId, LAYOUTS, MAX_PANES, paneCount, resizePair, sizesFor, type LayoutId, type SplitNode, type SplitSizes } from './layouts';
 import { createPane, type Pane } from './pane';
 import { bindWidgetKeys, createShell, div, type ColorScheme, type TradingChartSlots } from './shell';
@@ -86,7 +86,7 @@ const DEFAULT_SYNC: LayoutSync = { crosshair: true, time: false, symbol: false, 
 
 function PaneTab({ pane, index, active, onSelect }: { pane: Pane; index: number; active: boolean; onSelect(): void }) {
   const s = useStore(pane.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   return (
     <button class="fnc-pane-tab" role="tab" aria-selected={active} onClick={onSelect}>
       <span class="fnc-pane-tab-num">{index + 1}</span>
@@ -138,14 +138,18 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
     contextMenuItems,
     onIndicatorsClick,
     theme,
+    strings,
+    direction,
     ...chartOptions
   } = options;
   if (paneSpecs.length === 0) throw new Error('funnest-charts: createMultiChart needs at least one pane');
-  const displayTimezone = defaultDisplayTimezone(chartOptions.locale ?? 'ko', chartOptions.displayTimezone);
+  const locale = (chartOptions.locale ??= browserLocale());
+  const displayTimezone = defaultDisplayTimezone(locale, chartOptions.displayTimezone);
 
   const shell = createShell(container, {
     colorScheme,
     theme,
+    direction: direction ?? (locale === 'ko' ? 'kr' : 'global'),
     storageKey,
     drawingToolbar,
     favoriteIntervals: favoriteIntervals ?? DEFAULT_FAVORITE_INTERVALS,

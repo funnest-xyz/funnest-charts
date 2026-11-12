@@ -2,7 +2,7 @@
 import { formatPrice, type ChartContextMenu } from '@funnest/charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ContextMenuItem, WidgetContext } from '../context';
-import { STRINGS } from '../i18n';
+import { stringsOf } from '../i18n';
 import { useStore } from '../store';
 
 const MARGIN = 8;
@@ -13,7 +13,7 @@ const MARGIN = 8;
  */
 export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
-  const t = STRINGS[s.locale];
+  const t = stringsOf(s);
   const [target, setTarget] = useState<ChartContextMenu | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
