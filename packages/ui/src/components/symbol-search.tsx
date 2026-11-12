@@ -37,6 +37,49 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return <>{parts}</>;
 }
 
+/** Mini lines fetched for rows on screen, shared across openings for two minutes. */
+const sparkCache = new Map<string, { at: number; values: Promise<number[]> }>();
+const SPARK_TTL = 120_000;
+const SPARK_DWELL_MS = 300;
+
+/**
+ * A row's mini line: the result's own if it has one, else asked of the datafeed (getSparkline)
+ * once the row is on screen — the results never wait for these.
+ */
+function LazySparkline({ ctx, info, up }: { ctx: WidgetContext; info: SymbolSearchResult; up: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [values, setValues] = useState<number[] | null>(info.sparkline ?? null);
+  useEffect(() => {
+    if (info.sparkline || !ctx.datafeed.getSparkline || !ref.current) return;
+    let alive = true;
+    const load = () => {
+      let hit = sparkCache.get(info.symbol);
+      if (!hit || Date.now() - hit.at > SPARK_TTL) {
+        hit = { at: Date.now(), values: ctx.datafeed.getSparkline!(info.symbol).catch(() => []) };
+        sparkCache.set(info.symbol, hit);
+      }
+      void hit.values.then((v) => alive && setValues(v));
+    };
+    // Only rows that stay on screen a moment (not ones flashing by while typing).
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver((entries) => {
+      clearTimeout(timer);
+      if (!entries.some((e) => e.isIntersecting)) return;
+      timer = setTimeout(() => {
+        io.disconnect();
+        load();
+      }, SPARK_DWELL_MS);
+    });
+    io.observe(ref.current);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      io.disconnect();
+    };
+  }, [info.symbol]);
+  return <span ref={ref} class="fnc-sr-spark-slot">{values && <Sparkline values={values} up={up} />}</span>;
+}
+
 function Sparkline({ values, up }: { values: number[]; up: boolean }) {
   if (values.length < 2) return null;
   const min = Math.min(...values);
@@ -70,6 +113,8 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
   const [exchange, setExchange] = useState<string | null>(null);
   const [results, setResults] = useState<SymbolSearchResult[] | null>(null);
   const [loading, setLoading] = useState(true);
+  // Some markets may still be answering after the first rows show.
+  const [pending, setPending] = useState(true);
   const [recent, setRecent] = useState<SymbolSearchResult[]>(() => ctx.storage.get(RECENT_KEY, []));
   const [favorites, setFavorites] = useState<SymbolSearchResult[]>(() => ctx.storage.get(FAVORITE_KEY, []));
   const [active, setActive] = useState(0);
@@ -81,12 +126,25 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setPending(true);
     const id = setTimeout(() => {
-      ctx.datafeed
-        .searchSymbols?.(query.trim())
-        .then((items) => alive && setResults(items))
+      const feed = ctx.datafeed;
+      // Sources that answer as they come (combineDatafeeds) show the fast ones first.
+      const search = feed.searchSymbolsProgressive
+        ? feed.searchSymbolsProgressive(query.trim(), (partial) => {
+            if (!alive) return;
+            setResults(partial);
+            setLoading(false);
+          })
+        : feed.searchSymbols?.(query.trim());
+      search
+        ?.then((items) => alive && setResults(items))
         .catch(() => alive && setResults([]))
-        .finally(() => alive && setLoading(false));
+        .finally(() => {
+          if (!alive) return;
+          setLoading(false);
+          setPending(false);
+        });
     }, DEBOUNCE_MS);
     return () => {
       alive = false;
@@ -100,11 +158,17 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
   const filter = (list: SymbolSearchResult[]) =>
     list.filter((i) => matchCategory(i) && (!exchange || i.exchange === exchange));
 
-  // Exchanges present in the current results feed the sidebar.
+  // The sidebar: the exchanges the app declares (from the start, with logos), then any others the
+  // results bring. Counts fill in as results come.
   const exchanges = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of results ?? []) if (matchCategory(r)) counts.set(r.exchange, (counts.get(r.exchange) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const declared = ctx.searchExchanges.map((e) => ({ ...e, count: counts.get(e.name) }));
+    const others = [...counts.entries()]
+      .filter(([name]) => !ctx.searchExchanges.some((e) => e.name === name))
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, label: undefined, logoUrl: undefined, count }));
+    return [...declared, ...others];
   }, [results, category]);
 
   const q = query.trim().toLowerCase();
@@ -183,7 +247,7 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
             {cat && ` · ${cat.label[locale]}`}
           </span>
         </span>
-        {info.sparkline && <Sparkline values={info.sparkline} up={up} />}
+        {(info.sparkline || ctx.datafeed.getSparkline) && <LazySparkline key={info.symbol} ctx={ctx} info={info} up={up} />}
         {info.price !== undefined && (
           <span class="fnc-sr-quote">
             <b>{formatPrice(info.price, info.pricePrecision)}</b>
@@ -212,8 +276,9 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
     );
   };
 
-  const sideItem = (label: string, selected: boolean, onClick: () => void, extra?: ComponentChildren) => (
+  const sideItem = (label: string, selected: boolean, onClick: () => void, extra?: ComponentChildren, logoUrl?: string) => (
     <button class="fnc-sr-side-item" aria-pressed={selected} onClick={onClick}>
+      {logoUrl !== undefined && (logoUrl ? <img class="fnc-sr-side-logo" src={logoUrl} alt="" aria-hidden="true" /> : <i class="fnc-sr-side-logo" aria-hidden="true" />)}
       <span>{label}</span>
       {extra}
     </button>
@@ -267,8 +332,14 @@ export function SymbolSearch({ ctx }: { ctx: WidgetContext }) {
             {sideItem(t.allSymbols, view.kind === 'all' && !exchange, () => (setView({ kind: 'all' }), setExchange(null)))}
             {sideItem(t.favorites, view.kind === 'favorites', () => (setView({ kind: 'favorites' }), setExchange(null)), <em>{favorites.length || ''}</em>)}
             {exchanges.length > 0 && <div class="fnc-sr-side-title">{t.exchanges}</div>}
-            {exchanges.map(([name, count]) =>
-              sideItem(name, exchange === name, () => (setView({ kind: 'all' }), setExchange(exchange === name ? null : name)), <em>{count}</em>),
+            {exchanges.map((x) =>
+              sideItem(
+                x.label?.[locale] ?? x.name,
+                exchange === x.name,
+                () => (setView({ kind: 'all' }), setExchange(exchange === x.name ? null : x.name)),
+                <em>{x.count ?? (pending ? '' : 0)}</em>,
+                ctx.searchExchanges.length ? (x.logoUrl ?? '') : undefined,
+              ),
             )}
           </nav>
 

@@ -13,7 +13,7 @@ import {
 import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar';
 import { Toolbar } from './components/toolbar';
-import type { ContextMenuItems, IntervalGroup, SearchCategory } from './context';
+import type { ContextMenuItems, IntervalGroup, SearchCategory, SearchExchange } from './context';
 import { createPane } from './pane';
 import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell';
 
@@ -53,6 +53,8 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
   onFavoriteIntervalsChange?: (intervals: Resolution[]) => void;
   /** Symbol search tabs. */
   searchCategories?: readonly SearchCategory[];
+  /** Exchanges listed in the symbol search sidebar from the start, with logos (counts fill in as results come). */
+  searchExchanges?: readonly SearchExchange[];
   /**
    * localStorage key prefix for UI preferences (favorite intervals, recent searches).
    * Default 'funnest-charts'. Pass null to keep them in memory only.
@@ -124,6 +126,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     favoriteIntervals,
     onFavoriteIntervalsChange,
     searchCategories = DEFAULT_SEARCH_CATEGORIES,
+    searchExchanges = [],
     storageKey = 'funnest-charts',
     searchHotkey = true,
     symbolLogo = true,
@@ -153,6 +156,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     chartType,
     intervalGroups,
     searchCategories,
+    searchExchanges,
     symbolLogo,
     searchHotkey,
     drawingToolbar,

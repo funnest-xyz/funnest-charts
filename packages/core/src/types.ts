@@ -117,6 +117,16 @@ export interface Datafeed {
   ): Unsubscribe;
   /** Optional: powers the symbol search dialog in @funnest/charts-ui. */
   searchSymbols?(query: string): Promise<SymbolSearchResult[]>;
+  /**
+   * Optional: search that answers as each source comes in (`onPartial` gets everything so far),
+   * so a fast source isn't held up by a slow one. combineDatafeeds provides it.
+   */
+  searchSymbolsProgressive?(query: string, onPartial: (results: SymbolSearchResult[]) => void): Promise<SymbolSearchResult[]>;
+  /**
+   * Optional: recent closes for a row's mini line, oldest first. The search dialog asks only for
+   * rows on screen, after the results are shown (it never waits for these).
+   */
+  getSparkline?(symbol: string): Promise<number[]>;
   /** Optional: live market statistics for the market bar. */
   subscribeQuotes?(symbol: SymbolInfo, onQuote: (quote: Quote) => void): Unsubscribe;
 }

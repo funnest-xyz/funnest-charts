@@ -1,4 +1,4 @@
-import type { Bar, BarsRequest, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo } from '../types';
+import type { Bar, BarsRequest, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, SymbolSearchResult } from '../types';
 
 /**
  * Serves several datafeeds through one chart. Symbols are namespaced as `KEY:SYMBOL`
@@ -50,6 +50,26 @@ export function combineDatafeeds(feeds: Record<string, Datafeed>): Datafeed {
         keys.map(async (key) => ((await feeds[key]!.searchSymbols?.(query)) ?? []).map((info) => outer(key, info))),
       );
       return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+    },
+    /** Each feed's results as they arrive, always in the feeds' order (so rows don't jump). */
+    async searchSymbolsProgressive(query: string, onPartial: (results: SymbolSearchResult[]) => void) {
+      const slots: (SymbolSearchResult[] | null)[] = keys.map(() => null);
+      const merged = () => slots.flatMap((s) => s ?? []);
+      await Promise.allSettled(
+        keys.map(async (key, i) => {
+          try {
+            slots[i] = ((await feeds[key]!.searchSymbols?.(query)) ?? []).map((info) => outer(key, info));
+          } catch {
+            slots[i] = [];
+          }
+          onPartial(merged());
+        }),
+      );
+      return merged();
+    },
+    getSparkline(symbol: string) {
+      const [, feed, raw] = split(symbol);
+      return feed.getSparkline?.(raw) ?? Promise.resolve([]);
     },
   };
 }

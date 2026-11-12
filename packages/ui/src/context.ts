@@ -66,6 +66,16 @@ export interface SearchCategory {
   match(info: SymbolInfo): boolean;
 }
 
+/**
+ * An exchange listed in the symbol search sidebar from the start (before any results), with its
+ * logo. `name` is the `SymbolInfo.exchange` its symbols carry; `label` what to show.
+ */
+export interface SearchExchange {
+  name: string;
+  label?: Record<Locale, string>;
+  logoUrl?: string;
+}
+
 /** Everything components need; created once per widget. */
 export interface WidgetContext {
   /** The widget's root element (theme variables live here). */
@@ -76,6 +86,7 @@ export interface WidgetContext {
   storage: WidgetStorage;
   intervalGroups: readonly IntervalGroup[];
   searchCategories: readonly SearchCategory[];
+  searchExchanges: readonly SearchExchange[];
   /** IANA zone used for the status-bar clock (KST for Korean users by default). */
   displayTimezone: string;
   showLogo: boolean;

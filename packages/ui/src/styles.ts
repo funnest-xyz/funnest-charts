@@ -388,6 +388,8 @@ const CSS = /* css */ `
 }
 .fnc-sr-side-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fnc-sr-side-item em { font-style: normal; font-size: 12px; color: var(--fnc-text-2); }
+.fnc-sr-side-logo { flex: none; width: 18px; height: 18px; border-radius: 5px; object-fit: cover; background: var(--fnc-surface); }
+.fnc-sr-spark-slot { display: inline-flex; flex: none; width: 72px; height: 24px; }
 .fnc-sr-side-item:hover { background: var(--fnc-surface); }
 .fnc-sr-side-item[aria-pressed='true'] { background: var(--fnc-surface); font-weight: 700; }
 .fnc-chip-token {

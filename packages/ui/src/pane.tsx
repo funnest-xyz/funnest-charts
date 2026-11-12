@@ -2,7 +2,7 @@
 import { createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay';
-import type { ContextMenuItems, IntervalGroup, MultiControls, SearchCategory, UiState, WidgetContext } from './context';
+import type { ContextMenuItems, IntervalGroup, MultiControls, SearchCategory, SearchExchange, UiState, WidgetContext } from './context';
 import { div, type Shell } from './shell';
 import { Store } from './store';
 
@@ -14,6 +14,7 @@ export interface PaneConfig {
   chartType: ChartType;
   intervalGroups: readonly IntervalGroup[];
   searchCategories: readonly SearchCategory[];
+  searchExchanges?: readonly SearchExchange[];
   symbolLogo: boolean;
   drawingToolbar: boolean;
   attribution: boolean;
@@ -132,6 +133,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     storage: shell.storage,
     intervalGroups: config.intervalGroups,
     searchCategories: config.searchCategories,
+    searchExchanges: config.searchExchanges ?? [],
     displayTimezone: config.displayTimezone,
     showLogo: config.symbolLogo,
     searchHotkey: config.searchHotkey,
