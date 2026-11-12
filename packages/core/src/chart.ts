@@ -351,6 +351,12 @@ export class Chart {
   private historyRequest = 0;
   /** setSymbol() is between its request and setData(). */
   private symbolLoading = false;
+  /**
+   * What the latest setSymbol() asked for, until it lands (or fails). load() and save() go by it
+   * rather than what's still on screen: a layout switched away and back before a slow symbol
+   * arrives must not keep — or save — the one it was leaving.
+   */
+  private requested: { symbol: string; resolution: Resolution } | null = null;
   private noMoreHistory = false;
   private historyRequestedFor = Number.NaN;
   private countdownLabel: string | null = null;
@@ -489,6 +495,7 @@ export class Chart {
     const feed = this.datafeed;
     if (!feed) throw new Error('funnest-charts: setSymbol() requires the `datafeed` option');
     const token = ++this.loadToken;
+    this.requested = { symbol, resolution };
     this.endReplay(false);
     this.unsubscribeBars?.();
     this.unsubscribeBars = null;
@@ -522,6 +529,7 @@ export class Chart {
       // Only the latest request reports completion; superseded ones stay silent.
       if (token === this.loadToken) {
         this.symbolLoading = false;
+        this.requested = null;
         this.emitter.emit('loadingChange', false);
       }
     }
@@ -771,8 +779,9 @@ export class Chart {
     drawings[this.symbol?.symbol ?? ''] = this.getDrawings();
     return {
       version: 1,
-      symbol: this.symbol?.symbol ?? null,
-      resolution: this.resolution,
+      // A symbol still loading is the one this chart is on (see `requested`).
+      symbol: this.requested?.symbol ?? this.symbol?.symbol ?? null,
+      resolution: this.requested?.resolution ?? this.resolution,
       chartType: this.chartType,
       settings: this.settings,
       indicators: this.getIndicators(),
@@ -795,7 +804,10 @@ export class Chart {
     for (const [symbol, list] of Object.entries(state.drawings)) this.drawingsBySymbol.set(symbol, list);
     this.restoreDrawingsFor(this.symbol?.symbol ?? '');
     const wantSymbol = options.symbol !== false && this.datafeed && state.symbol;
-    if (wantSymbol && (state.symbol !== this.symbol?.symbol || state.resolution !== this.resolution)) {
+    // Compared with what's loading, if anything: otherwise a slower earlier request would land
+    // after this load and take the chart back to its symbol.
+    const target = this.requested ?? { symbol: this.symbol?.symbol, resolution: this.resolution };
+    if (wantSymbol && (state.symbol !== target.symbol || state.resolution !== target.resolution)) {
       await this.setSymbol(state.symbol!, state.resolution ?? this.resolution ?? '1D');
     }
     this.settingsValue = state.settings;
