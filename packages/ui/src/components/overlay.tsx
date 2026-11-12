@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { formatCompact, formatPrice, type Bar, type IndicatorLegendItem } from '@funnest/charts';
+import { formatCompact, formatPrice, type Bar, type IndicatorLegendItem, type LegendItem } from '@funnest/charts';
 import type { JSX } from 'preact';
 import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
 import type { MultiControls, WidgetContext } from '../context';
@@ -83,6 +83,39 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
         >
           <SmallCloseIcon />
         </button>
+      </span>
+    </div>
+  );
+}
+
+/** An app's row (chart.addLegendItem): 👁 if it can hide, its name, ⚙ and × if it offers them. */
+function AppItem({ ctx, item }: { ctx: WidgetContext; item: LegendItem }) {
+  const t = stringsOf(ctx.store.get());
+  return (
+    <div class={item.visible ? 'fnc-ind' : 'fnc-ind fnc-ind-hidden'}>
+      {item.onToggle && (
+        <button
+          class="fnc-ind-btn fnc-ind-eye"
+          data-tip={item.visible ? t.hide : t.show}
+          aria-label={`${item.name} ${item.visible ? t.hide : t.show}`}
+          aria-pressed={!item.visible}
+          onClick={() => ctx.chart.setLegendItemVisible(item.id, !item.visible)}
+        >
+          {item.visible ? <EyeIcon /> : <EyeOffIcon />}
+        </button>
+      )}
+      <span class="fnc-ind-title">{item.name}</span>
+      <span class="fnc-ind-actions">
+        {item.onSettings && (
+          <button class="fnc-ind-btn" data-tip={t.indicatorSettings} aria-label={`${item.name} ${t.indicatorSettings}`} onClick={() => item.onSettings?.()}>
+            <GearIcon />
+          </button>
+        )}
+        {item.onRemove && (
+          <button class="fnc-ind-btn" data-tip={t.removeIndicator} aria-label={`${item.name} ${t.removeIndicator}`} onClick={() => item.onRemove?.()}>
+            <SmallCloseIcon />
+          </button>
+        )}
       </span>
     </div>
   );
@@ -196,8 +229,9 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
             </div>
           ))}
         {!collapsed && overlayItems.map((item) => <IndicatorItem ctx={ctx} item={item} />)}
+        {!collapsed && s.legendItems.map((item) => <AppItem ctx={ctx} item={item} />)}
         {/* Collapse (an up arrow) at the end of the list; collapsed, a small bar brings it back. */}
-        {overlayItems.length > 0 &&
+        {overlayItems.length + s.legendItems.length > 0 &&
           (collapsed ? (
             <button class="fnc-ind-handle" aria-expanded="false" aria-label={t.expand} data-tip={t.expand} onClick={() => setCollapsed(false)}>
               <span />

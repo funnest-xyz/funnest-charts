@@ -8,6 +8,7 @@ import type {
   Drawing,
   DrawingType,
   IndicatorConfig,
+  LegendItem,
   Locale,
   ReplayStatus,
   Resolution,
@@ -48,6 +49,8 @@ export interface UiState {
   canUndo: boolean;
   canRedo: boolean;
   compares: CompareInfo[];
+  /** The app's legend rows (chart.addLegendItem). */
+  legendItems: readonly LegendItem[];
   replay: ReplayStatus;
 }
 

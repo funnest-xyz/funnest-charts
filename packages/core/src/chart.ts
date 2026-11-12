@@ -126,6 +126,8 @@ export interface ChartEvents {
   /** Undo/redo availability changed (drawings and indicators are tracked). */
   historyChange: { canUndo: boolean; canRedo: boolean };
   comparesChange: CompareInfo[];
+  /** App rows in the legend (addLegendItem) were added, changed or removed. */
+  legendItemsChange: readonly LegendItem[];
   replayChange: ReplayStatus;
   /**
    * Right-click on the chart (mouse only). While anything listens, the browser's own menu is
@@ -151,6 +153,27 @@ export interface ChartPaneLayout {
   kind: 'main' | 'volume' | 'indicator';
   top: number;
   height: number;
+}
+
+/**
+ * A row an app puts in the chart's legend for something it draws itself (a liquidation map, an
+ * order-book heatmap, a line from its own data), so people can hide, configure or remove it
+ * right where they see the indicators.
+ */
+export interface LegendItemOptions {
+  name: string;
+  /** Starts shown. Default true. */
+  visible?: boolean;
+  /** 👁 hides / shows it: the app stops / resumes drawing. No eye without it. */
+  onToggle?(visible: boolean): void;
+  /** ⚙ opens the app's own settings for it. */
+  onSettings?(): void;
+  /** × turns it off (the app removes its drawing and this row). */
+  onRemove?(): void;
+}
+export interface LegendItem extends LegendItemOptions {
+  id: string;
+  visible: boolean;
 }
 
 export interface IndicatorLegendItem {
@@ -272,6 +295,8 @@ export class Chart {
   private readonly cleanups: Array<() => void> = [];
   private readonly drawings: DrawingManager;
   private readonly overlays: ChartOverlay[] = [];
+  private legendExtras: readonly LegendItem[] = [];
+  private legendSeq = 0;
   private readonly trading: TradingLayer;
   private readonly tradingSync: TradingSync;
   private tooltipKey: string | null = null;
@@ -1373,6 +1398,41 @@ export class Chart {
   /** Price alert line (dotted, gray, "알림" label). Pass `onMove` to make it draggable and `onCancel` for an ×. */
   addAlertLine(options: AlertLineOptions): LineHandle<AlertLineOptions> {
     return this.trading.addAlert(options);
+  }
+
+  /**
+   * Adds a row to the legend for something the app draws (see LegendItemOptions). `update()`
+   * changes its name or state; `remove()` takes the row away (the app removes its drawing).
+   */
+  addLegendItem(options: LegendItemOptions): { update(patch: Partial<LegendItemOptions>): void; remove(): void } {
+    const item: LegendItem = { ...options, id: `legend-${++this.legendSeq}`, visible: options.visible ?? true };
+    this.legendExtras = [...this.legendExtras, item];
+    this.emitter.emit('legendItemsChange', this.legendExtras);
+    return {
+      update: (patch) => {
+        this.legendExtras = this.legendExtras.map((x) => (x.id === item.id ? { ...x, ...patch, visible: patch.visible ?? x.visible } : x));
+        this.emitter.emit('legendItemsChange', this.legendExtras);
+      },
+      remove: () => {
+        if (!this.legendExtras.some((x) => x.id === item.id)) return;
+        this.legendExtras = this.legendExtras.filter((x) => x.id !== item.id);
+        this.emitter.emit('legendItemsChange', this.legendExtras);
+      },
+    };
+  }
+
+  /** The app's legend rows, in the order they were added. */
+  get legendItems(): readonly LegendItem[] {
+    return this.legendExtras;
+  }
+
+  /** The legend's 👁 on an app row: tells the app (onToggle) and remembers the state. */
+  setLegendItemVisible(id: string, visible: boolean): void {
+    const item = this.legendExtras.find((x) => x.id === id);
+    if (!item || item.visible === visible) return;
+    this.legendExtras = this.legendExtras.map((x) => (x.id === id ? { ...x, visible } : x));
+    item.onToggle?.(visible);
+    this.emitter.emit('legendItemsChange', this.legendExtras);
   }
 
   /**

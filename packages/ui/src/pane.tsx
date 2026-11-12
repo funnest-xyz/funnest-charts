@@ -91,6 +91,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     canUndo: chart.canUndo,
     canRedo: chart.canRedo,
     compares: chart.getCompares(),
+    legendItems: chart.legendItems,
     replay: chart.replay,
     chartType: config.chartType,
     drawingTool: null,
@@ -118,6 +119,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     chart.on('chartTypeChange', (chartType) => store.set({ chartType })),
     chart.on('historyChange', ({ canUndo, canRedo }) => store.set({ canUndo, canRedo })),
     chart.on('comparesChange', (compares) => store.set({ compares })),
+    chart.on('legendItemsChange', (legendItems) => store.set({ legendItems })),
     chart.on('replayChange', (replay) => store.set({ replay })),
   ];
 
