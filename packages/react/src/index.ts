@@ -20,6 +20,7 @@ export type {
   ContextMenuItems,
   LayoutId,
   LayoutSync,
+  LegendValues,
   MultiChart,
   MultiChartEvents,
   MultiChartOptions,
@@ -28,5 +29,7 @@ export type {
   TradingChart,
   TradingChartOptions,
   TradingChartSlots,
+  ToolsMenuItem,
+  ToolsMenuItems,
 } from '@funnest/charts-ui';
 export * from './viz';

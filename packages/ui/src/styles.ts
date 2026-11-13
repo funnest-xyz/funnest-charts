@@ -162,7 +162,13 @@ const CSS = /* css */ `
   border-right: 1px solid var(--fnc-border);
   background: var(--fnc-bg);
 }
-.fnc-hsep { width: 20px; height: 1px; background: var(--fnc-border); margin: 4px 0; }
+.fnc-hsep { width: 20px; height: 1px; background: var(--fnc-border); margin: 4px 0; flex: none; }
+/* Too short for every tool (DrawingToolbar sets data-fit): closer buttons, then scrolling. */
+.fnc-drawbar[data-fit] { gap: 2px; padding: 4px 0; }
+.fnc-drawbar[data-fit] .fnc-btn { width: 32px; height: 32px; }
+.fnc-drawbar[data-fit] .fnc-hsep { margin: 2px 0; }
+.fnc-drawbar[data-fit='scroll'] { overflow-y: auto; scrollbar-width: none; }
+.fnc-drawbar[data-fit='scroll']::-webkit-scrollbar { display: none; }
 
 /* Selected drawing: floating color/delete bar */
 .fnc-selbar {
@@ -220,6 +226,14 @@ const CSS = /* css */ `
 .fnc-legend-title b { color: var(--fnc-text); font-weight: 700; }
 .fnc-legend-values { display: flex; flex-wrap: wrap; gap: 0 10px; }
 .fnc-legend-values b { font-weight: 600; }
+/* legendValues: 'crosshair' — over the chart while it shows, so it gets a backing. */
+.fnc-legend-values-float {
+  width: fit-content;
+  margin-left: -4px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fnc-bg) 88%, transparent);
+}
 /* Indicator legend rows */
 .fnc-ind {
   display: flex;
@@ -914,6 +928,8 @@ const CSS = /* css */ `
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-tools-layouts { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
 .fnc-tools-sep { height: 1px; margin: 6px 4px; background: var(--fnc-border); }
+.fnc-tools-icon { display: inline-flex; width: 20px; height: 20px; flex: none; }
+.fnc-tools-icon svg { width: 100%; height: 100%; }
 .fnc-tools-item svg { flex: none; color: var(--fnc-text-2); }
 .fnc-tools-item[aria-pressed='true'] { background: var(--fnc-surface); color: var(--fnc-text); }
 

@@ -60,6 +60,26 @@ export type ContextMenuItem = { label: string; shortcut?: string; disabled?: boo
 /** Extra right-click items for a click on `chart` (e.g. "create an alert at this price"). */
 export type ContextMenuItems = (target: ChartContextMenu & { chart: Chart }) => ContextMenuItem[];
 
+/**
+ * A row an app adds to the 도구 (tools) menu, above 차트 설정 — e.g. its own display settings.
+ * `icon` is SVG markup (16×16, stroke="currentColor"), from the app itself.
+ */
+export interface ToolsMenuItem {
+  label: string;
+  icon?: string;
+  disabled?: boolean;
+  onSelect(chart: Chart): void;
+}
+
+/** The app's rows for the 도구 menu, asked each time it opens (for the pane's chart). */
+export type ToolsMenuItems = (chart: Chart) => ToolsMenuItem[];
+
+/**
+ * The legend's OHLC row: 'always', or 'crosshair' — only while the crosshair is on the chart (a
+ * phone's touch), shown over the chart then, so the candles don't move when it appears.
+ */
+export type LegendValues = 'always' | 'crosshair';
+
 export interface IntervalGroup {
   id: 'minutes' | 'hours' | 'days';
   intervals: Resolution[];
@@ -104,6 +124,8 @@ export interface WidgetContext {
   /** Show the Funnest logo badge on the chart. */
   attribution: boolean;
   contextMenuItems: ContextMenuItems | undefined;
+  toolsMenuItems: ToolsMenuItems | undefined;
+  legendValues: LegendValues;
   /** The app's own indicator browser for the 지표 button (instead of the built-in picker). */
   onIndicatorsClick: ((chart: Chart) => void) | undefined;
   slots: { toolbar: HTMLElement; toolbarEnd: HTMLElement; belowToolbar: HTMLElement; footer: HTMLElement };

@@ -2,7 +2,7 @@
 import { browserLocale, createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay';
-import type { ContextMenuItems, IntervalGroup, MultiControls, SearchCategory, SearchExchange, UiState, WidgetContext } from './context';
+import type { ContextMenuItems, IntervalGroup, LegendValues, MultiControls, SearchCategory, SearchExchange, ToolsMenuItems, UiState, WidgetContext } from './context';
 import { div, type Shell } from './shell';
 import type { Strings } from './i18n';
 import { Store } from './store';
@@ -23,6 +23,8 @@ export interface PaneConfig {
   /** Ctrl/⌘+K opens this widget's symbol search (its footer shows the hint only then). */
   searchHotkey: boolean;
   contextMenuItems?: ContextMenuItems | undefined;
+  toolsMenuItems?: ToolsMenuItems | undefined;
+  legendValues?: LegendValues | undefined;
   onIndicatorsClick?: ((chart: Chart) => void) | undefined;
   multi?: MultiControls | undefined;
   strings?: Partial<Strings> | undefined;
@@ -147,6 +149,8 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     drawingToolbar: config.drawingToolbar,
     attribution: config.attribution,
     contextMenuItems: config.contextMenuItems,
+    toolsMenuItems: config.toolsMenuItems,
+    legendValues: config.legendValues ?? 'always',
     onIndicatorsClick: config.onIndicatorsClick,
     slots: shell.slots,
     multi: config.multi,

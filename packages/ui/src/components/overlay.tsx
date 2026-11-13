@@ -170,7 +170,12 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const update = () => ctx.chart.setTopInset(el.offsetTop + el.offsetHeight + 4);
+    // In 'crosshair' mode the OHLC row comes and goes over the chart: it doesn't count, so the
+    // candles stay put when it appears.
+    const update = () => {
+      const floating = ctx.legendValues === 'crosshair' ? el.querySelector<HTMLElement>('.fnc-legend-values') : null;
+      ctx.chart.setTopInset(el.offsetTop + el.offsetHeight - (floating ? floating.offsetHeight + 2 : 0) + 4);
+    };
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
@@ -183,13 +188,13 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   const fmt = (p: number) => formatPrice(p, s.symbol!.pricePrecision);
 
   let values = null;
-  if (bar) {
+  if (bar && (ctx.legendValues === 'always' || hover)) {
     const cls = dirClass(bar.close - bar.open);
     const change = prev ? bar.close - prev.close : 0;
     const pct = prev && prev.close ? (change / prev.close) * 100 : 0;
     const sign = change > 0 ? '+' : '';
     values = (
-      <div class="fnc-legend-values">
+      <div class={ctx.legendValues === 'crosshair' ? 'fnc-legend-values fnc-legend-values-float' : 'fnc-legend-values'}>
         <span>
           {t.open} <b class={cls}>{fmt(bar.open)}</b>
         </span>

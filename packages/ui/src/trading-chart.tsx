@@ -15,7 +15,7 @@ import {
 import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar';
 import { Toolbar } from './components/toolbar';
-import type { ContextMenuItems, IntervalGroup, SearchCategory, SearchExchange } from './context';
+import type { ContextMenuItems, IntervalGroup, LegendValues, SearchCategory, SearchExchange, ToolsMenuItems } from './context';
 import type { Strings } from './i18n';
 import { createPane } from './pane';
 import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell';
@@ -93,6 +93,16 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
    */
   contextMenuItems?: ContextMenuItems;
   /**
+   * Extra rows for the 도구 (tools) menu, above 차트 설정 — e.g. the app's own display settings.
+   * Called each time the menu opens, with the pane's chart.
+   */
+  toolsMenuItems?: ToolsMenuItems;
+  /**
+   * The legend's OHLC row: 'always' (default), or 'crosshair' — only while the crosshair is on the
+   * chart, over the chart then (good for phones, where the legend takes up much of the screen).
+   */
+  legendValues?: LegendValues;
+  /**
    * The toolbar's 지표 button opens this instead of the built-in indicator picker (an app's own
    * indicator browser). Called with the pane's chart; add indicators with chart.addIndicator().
    */
@@ -159,6 +169,8 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     attribution = true,
     colorScheme = 'system',
     contextMenuItems,
+    toolsMenuItems,
+    legendValues,
     onIndicatorsClick,
     theme,
     strings,
@@ -191,6 +203,8 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     drawingToolbar,
     attribution,
     contextMenuItems,
+    toolsMenuItems,
+    legendValues,
     onIndicatorsClick,
     strings,
   });

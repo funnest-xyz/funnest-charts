@@ -13,6 +13,6 @@ export { createMultiChart } from './multi-chart';
 export type { MultiChart, MultiChartEvents, MultiChartOptions, MultiChartState, PaneSpec } from './multi-chart';
 export { LAYOUT_GROUPS, LAYOUTS, MAX_PANES, paneCount } from './layouts';
 export type { LayoutId, SplitNode, SplitSizes } from './layouts';
-export type { ContextMenuItem, ContextMenuItems, IntervalGroup, LayoutSync, SearchCategory, SearchExchange } from './context';
+export type { ContextMenuItem, ContextMenuItems, IntervalGroup, LayoutSync, LegendValues, SearchCategory, SearchExchange, ToolsMenuItem, ToolsMenuItems } from './context';
 export type { ColorScheme, TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart';
 export { resolutionLabel, STRINGS, stringsOf, type Strings } from './i18n';

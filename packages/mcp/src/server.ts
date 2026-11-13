@@ -26,7 +26,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const server = new McpServer({ name: 'funnest-charts', version: '0.6.24' });
+const server = new McpServer({ name: 'funnest-charts', version: '0.6.25' });
 
 /** Messages follow the machine's language unless a tool call asks for one. */
 const DEFAULT_LOCALE = systemLocale();

@@ -90,7 +90,7 @@ function LayoutSection({ ctx, multi, close }: { ctx: WidgetContext; multi: Multi
 /**
  * One "도구" button for the chart's less frequent tools, so the toolbar keeps symbol, interval,
  * market info and 지표 in view: chart type, split layout (+ sync), compare, replay, price axis,
- * screenshot and chart settings.
+ * screenshot, the app's own rows (toolsMenuItems) and chart settings.
  */
 export function ToolsMenu({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
@@ -193,6 +193,16 @@ export function ToolsMenu({ ctx }: { ctx: WidgetContext }) {
           </div>
 
           <div class="fnc-tools-sep" />
+          {(ctx.toolsMenuItems?.(ctx.chart) ?? []).map((extra) =>
+            item(
+              'fnc-tools-app',
+              extra.label,
+              // The app's own SVG markup (it's the app's string, not user input).
+              <span class="fnc-tools-icon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: extra.icon ?? '' }} />,
+              () => extra.onSelect(ctx.chart),
+              { disabled: extra.disabled ?? false },
+            ),
+          )}
           {item('fnc-btn-settings', t.chartSettingsMore, <SettingsIcon />, () => ctx.store.set({ dialog: { kind: 'chartSettings' } }))}
         </div>
       )}

@@ -1,7 +1,7 @@
 /** @jsxImportSource preact */
 import type { DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
 import { stringsOf } from '../i18n';
 import {
@@ -133,6 +133,23 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = stringsOf(s);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  // A short chart (a phone, a small split pane) can't fit every tool: closer buttons first, then
+  // the bar scrolls (tool lists open beside it, so it only scrolls when it must).
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const fit = () => {
+      el.removeAttribute('data-fit');
+      if (el.scrollHeight <= el.clientHeight) return;
+      el.dataset.fit = 'compact';
+      if (el.scrollHeight > el.clientHeight) el.dataset.fit = 'scroll';
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // Every pane gets the same definitions, so the active pane's list is the widget's list.
   const groups = toolGroups(ctx.chart.drawingDefinitions());
 
@@ -152,6 +169,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
         </button>
       )}
     <div
+      ref={barRef}
       class="fnc-drawbar"
       role="toolbar"
       aria-label={t.drawingTools}
