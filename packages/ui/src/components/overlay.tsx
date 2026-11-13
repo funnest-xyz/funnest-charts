@@ -121,6 +121,30 @@ function AppItem({ ctx, item }: { ctx: WidgetContext; item: LegendItem }) {
   );
 }
 
+/** The volume pane's row: its name and the bar's volume, ⚙ (chart settings) and × (hide the pane). */
+function VolumeItem({ ctx, value }: { ctx: WidgetContext; value: string | null }) {
+  const t = stringsOf(ctx.store.get());
+  return (
+    <div class="fnc-ind fnc-volume-item">
+      <span class="fnc-ind-title">{t.settingVolume}</span>
+      {value !== null && <b class="fnc-flat">{value}</b>}
+      <span class="fnc-ind-actions">
+        <button
+          class="fnc-ind-btn"
+          data-tip={t.chartSettings}
+          aria-label={`${t.settingVolume} ${t.chartSettings}`}
+          onClick={() => ctx.store.set({ dialog: { kind: 'chartSettings' } })}
+        >
+          <GearIcon />
+        </button>
+        <button class="fnc-ind-btn" data-tip={t.hideVolume} aria-label={t.hideVolume} onClick={() => ctx.chart.setVolumeVisible(false)}>
+          <SmallCloseIcon />
+        </button>
+      </span>
+    </div>
+  );
+}
+
 function Legend({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = stringsOf(s);
@@ -198,6 +222,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   const paneLegends = s.layout.panes
     .filter((p) => p.kind === 'indicator')
     .map((pane) => ({ pane, item: items.find((i) => i.id === pane.id) }));
+  const volumePane = s.layout.panes.find((p) => p.kind === 'volume');
 
   return (
     <>
@@ -242,6 +267,11 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
             </button>
           ))}
       </div>
+      {volumePane && (
+        <div class="fnc-legend fnc-pane-legend" style={{ top: `${volumePane.top + 4}px` }}>
+          <VolumeItem ctx={ctx} value={bar?.volume !== undefined ? formatCompact(bar.volume, s.locale) : null} />
+        </div>
+      )}
       {paneLegends.map(
         ({ pane, item }) =>
           item && (

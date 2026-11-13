@@ -61,13 +61,18 @@ function IndicatorPicker({ ctx }: { ctx: WidgetContext }) {
   const q = query.trim().toLowerCase();
   const matches = (d: IndicatorDefinition) =>
     !q || [d.type, d.name.ko, d.name.en, d.description[locale]].some((s) => s.toLowerCase().includes(q));
-  const groups: [string, IndicatorDefinition[]][] = (
-    [
-      [locale === 'ko' ? '가격 차트에 표시' : 'On price', all.filter((d) => d.overlay && matches(d))],
-      [locale === 'ko' ? '아래 영역에 표시' : 'Separate pane', all.filter((d) => !d.overlay && matches(d))],
-    ] as [string, IndicatorDefinition[]][]
-  ).filter(([, defs]) => defs.length > 0);
-  const first = groups[0]?.[1][0];
+  // Volume is a chart setting, not an indicator: once hidden (× on its pane), it comes back from
+  // here, first under 아래 영역에 표시.
+  const volumeHidden = !ctx.chart.settings.volume && (!q || [t.settingVolume, t.volume, 'volume'].some((s) => s.toLowerCase().includes(q)));
+  const showVolume = () => {
+    ctx.chart.setVolumeVisible(true);
+    close();
+  };
+  const groups: { label: string; defs: IndicatorDefinition[]; volume: boolean }[] = [
+    { label: locale === 'ko' ? '가격 차트에 표시' : 'On price', defs: all.filter((d) => d.overlay && matches(d)), volume: false },
+    { label: locale === 'ko' ? '아래 영역에 표시' : 'Separate pane', defs: all.filter((d) => !d.overlay && matches(d)), volume: volumeHidden },
+  ].filter((g) => g.defs.length > 0 || g.volume);
+  const first = groups.find((g) => g.defs.length)?.defs[0];
 
   return (
     <Dialog title={t.addIndicator} onClose={close}>
@@ -85,9 +90,17 @@ function IndicatorPicker({ ctx }: { ctx: WidgetContext }) {
       )}
       <div class="fnc-sr-list fnc-scroll">
         {groups.length === 0 && <div class="fnc-empty">{t.noResults}</div>}
-        {groups.map(([label, defs]) => (
+        {groups.map(({ label, defs, volume }) => (
           <>
             <div class="fnc-sr-section">{label}</div>
+            {volume && (
+              <button class="fnc-sr-row" onClick={showVolume}>
+                <span class="fnc-sr-main">
+                  <span class="fnc-sr-name">{t.settingVolume}</span>
+                  <span class="fnc-sr-meta">{t.volumeDesc}</span>
+                </span>
+              </button>
+            )}
             {defs.map((def) => {
               const type = def.type;
               return (
