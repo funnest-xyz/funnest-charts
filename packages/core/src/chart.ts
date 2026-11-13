@@ -36,7 +36,18 @@ import {
   type RenderModel,
   type Tooltip,
 } from './render/renderer';
-import { DAY_MS, isIntradayResolution, resolutionToMs } from './resolution';
+import {
+  canvasMeasure,
+  layoutLegend,
+  LEGEND_LEFT,
+  LEGEND_RIGHT_CLEARANCE,
+  LEGEND_STRINGS,
+  LEGEND_TOP,
+  paintLegend,
+  type LegendGroup,
+  type LegendRow,
+} from './render/screenshot-legend';
+import { DAY_MS, isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution';
 import { sessionStatus } from './session';
 import { lightTheme, type ThemeTokens } from './theme';
 import type { Bar, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, TickSize, Unsubscribe } from './types';
@@ -174,6 +185,16 @@ export interface LegendItemOptions {
 export interface LegendItem extends LegendItemOptions {
   id: string;
   visible: boolean;
+}
+
+export interface ScreenshotOptions {
+  /**
+   * Paints the legend into the image, where @funnest/charts-ui shows it: symbol · interval ·
+   * exchange and the capture time, the last bar's OHLC and change, compares, and the values of
+   * visible indicators (overlays at the top, pane indicators and volume on their panes).
+   * Default false: a bare chart has no legend on screen either.
+   */
+  legend?: boolean;
 }
 
 export interface IndicatorLegendItem {
@@ -704,14 +725,93 @@ export class Chart {
   }
 
   /** Snapshot of the chart (without the crosshair) at device resolution. */
-  takeScreenshot(): HTMLCanvasElement {
+  takeScreenshot(options: ScreenshotOptions = {}): HTMLCanvasElement {
     if (this.rafId || this.mainDirty) this.render();
     const src = this.mainLayer.canvas;
     const out = document.createElement('canvas');
     out.width = src.width;
     out.height = src.height;
-    out.getContext('2d')?.drawImage(src, 0, 0);
+    const ctx = out.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(src, 0, 0);
+      if (options.legend) this.paintScreenshotLegend(ctx);
+    }
     return out;
+  }
+
+  /** The legend rows, painted where the DOM legend sits (see ScreenshotOptions.legend). */
+  private paintScreenshotLegend(ctx: CanvasRenderingContext2D): void {
+    const symbol = this.symbol;
+    const frame = this.frame;
+    if (!symbol || !frame) return;
+    const pal = this.resolvePalette();
+    const family = this.colors.fontFamily(this.theme.fontFamily);
+    const measure = canvasMeasure(ctx, family);
+    const words = LEGEND_STRINGS[this.locale];
+    const bars = this.store.bars;
+    const last = bars.length - 1;
+    const bar = bars[last];
+    const prev = bars[last - 1];
+    const fmt = (p: number) => formatPrice(p, this.pricePrecision);
+    const dir = (v: number) => (v > 0 ? pal.up : v < 0 ? pal.down : pal.text);
+    const label = (text: string) => ({ text, color: pal.textSecondary });
+    const value = (text: string, color: string) => ({ text, color, weight: 600 });
+    const dot = { text: '·', color: pal.textSecondary };
+
+    const title: LegendGroup[] = [[{ text: symbol.name, color: pal.text, weight: 700 }], [dot]];
+    if (this.resolution) title.push([label(resolutionLabel(this.resolution, this.locale))], [dot]);
+    title.push([label(symbol.exchange)], [label(this.formatter.crosshairLabel(Date.now(), true))]);
+    const rows: LegendRow[] = [{ groups: title, gap: 6, size: 13, lineHeight: 20 }];
+
+    if (bar) {
+      const c = dir(bar.close - bar.open);
+      const change = prev ? bar.close - prev.close : 0;
+      const pct = prev && prev.close ? (change / prev.close) * 100 : 0;
+      const sign = change > 0 ? '+' : '';
+      const groups: LegendGroup[] = [
+        [label(`${words.open} `), value(fmt(bar.open), c)],
+        [label(`${words.high} `), value(fmt(bar.high), c)],
+        [label(`${words.low} `), value(fmt(bar.low), c)],
+        [label(`${words.close} `), value(fmt(bar.close), c)],
+        [value(`${sign}${fmt(change)} (${sign}${pct.toFixed(2)}%)`, dir(change))],
+      ];
+      if (bar.volume !== undefined) groups.push([label(`${words.volume} `), value(formatCompact(bar.volume, this.locale), pal.text)]);
+      rows.push({ groups, gap: 10, size: 12, lineHeight: 18 });
+    }
+
+    for (const cmp of this.compareLegend()) {
+      rows.push({ groups: [[{ text: '', color: cmp.color, dot: true }, { text: cmp.name, color: pal.text }], [value(cmp.value, pal.text)]], gap: 6, size: 12, lineHeight: 22 });
+    }
+
+    const indicators = this.indicatorLegend().filter((item) => item.visible);
+    const indicatorRow = (item: (typeof indicators)[number]): LegendRow => ({
+      groups: [[label(item.title)], ...item.values.map((v) => [value(v.value, v.color)])],
+      gap: 8,
+      size: 12,
+      lineHeight: 20,
+    });
+    for (const item of indicators) if (item.overlay) rows.push(indicatorRow(item));
+    for (const item of this.legendExtras) if (item.visible) rows.push({ groups: [[label(item.name)]], gap: 8, size: 12, lineHeight: 20 });
+
+    const dpr = this.mainLayer.dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const maxWidth = Math.max(80, this.size.width - LEGEND_LEFT - LEGEND_RIGHT_CLEARANCE);
+    const main = layoutLegend(rows, LEGEND_LEFT, LEGEND_TOP, maxWidth, measure);
+    // The chart keeps `insetTop` clear for the on-screen legend; a taller one gets a backdrop.
+    const covers = main.bottom + 4 > this.mainScale.insetTop;
+    paintLegend(ctx, main, family, covers ? { color: pal.background, top: LEGEND_TOP, left: LEGEND_LEFT } : null);
+
+    for (const pane of frame.panes) {
+      let row: LegendRow | null = null;
+      if (pane.kind === 'volume') {
+        const v = bar?.volume;
+        row = { groups: [[label(words.volumePane)], ...(v !== undefined ? [[value(formatCompact(v, this.locale), pal.text)]] : [])], gap: 8, size: 12, lineHeight: 20 };
+      } else if (pane.kind === 'indicator') {
+        const item = indicators.find((i) => i.id === pane.id);
+        if (item) row = indicatorRow(item);
+      }
+      if (row) paintLegend(ctx, layoutLegend([row], LEGEND_LEFT, pane.top + 4, maxWidth, measure), family, null);
+    }
   }
 
   /**

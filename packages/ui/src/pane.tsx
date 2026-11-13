@@ -160,7 +160,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     setSearchOpen: (open, target = 'symbol') => store.set(open ? { searchOpen: true, searchTarget: target } : { searchOpen: false }),
     screenshot: () => {
       const s = store.get();
-      chart.takeScreenshot().toBlob((blob) => {
+      chart.takeScreenshot({ legend: true }).toBlob((blob) => {
         if (!blob) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
