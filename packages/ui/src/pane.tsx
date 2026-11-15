@@ -56,6 +56,9 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     displayTimezone: config.displayTimezone,
   });
   chart.setChartType(config.chartType);
+  // Shared drawing preferences: 연속 그리기, and each tool's last color / style.
+  chart.setKeepDrawingTool(shell.sharedState().keepDrawing);
+  chart.setDrawingDefaults(shell.drawingDefaults());
 
   // A chart theme (or custom candle colors) recolors the canvas; what sits on it (legend, buttons, dialogs) follows
   // through the stage's CSS variables so it stays readable on a light or dark canvas.
@@ -99,8 +102,10 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     drawingTool: null,
     selection: null,
     drawingCount: 0,
+    drawingsLocked: false,
     drawbarOpen: false,
     magnet: chart.magnetEnabled,
+    drawingsHidden: chart.drawingsHidden,
     indicators: chart.getIndicators(),
     dialog: null,
     ...shell.sharedState(),
@@ -115,9 +120,12 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     chart.on('dataChange', syncRealtime),
     chart.on('drawingToolChange', (drawingTool) => store.set({ drawingTool })),
     chart.on('selectionChange', (selection) => store.set({ selection })),
-    chart.on('drawingsChange', (drawings) => store.set({ drawingCount: drawings.length })),
+    chart.on('drawingsChange', (drawings) => store.set({ drawingCount: drawings.length, drawingsLocked: drawings.length > 0 && drawings.every((d) => d.style?.locked) })),
     chart.on('indicatorsChange', (indicators) => store.set({ indicators })),
     chart.on('magnetChange', (magnet) => store.set({ magnet })),
+    chart.on('drawingsHiddenChange', (drawingsHidden) => store.set({ drawingsHidden })),
+    // A color or style picked for a drawing: remembered for the tool, in every pane.
+    chart.on('drawingDefaultsChange', (defaults) => shell.saveDrawingDefaults(defaults)),
     chart.on('chartTypeChange', (chartType) => store.set({ chartType })),
     chart.on('historyChange', ({ canUndo, canRedo }) => store.set({ canUndo, canRedo })),
     chart.on('comparesChange', (compares) => store.set({ compares })),
@@ -161,6 +169,9 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
       if (current) void load(current.symbol, res);
     },
     toggleFavoriteInterval: shell.toggleFavoriteInterval,
+    toggleFavoriteTool: shell.toggleFavoriteTool,
+    setKeepDrawing: shell.setKeepDrawing,
+    setDrawingsHidden: shell.setDrawingsHidden,
     setSearchOpen: (open, target = 'symbol') => store.set(open ? { searchOpen: true, searchTarget: target } : { searchOpen: false }),
     screenshot: () => {
       const s = store.get();

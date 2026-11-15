@@ -27,6 +27,8 @@ export interface DrawingStyle {
   fontSize?: number;
   /** Can't be dragged or edited until unlocked (still selectable). */
   locked?: boolean;
+  /** Not drawn and can't be hit (a drawings list can show it again). */
+  hidden?: boolean;
   /** Colors of the tool's parts (`DrawingDefinition.colors` keys), where set apart from the rest. */
   colors?: Record<string, string>;
 }
@@ -99,8 +101,13 @@ export interface DrawingDefinition {
    * are listed under it, with a divider between sections. Default: no heading.
    */
   section?: Record<Locale, string>;
-  /** Clicks (or drag ends) needed to place it. */
+  /** Clicks (or drag ends) needed to place it; with `open`, the fewest it takes. */
   clicks: number;
+  /**
+   * Placed point by point (a path, a polygon): every click adds one, until a double-click (a
+   * click on the last point), a click on the first point, Enter or Esc finishes it.
+   */
+  open?: boolean;
   /**
    * Turns the placed click points into the stored points, e.g. a position tool that creates
    * entry/target/stop from one click. Called for the live preview too. Default: as placed.
@@ -220,7 +227,13 @@ export function drawingRegistry(extra: readonly DrawingDefinition[] = []): Map<s
   return registry;
 }
 
-export type DrawingsChange = 'preview' | 'commit' | 'tool' | 'selection';
+export type DrawingsChange = 'preview' | 'commit' | 'tool' | 'selection' | 'defaults' | 'hidden';
+
+/** The last color and line / text style used per tool type: new drawings of that type start with it. */
+export type DrawingDefaults = Record<string, { color?: string; style?: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize'> }>;
+
+/** Within this many px of a placed point, a click on it finishes an `open` tool. */
+const CLOSE_PX = 7;
 
 /**
  * Owns drawings: creation (click-click or drag), selection, handle/body dragging,
@@ -231,6 +244,11 @@ export class DrawingManager {
   drawings: Drawing[] = [];
   tool: DrawingType | null = null;
   selectedId: string | null = null;
+  /** Every drawing hidden at once (arming a tool shows them again). */
+  hiddenAll = false;
+  /** The tool stays armed after a drawing is placed (연속 그리기). */
+  keepTool = false;
+  defaults: DrawingDefaults = {};
 
   private draft: { drawing: Drawing; placed: DrawingPoint[] } | null = null;
   private freehandLast: [number, number] | null = null;
@@ -250,7 +268,16 @@ export class DrawingManager {
     this.tool = tool;
     this.draft = null;
     if (tool) this.selectedId = null;
+    // Drawing while everything is hidden would draw blind.
+    if (tool && this.hiddenAll) this.setHiddenAll(false);
     this.onChange('tool');
+  }
+
+  setHiddenAll(hidden: boolean): void {
+    if (hidden === this.hiddenAll) return;
+    this.hiddenAll = hidden;
+    if (hidden) this.selectedId = null;
+    this.onChange('hidden');
   }
 
   select(id: string | null): void {
@@ -270,6 +297,13 @@ export class DrawingManager {
     const d = this.drawings.find((x) => x.id === id);
     if (!d) return;
     Object.assign(d, patch);
+    // A color or line / text style picked for it: the next drawing of this tool starts with it.
+    if ('color' in patch || patch.style) {
+      const { width, dash, fontSize } = d.style ?? {};
+      const style = Object.fromEntries(Object.entries({ width, dash, fontSize }).filter(([, v]) => v !== undefined));
+      this.defaults = { ...this.defaults, [d.type]: { ...(d.color ? { color: d.color } : {}), ...(Object.keys(style).length ? { style } : {}) } };
+      this.onChange('defaults');
+    }
     this.onChange('commit');
   }
 
@@ -287,15 +321,28 @@ export class DrawingManager {
     this.onChange('commit');
   }
 
-  /** Esc: abort an in-progress drawing, else drop the tool, else deselect. */
+  /** Esc: finish a path that has enough points, else abort an in-progress drawing, else drop the tool, else deselect. */
   cancel(): void {
+    if (this.finishOpen()) return;
     if (this.draft || this.tool) this.setTool(null);
     else this.select(null);
+  }
+
+  /** Finishes an `open` tool's drawing in progress (Enter); false when there is none or too few points. */
+  finishOpen(): boolean {
+    const draft = this.draft;
+    const def = draft && this.registry.get(draft.drawing.type);
+    if (!draft || !def?.open || draft.placed.length < Math.max(2, def.clicks)) return false;
+    draft.drawing.points = draft.placed.map((p) => ({ ...p }));
+    this.finish();
+    return true;
   }
 
   // ── Creation ──────────────────────────────────────────────────────
 
   private expand(def: DrawingDefinition, placed: DrawingPoint[], c: PaneCoords): DrawingPoint[] {
+    // A path: what's placed (and, while drawing, the point under the pointer).
+    if (def.open) return placed.map((p) => ({ ...p }));
     // Not-yet-placed clicks follow the last placed one, so the preview has every point.
     const full = Array.from({ length: def.clicks }, (_, i) => ({ ...(placed[i] ?? placed[placed.length - 1]!) }));
     return def.create ? def.create(full, c) : full;
@@ -315,9 +362,27 @@ export class DrawingManager {
     }
     if (!this.draft) {
       const placed = [point];
-      this.draft = { drawing: { id: newId('d'), type: def.type, points: this.expand(def, placed, c) }, placed };
-      if (def.clicks <= 1) this.finish();
+      const last = this.defaults[def.type];
+      this.draft = {
+        drawing: { id: newId('d'), type: def.type, points: this.expand(def, placed, c), ...(last?.color ? { color: last.color } : {}), ...(last?.style ? { style: { ...last.style } } : {}) },
+        placed,
+      };
+      if (def.clicks <= 1 && !def.open) this.finish();
       else this.onChange('preview');
+      return;
+    }
+    if (def.open) {
+      // A click on the last point (a double-click) or the first one finishes the path.
+      const near = (p: DrawingPoint) => Math.hypot(c.timeToX(p.time) - x, c.priceToY(p.price) - y) <= CLOSE_PX;
+      const placed = this.draft.placed;
+      if (placed.length >= Math.max(2, def.clicks) && (near(placed[placed.length - 1]!) || near(placed[0]!))) {
+        this.finishOpen();
+        return;
+      }
+      if (near(placed[placed.length - 1]!)) return;
+      placed.push(point);
+      this.draft.drawing.points = [...placed.map((p) => ({ ...p })), { ...point }];
+      this.onChange('preview');
       return;
     }
     this.draft.placed.push(point);
@@ -340,7 +405,7 @@ export class DrawingManager {
       this.onChange('preview');
       return;
     }
-    draft.drawing.points = this.expand(def, [...draft.placed, c.pointAt(x, y)], c);
+    draft.drawing.points = def.open ? [...draft.placed.map((p) => ({ ...p })), c.pointAt(x, y)] : this.expand(def, [...draft.placed, c.pointAt(x, y)], c);
     this.onChange('preview');
   }
 
@@ -358,6 +423,11 @@ export class DrawingManager {
     const drawing = this.draft!.drawing;
     this.draft = null;
     this.drawings.push(drawing);
+    if (this.keepTool) {
+      // 연속 그리기: the tool stays armed for the next one.
+      this.onChange('commit');
+      return;
+    }
     this.selectedId = drawing.id;
     this.tool = null;
     this.onChange('tool');
@@ -383,8 +453,10 @@ export class DrawingManager {
       const handle = this.handles(c, selected).findIndex(([px, py]) => Math.hypot(px - x, py - y) <= HANDLE_RADIUS + tolerance);
       if (handle >= 0) return { kind: 'drawing', id: selected.id, part: handle };
     }
+    if (this.hiddenAll) return null;
     for (let i = this.drawings.length - 1; i >= 0; i--) {
       const d = this.drawings[i]!;
+      if (d.style?.hidden) continue;
       const def = this.registry.get(d.type);
       if (def && def.distance(this.geometry(c, d), x, y) <= tolerance) return { kind: 'drawing', id: d.id, part: 'body' };
     }
@@ -423,7 +495,8 @@ export class DrawingManager {
   // ── Rendering ─────────────────────────────────────────────────────
 
   render(rc: ObjectRenderContext, badges: AxisBadge[], bars: readonly Bar[] = [], barIndexAt: (time: number) => number = () => -1): void {
-    const all = this.draft ? [...this.drawings, this.draft.drawing] : this.drawings;
+    const shown = this.hiddenAll ? [] : this.drawings.filter((d) => !d.style?.hidden);
+    const all = this.draft ? [...shown, this.draft.drawing] : shown;
     const c = rc.coords;
     for (const d of all) {
       const def = this.registry.get(d.type);

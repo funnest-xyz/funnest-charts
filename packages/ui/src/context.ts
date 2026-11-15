@@ -36,6 +36,8 @@ export interface UiState {
   drawingTool: DrawingType | null;
   selection: Drawing | null;
   drawingCount: number;
+  /** Every drawing of this pane is locked (the drawing bar's lock-all shows as pressed). */
+  drawingsLocked: boolean;
   /** Narrow screens: the drawing bar is hidden until toggled from the toolbar. */
   drawbarOpen: boolean;
   magnet: boolean;
@@ -46,6 +48,12 @@ export interface UiState {
   favoriteIntervals: Resolution[];
   /** Desktop: the left drawing bar folded away (a small tab brings it back). */
   drawbarCollapsed: boolean;
+  /** Tools pinned at the top of the drawing bar (★ in a tool list). */
+  favoriteTools: DrawingType[];
+  /** 연속 그리기: tools stay armed after each drawing. */
+  keepDrawing: boolean;
+  /** Every drawing hidden (the drawing bar's 👁). */
+  drawingsHidden: boolean;
   canUndo: boolean;
   canRedo: boolean;
   compares: CompareInfo[];
@@ -133,6 +141,10 @@ export interface WidgetContext {
   selectSymbol(symbol: string): void;
   selectResolution(resolution: Resolution): void;
   toggleFavoriteInterval(resolution: Resolution): void;
+  toggleFavoriteTool(tool: DrawingType): void;
+  setKeepDrawing(on: boolean): void;
+  /** Hides or shows the drawings of every pane. */
+  setDrawingsHidden(hidden: boolean): void;
   setSearchOpen(open: boolean, target?: 'symbol' | 'compare'): void;
   screenshot(): void;
   toggleFullscreen(): void;

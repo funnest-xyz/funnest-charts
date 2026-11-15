@@ -1,4 +1,4 @@
-import { darkTheme, directionColors, lightTheme, type DirectionPreset, type Resolution, type ThemeTokens } from '@funnest/charts';
+import { darkTheme, directionColors, lightTheme, type DirectionPreset, type DrawingDefaults, type DrawingType, type Resolution, type ThemeTokens } from '@funnest/charts';
 import type { UiState } from './context';
 import { createStorage, type WidgetStorage } from './storage';
 import type { Store } from './store';
@@ -57,7 +57,12 @@ export function div(className: string, parent?: HTMLElement): HTMLDivElement {
 /** What the shell needs from a chart pane (see pane.tsx). */
 export interface ShellPane {
   readonly store: Store<UiState>;
-  readonly chart: { setTheme(theme: Partial<ThemeTokens>): void };
+  readonly chart: {
+    setTheme(theme: Partial<ThemeTokens>): void;
+    setKeepDrawingTool(on: boolean): void;
+    setDrawingsHidden(hidden: boolean): void;
+    setDrawingDefaults(defaults: DrawingDefaults): void;
+  };
 }
 
 export interface ShellOptions {
@@ -87,7 +92,13 @@ export interface Shell {
   readonly storage: WidgetStorage;
   theme(): ThemeTokens;
   /** Initial UI-state fields owned by the shell (same for every pane). */
-  sharedState(): Pick<UiState, 'fullscreen' | 'favoriteIntervals' | 'drawbarCollapsed'>;
+  sharedState(): Pick<UiState, 'fullscreen' | 'favoriteIntervals' | 'drawbarCollapsed' | 'favoriteTools' | 'keepDrawing'>;
+  /** Each tool's last color / style (saved; every pane starts with it). */
+  drawingDefaults(): DrawingDefaults;
+  saveDrawingDefaults(defaults: DrawingDefaults): void;
+  toggleFavoriteTool(tool: DrawingType): void;
+  setKeepDrawing(on: boolean): void;
+  setDrawingsHidden(hidden: boolean): void;
   setPanes(panes: () => readonly ShellPane[]): void;
   setTheme(patch: Partial<ThemeTokens>): void;
   setColorScheme(scheme: ColorScheme): void;
@@ -223,6 +234,9 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
 
   let favoriteIntervals = storage.get<Resolution[]>('favorite-intervals', [...options.favoriteIntervals]);
   let drawbarCollapsed = storage.get('drawbar-collapsed', false);
+  let favoriteTools = storage.get<DrawingType[]>('favorite-tools', []);
+  let keepDrawing = storage.get('keep-drawing', false);
+  let drawingDefaults = storage.get<DrawingDefaults>('drawing-defaults', {});
   const broadcast = (patch: Partial<UiState>) => {
     for (const p of panes()) p.store.set(patch);
   };
@@ -246,7 +260,27 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
     slots,
     storage,
     theme: () => theme,
-    sharedState: () => ({ fullscreen: isFullscreen(), favoriteIntervals, drawbarCollapsed }),
+    sharedState: () => ({ fullscreen: isFullscreen(), favoriteIntervals, drawbarCollapsed, favoriteTools, keepDrawing }),
+    drawingDefaults: () => drawingDefaults,
+    saveDrawingDefaults: (defaults) => {
+      drawingDefaults = defaults;
+      storage.set('drawing-defaults', defaults);
+      for (const p of panes()) p.chart.setDrawingDefaults(defaults);
+    },
+    toggleFavoriteTool: (tool) => {
+      favoriteTools = favoriteTools.includes(tool) ? favoriteTools.filter((x) => x !== tool) : [...favoriteTools, tool];
+      storage.set('favorite-tools', favoriteTools);
+      broadcast({ favoriteTools });
+    },
+    setKeepDrawing: (on) => {
+      keepDrawing = on;
+      storage.set('keep-drawing', on);
+      for (const p of panes()) p.chart.setKeepDrawingTool(on);
+      broadcast({ keepDrawing });
+    },
+    setDrawingsHidden: (hidden) => {
+      for (const p of panes()) p.chart.setDrawingsHidden(hidden);
+    },
     setPanes: (get) => {
       panes = get;
     },

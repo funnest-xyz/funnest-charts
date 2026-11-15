@@ -7,7 +7,7 @@ import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleO
 import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price';
 import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorType } from './indicators/definitions';
 import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager';
-import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefinition, type DrawingType } from './objects/drawings';
+import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingType } from './objects/drawings';
 import {
   TradingLayer,
   type AlertLineOptions,
@@ -118,8 +118,14 @@ export interface ChartEvents {
   loadingChange: boolean;
   /** Drawings were created, edited or removed (not fired during a live drag). */
   drawingsChange: Drawing[];
-  /** The armed drawing tool changed (null = cursor). Tools disarm after one drawing. */
+  /** The armed drawing tool changed (null = cursor). Tools disarm after one drawing (unless `keepDrawingTool`). */
   drawingToolChange: DrawingType | null;
+  /** All drawings hidden (true) or shown again. */
+  drawingsHiddenChange: boolean;
+  /** 연속 그리기 turned on or off. */
+  keepDrawingToolChange: boolean;
+  /** A tool's last color / style changed (save it to restore with `setDrawingDefaults`). */
+  drawingDefaultsChange: DrawingDefaults;
   selectionChange: Drawing | null;
   magnetChange: boolean;
   chartTypeChange: ChartType;
@@ -434,6 +440,9 @@ export class Chart {
         this.recordHistory();
       }
       if (change === 'tool') this.emitter.emit('drawingToolChange', this.drawings.tool);
+      if (change === 'hidden') this.emitter.emit('drawingsHiddenChange', this.drawings.hiddenAll);
+      if (change === 'defaults') this.emitter.emit('drawingDefaultsChange', { ...this.drawings.defaults });
+      if (change === 'defaults') return;
       if (change !== 'preview') {
         // Emit a copy: listeners (e.g. UI stores) compare by reference, and drawings mutate in place.
         const d = this.drawings.selected;
@@ -954,6 +963,36 @@ export class Chart {
 
   get drawingTool(): DrawingType | null {
     return this.drawings.tool;
+  }
+
+  /** Hides every drawing (not drawn, not clickable) or shows them again. Arming a tool shows them. */
+  setDrawingsHidden(hidden: boolean): void {
+    this.drawings.setHiddenAll(hidden);
+  }
+
+  get drawingsHidden(): boolean {
+    return this.drawings.hiddenAll;
+  }
+
+  /** 연속 그리기: the armed tool stays armed after each drawing (Esc or the cursor drops it). */
+  setKeepDrawingTool(on: boolean): void {
+    if (on === this.drawings.keepTool) return;
+    this.drawings.keepTool = on;
+    this.emitter.emit('keepDrawingToolChange', on);
+  }
+
+  get keepDrawingTool(): boolean {
+    return this.drawings.keepTool;
+  }
+
+  /** Each tool's last color / line / text style; new drawings of a tool start with it. */
+  getDrawingDefaults(): DrawingDefaults {
+    return JSON.parse(JSON.stringify(this.drawings.defaults)) as DrawingDefaults;
+  }
+
+  /** Restores them (e.g. from storage). Doesn't fire drawingDefaultsChange. */
+  setDrawingDefaults(defaults: DrawingDefaults): void {
+    this.drawings.defaults = JSON.parse(JSON.stringify(defaults ?? {})) as DrawingDefaults;
   }
 
   /** Magnet mode: drawing points snap to the nearest open/high/low/close of the bar. */
@@ -2289,6 +2328,8 @@ export class Chart {
         this.setReplaySelecting(false);
       } else if (e.key === 'Escape' && (this.drawings.tool || this.drawings.selectedId)) {
         this.drawings.cancel();
+      } else if (e.key === 'Enter' && this.drawings.finishOpen()) {
+        e.preventDefault();
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && this.drawings.selectedId) {
         e.preventDefault();
         this.drawings.remove(this.drawings.selectedId);

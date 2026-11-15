@@ -355,6 +355,20 @@ export const LockIcon = ({ open = false }: { open?: boolean }) => (
     <path d={open ? 'M7 9V6.5a3 3 0 0 1 5.8-1' : 'M7 9V6.5a3 3 0 0 1 6 0V9'} />
   </Icon>
 );
+/** 연속 그리기: a pencil that keeps going. */
+export const KeepDrawingIcon = () => (
+  <Icon>
+    <path d="M3.5 13.5 11 6l3 3-7.5 7.5H3.5z" />
+    <path d="M13 3.5a3.5 3.5 0 0 1 3.5 3.5M15 2l1.5 1.5L15 5" />
+  </Icon>
+);
+export const DrawingsEyeIcon = ({ off = false }: { off?: boolean }) => (
+  <Icon>
+    <path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10z" />
+    <circle cx="10" cy="10" r="2.3" />
+    {off && <path d="M3.5 3.5l13 13" />}
+  </Icon>
+);
 export const CopyIcon = () => (
   <Icon>
     <rect x="7" y="7" width="9.5" height="9.5" rx="1.8" />

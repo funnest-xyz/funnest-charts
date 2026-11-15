@@ -216,3 +216,86 @@ describe('TradingLayer alerts', () => {
     expect(onMove).toHaveBeenCalledWith(110);
   });
 });
+
+describe('DrawingManager: paths, 연속 그리기, hiding, remembered styles', () => {
+  const path: DrawingDefinition = { type: 'path', name: { ko: '경로', en: 'Path' }, clicks: 2, open: true, distance: () => 0, render: () => {} };
+
+  it('an open tool adds a point per click and finishes on a click on the last point', () => {
+    const m = new DrawingManager(() => {}, drawingRegistry([path]));
+    m.setTool('path');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 200, 400);
+    m.previewAt(coords, 250, 450);
+    m.createAt(coords, 300, 500);
+    expect(m.drawings).toHaveLength(0);
+    m.createAt(coords, 302, 501); // the double-click's second click
+    expect(m.drawings).toHaveLength(1);
+    expect(m.drawings[0]!.points).toHaveLength(3);
+    expect(m.tool).toBeNull();
+  });
+
+  it('an open tool finishes on a click on its first point, on Enter (finishOpen) or Esc', () => {
+    const m = new DrawingManager(() => {}, drawingRegistry([path]));
+    m.setTool('path');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 200, 400);
+    m.createAt(coords, 300, 500);
+    m.createAt(coords, 101, 499);
+    expect(m.drawings[0]!.points).toHaveLength(3);
+
+    m.setTool('path');
+    m.createAt(coords, 100, 500);
+    expect(m.finishOpen()).toBe(false); // one point is too few
+    m.createAt(coords, 200, 400);
+    expect(m.finishOpen()).toBe(true);
+    expect(m.drawings[1]!.points).toHaveLength(2);
+
+    m.setTool('path');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 200, 400);
+    m.createAt(coords, 300, 300);
+    m.cancel();
+    expect(m.drawings[2]!.points).toHaveLength(3);
+  });
+
+  it('keeps the tool armed with keepTool', () => {
+    const m = new DrawingManager(() => {});
+    m.keepTool = true;
+    m.setTool('horizontal');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 100, 600);
+    expect(m.drawings).toHaveLength(2);
+    expect(m.tool).toBe('horizontal');
+  });
+
+  it('hidden drawings are skipped when hit testing; hiding all is undone by arming a tool', () => {
+    const m = new DrawingManager(() => {});
+    m.setTool('horizontal');
+    m.createAt(coords, 100, 500);
+    const id = m.drawings[0]!.id;
+    expect(m.hitTest(coords, 400, 500, 4)).toMatchObject({ kind: 'drawing', id });
+    m.update(id, { style: { hidden: true } });
+    expect(m.hitTest(coords, 400, 500, 4)).toBeNull();
+    m.update(id, { style: {} });
+    m.setHiddenAll(true);
+    expect(m.hitTest(coords, 400, 500, 4)).toBeNull();
+    m.setTool('trendline');
+    expect(m.hiddenAll).toBe(false);
+  });
+
+  it('a new drawing starts with the last color and style picked for its tool', () => {
+    const changes: string[] = [];
+    const m = new DrawingManager((c) => changes.push(c));
+    m.setTool('trendline');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 200, 400);
+    m.update(m.drawings[0]!.id, { color: '#F04452', style: { width: 3, dash: 'dashed', text: 'x', locked: true } });
+    expect(changes).toContain('defaults');
+    expect(m.defaults.trendline).toEqual({ color: '#F04452', style: { width: 3, dash: 'dashed' } });
+    m.setTool('trendline');
+    m.createAt(coords, 300, 500);
+    m.createAt(coords, 400, 400);
+    expect(m.drawings[1]!.color).toBe('#F04452');
+    expect(m.drawings[1]!.style).toEqual({ width: 3, dash: 'dashed' });
+  });
+});

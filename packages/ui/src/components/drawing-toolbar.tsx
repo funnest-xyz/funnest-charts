@@ -10,7 +10,10 @@ import {
   CopyIcon,
   CornerIcon,
   CursorIcon,
+  DrawingsEyeIcon,
   GripIcon,
+  KeepDrawingIcon,
+  StarIcon,
   LockIcon,
   PaletteIcon,
   FibonacciIcon,
@@ -115,10 +118,21 @@ function ToolGroup({
                     {section}
                   </div>
                 )}
-                <button class="fnc-menu-item" role="menuitemradio" aria-checked={def.type === current.type} onClick={() => pick(def)}>
-                  <ToolIcon def={def} locale={s.locale} />
-                  <span>{def.name[s.locale]}</span>
-                </button>
+                <div class="fnc-tool-row">
+                  <button class="fnc-menu-item" role="menuitemradio" aria-checked={def.type === current.type} onClick={() => pick(def)}>
+                    <ToolIcon def={def} locale={s.locale} />
+                    <span>{def.name[s.locale]}</span>
+                  </button>
+                  <button
+                    class="fnc-tool-fav"
+                    aria-pressed={s.favoriteTools.includes(def.type)}
+                    aria-label={`${s.favoriteTools.includes(def.type) ? t.unfavoriteTool : t.favoriteTool}: ${def.name[s.locale]}`}
+                    data-tip={s.favoriteTools.includes(def.type) ? t.unfavoriteTool : t.favoriteTool}
+                    onClick={() => ctx.toggleFavoriteTool(def.type)}
+                  >
+                    <StarIcon filled={s.favoriteTools.includes(def.type)} />
+                  </button>
+                </div>
               </Fragment>
             );
           })}
@@ -151,7 +165,12 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
     return () => ro.disconnect();
   }, []);
   // Every pane gets the same definitions, so the active pane's list is the widget's list.
-  const groups = toolGroups(ctx.chart.drawingDefinitions());
+  const defs = ctx.chart.drawingDefinitions();
+  const groups = toolGroups(defs);
+  const favorites = s.favoriteTools.map((type) => defs.find((d) => d.type === type)).filter((d): d is DrawingDefinition => !!d);
+  const allLocked = s.drawingsLocked;
+  // One change (one undo step) for every drawing of this pane.
+  const lockAll = () => ctx.chart.setDrawings(ctx.chart.getDrawings().map((d) => ({ ...d, style: { ...d.style, locked: !allLocked } })));
 
   const pick = (tool: DrawingType | null) => {
     ctx.chart.setDrawingTool(tool);
@@ -180,6 +199,23 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       <button class="fnc-btn" data-tip={t.cursor} aria-label={t.cursor} aria-pressed={s.drawingTool === null} onClick={() => pick(null)}>
         <CursorIcon />
       </button>
+      {favorites.length > 0 && (
+        <>
+          {favorites.map((def) => (
+            <button
+              key={`fav-${def.type}`}
+              class="fnc-btn fnc-fav-tool"
+              data-tip={def.name[s.locale]}
+              aria-label={def.name[s.locale]}
+              aria-pressed={s.drawingTool === def.type}
+              onClick={() => pick(s.drawingTool === def.type ? null : def.type)}
+            >
+              <ToolIcon def={def} locale={s.locale} />
+            </button>
+          ))}
+          <div class="fnc-hsep" />
+        </>
+      )}
       {groups.map(([key, tools]) => (
         <ToolGroup
           key={key}
@@ -199,6 +235,29 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
         onClick={() => ctx.chart.setMagnet(!s.magnet)}
       >
         <MagnetIcon />
+      </button>
+      <button class="fnc-btn" data-tip={t.keepDrawing} aria-label={t.keepDrawing} aria-pressed={s.keepDrawing} onClick={() => ctx.setKeepDrawing(!s.keepDrawing)}>
+        <KeepDrawingIcon />
+      </button>
+      <button
+        class="fnc-btn"
+        data-tip={allLocked ? t.unlockAll : t.lockAll}
+        aria-label={allLocked ? t.unlockAll : t.lockAll}
+        aria-pressed={allLocked}
+        disabled={s.drawingCount === 0}
+        onClick={lockAll}
+      >
+        <LockIcon open={!allLocked} />
+      </button>
+      <button
+        class="fnc-btn"
+        data-tip={s.drawingsHidden ? t.showAll : t.hideAll}
+        aria-label={s.drawingsHidden ? t.showAll : t.hideAll}
+        aria-pressed={s.drawingsHidden}
+        disabled={s.drawingCount === 0 && !s.drawingsHidden}
+        onClick={() => ctx.setDrawingsHidden(!s.drawingsHidden)}
+      >
+        <DrawingsEyeIcon off={s.drawingsHidden} />
       </button>
       <button
         class="fnc-btn"
@@ -225,6 +284,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
 
 const SWATCHES = ['#3182F6', '#F04452', '#12B886', '#FF9F0A', '#7048E8'];
 const WIDTHS = [1, 2, 3, 4];
+const FONT_SIZES = [10, 12, 14, 16, 20, 24, 32];
 const DASH_ORDER: NonNullable<DrawingStyle['dash']>[] = ['solid', 'dashed', 'dotted'];
 const RECENT_KEY = 'fnc-drawing-colors';
 const POS_KEY = 'fnc-selbar-pos';
@@ -264,7 +324,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width' | 'colors'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font'>(null);
   const colorInput = useRef<HTMLInputElement>(null);
   if (!d || s.layout.plotWidth <= 0) return null;
 
@@ -415,6 +475,30 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
           onInput={(e) => setStyle({ text: (e.target as HTMLInputElement).value })}
           onKeyDown={(e) => e.stopPropagation()}
         />
+      )}
+      {def?.text && (
+        <div class="fnc-selbar-menu">
+          <button class="fnc-btn fnc-selbar-font" data-tip={t.fontSize} aria-label={t.fontSize} aria-expanded={menu === 'font'} onClick={() => setMenu(menu === 'font' ? null : 'font')}>
+            {style.fontSize ?? 14}
+          </button>
+          {menu === 'font' && (
+            <div class="fnc-menu fnc-selbar-pop" role="menu">
+              {FONT_SIZES.map((size) => (
+                <button
+                  class="fnc-menu-item"
+                  role="menuitemradio"
+                  aria-checked={(style.fontSize ?? 14) === size}
+                  onClick={() => {
+                    setStyle({ fontSize: size });
+                    setMenu(null);
+                  }}
+                >
+                  <span>{size}px</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
       <div class="fnc-sep" />
       <button class="fnc-btn" data-tip={locked ? t.unlock : t.lock} aria-label={locked ? t.unlock : t.lock} aria-pressed={locked} onClick={() => setStyle({ locked: !locked })}>

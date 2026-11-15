@@ -30,6 +30,7 @@ export type { ChartType } from './render/renderer';
 export type {
   BuiltinDrawingType,
   Drawing,
+  DrawingDefaults,
   DrawingDefinition,
   DrawingGeometry,
   DrawingPoint,
