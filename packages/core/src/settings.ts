@@ -58,6 +58,12 @@ export const CHART_THEMES: readonly ChartThemePreset[] = [
     colors: { upColor: '#FF5A5F', downColor: '#4C8DFF', background: '#0F1A2E', gridColor: '#1B2A44', textColor: '#C8D3E6' },
   },
   {
+    // True black (OLED): the darkest, with a barely-there grid.
+    id: 'deep-dark',
+    name: { ko: '딥 다크', en: 'Deep dark' },
+    colors: { upColor: '#F04452', downColor: '#3182F6', background: '#000000', gridColor: '#121212', textColor: '#B8BCC4' },
+  },
+  {
     id: 'mono',
     name: { ko: '모노', en: 'Mono' },
     colors: { upColor: '#E4E4E7', downColor: '#6B6B75', background: '#121214', gridColor: '#1F1F23', textColor: '#D4D4D8' },
