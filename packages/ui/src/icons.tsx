@@ -355,6 +355,28 @@ export const LockIcon = ({ open = false }: { open?: boolean }) => (
     <path d={open ? 'M7 9V6.5a3 3 0 0 1 5.8-1' : 'M7 9V6.5a3 3 0 0 1 6 0V9'} />
   </Icon>
 );
+export const CrossCursorIcon = () => (
+  <Icon>
+    <path d="M10 3v14M3 10h14" />
+  </Icon>
+);
+export const DotCursorIcon = () => (
+  <Icon>
+    <circle cx="10" cy="10" r="2.6" fill="currentColor" />
+  </Icon>
+);
+export const DemoCursorIcon = () => (
+  <Icon>
+    <circle cx="10" cy="10" r="6.5" opacity="0.5" />
+    <circle cx="10" cy="10" r="2.2" fill="currentColor" />
+  </Icon>
+);
+export const EraserIcon = () => (
+  <Icon>
+    <path d="M3 13.5 11.5 5l5 5L9.5 17H6z" />
+    <path d="M7 9.5l5 5" />
+  </Icon>
+);
 /** 연속 그리기: a pencil that keeps going. */
 export const KeepDrawingIcon = () => (
   <Icon>

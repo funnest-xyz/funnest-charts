@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import type { DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funnest/charts';
+import type { CursorMode, DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context';
@@ -9,8 +9,12 @@ import {
   ChevronRightIcon,
   CopyIcon,
   CornerIcon,
+  CrossCursorIcon,
   CursorIcon,
+  DemoCursorIcon,
+  DotCursorIcon,
   DrawingsEyeIcon,
+  EraserIcon,
   GripIcon,
   KeepDrawingIcon,
   StarIcon,
@@ -142,6 +146,72 @@ function ToolGroup({
   );
 }
 
+const CURSORS: { mode: CursorMode; label: 'cursorCross' | 'cursorDot' | 'cursorArrow' | 'cursorDemo' | 'cursorEraser'; Icon: () => JSX.Element }[] = [
+  { mode: 'cross', label: 'cursorCross', Icon: CrossCursorIcon },
+  { mode: 'dot', label: 'cursorDot', Icon: DotCursorIcon },
+  { mode: 'arrow', label: 'cursorArrow', Icon: CursorIcon },
+  { mode: 'demo', label: 'cursorDemo', Icon: DemoCursorIcon },
+  { mode: 'eraser', label: 'cursorEraser', Icon: EraserIcon },
+];
+
+/** The bar's first button: back to the pointer (no tool), and which pointer (십자, 점, 화살표, 데모, 지우개). */
+function CursorGroup({ ctx, open, onOpen, onPick }: { ctx: WidgetContext; open: boolean; onOpen(open: boolean): void; onPick(): void }) {
+  const s = useStore(ctx.store);
+  const t = stringsOf(s);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = CURSORS.find((c) => c.mode === s.cursorMode) ?? CURSORS[0]!;
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && onOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onOpen(false);
+    document.addEventListener('pointerdown', close, true);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', close, true);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+  const name = `${t.cursor}: ${t[current.label]}`;
+  return (
+    <div class="fnc-tool-group" ref={ref} data-open={open}>
+      <button class="fnc-btn" data-tip={name} aria-label={name} aria-pressed={s.drawingTool === null} onClick={onPick}>
+        <current.Icon />
+      </button>
+      <button class="fnc-tool-more" aria-label={`${t.cursorModes}: ${t[current.label]}`} aria-haspopup="menu" aria-expanded={open} onClick={() => onOpen(!open)}>
+        <span class="fnc-tool-corner">
+          <CornerIcon />
+        </span>
+        <span class="fnc-tool-chevron">
+          <ChevronRightIcon />
+        </span>
+      </button>
+      {open && (
+        <div class="fnc-menu fnc-tool-menu" role="menu">
+          <div class="fnc-tool-section" role="presentation">
+            {t.cursorModes}
+          </div>
+          {CURSORS.map((c) => (
+            <button
+              key={c.mode}
+              class="fnc-menu-item"
+              role="menuitemradio"
+              aria-checked={c.mode === current.mode}
+              onClick={() => {
+                ctx.setCursorMode(c.mode);
+                onOpen(false);
+                onPick();
+              }}
+            >
+              <c.Icon />
+              <span>{t[c.label]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Left vertical tool bar (TradingView layout). On narrow screens it slides in over the chart. */
 export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
@@ -196,9 +266,7 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       data-open={s.drawbarOpen}
       data-collapsed={s.drawbarCollapsed}
     >
-      <button class="fnc-btn" data-tip={t.cursor} aria-label={t.cursor} aria-pressed={s.drawingTool === null} onClick={() => pick(null)}>
-        <CursorIcon />
-      </button>
+      <CursorGroup ctx={ctx} open={openGroup === '__cursor'} onOpen={(open) => setOpenGroup(open ? '__cursor' : null)} onPick={() => pick(null)} />
       {favorites.length > 0 && (
         <>
           {favorites.map((def) => (

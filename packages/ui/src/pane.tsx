@@ -58,6 +58,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
   chart.setChartType(config.chartType);
   // Shared drawing preferences: 연속 그리기, and each tool's last color / style.
   chart.setKeepDrawingTool(shell.sharedState().keepDrawing);
+  chart.setCursorMode(shell.sharedState().cursorMode);
   chart.setDrawingDefaults(shell.drawingDefaults());
 
   // A chart theme (or custom candle colors) recolors the canvas; what sits on it (legend, buttons, dialogs) follows
@@ -124,6 +125,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     chart.on('indicatorsChange', (indicators) => store.set({ indicators })),
     chart.on('magnetChange', (magnet) => store.set({ magnet })),
     chart.on('drawingsHiddenChange', (drawingsHidden) => store.set({ drawingsHidden })),
+    chart.on('cursorModeChange', (cursorMode) => store.set({ cursorMode })),
     // A color or style picked for a drawing: remembered for the tool, in every pane.
     chart.on('drawingDefaultsChange', (defaults) => shell.saveDrawingDefaults(defaults)),
     chart.on('chartTypeChange', (chartType) => store.set({ chartType })),
@@ -171,6 +173,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     toggleFavoriteInterval: shell.toggleFavoriteInterval,
     toggleFavoriteTool: shell.toggleFavoriteTool,
     setKeepDrawing: shell.setKeepDrawing,
+    setCursorMode: shell.setCursorMode,
     setDrawingsHidden: shell.setDrawingsHidden,
     setSearchOpen: (open, target = 'symbol') => store.set(open ? { searchOpen: true, searchTarget: target } : { searchOpen: false }),
     screenshot: () => {

@@ -85,8 +85,19 @@ export interface Tooltip {
   lines: string[];
 }
 
+/**
+ * How the pointer shows over the chart: 'cross' dashed lines through it (default), 'dot' a dot,
+ * 'arrow' the normal arrow, 'demo' a big highlighted spot (for recordings), 'eraser' an eraser that
+ * deletes the drawing it clicks. All but 'demo' keep the price / time badges on the axes.
+ */
+export type CursorMode = 'cross' | 'dot' | 'arrow' | 'demo' | 'eraser';
+
 export interface RenderModel {
   frame: Frame;
+  /** The pointer's look (a drawing tool in use always shows the cross). */
+  cursorMode?: CursorMode;
+  /** Where the mouse is, unsnapped (the dot and demo cursors follow it). */
+  pointer?: { x: number; y: number } | null;
   bars: readonly Bar[];
   timeScale: TimeScale;
   formatPrice(price: number): string;
@@ -544,8 +555,36 @@ export function drawOverlay(layer: CanvasLayer, m: RenderModel, ch: CrosshairInf
     ctx.restore();
   }
 
-  p.vLine(ch.x, 0, f.panesHeight, pal.crosshair, DASH);
-  if (ch.source !== 'sync') drawCrosshairValue(p, m, ch);
+  const mode = ch.source === 'mouse' ? (m.cursorMode ?? 'cross') : 'cross';
+  if (mode === 'demo') {
+    // A presenter's spot: no lines or badges, just where the pointer is.
+    const at = m.pointer ?? { x: ch.x, y: ch.y };
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#FFC400';
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (mode === 'cross') p.vLine(ch.x, 0, f.panesHeight, pal.crosshair, DASH);
+  if (mode === 'dot') {
+    const at = m.pointer ?? { x: ch.x, y: ch.y };
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = pal.background;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, 2.6, 0, Math.PI * 2);
+    ctx.fillStyle = pal.text;
+    ctx.fill();
+  }
+  if (ch.source !== 'sync') drawCrosshairValue(p, m, ch, mode === 'cross');
 
   // Time badge on the time axis
   const timeLabel = m.formatCrosshairTime(ch.time);
@@ -556,11 +595,11 @@ export function drawOverlay(layer: CanvasLayer, m: RenderModel, ch: CrosshairInf
 }
 
 /** Horizontal line, touch dot and price-axis badge of a pointer crosshair. */
-function drawCrosshairValue(p: Painter, m: RenderModel, ch: CrosshairInfo): void {
+function drawCrosshairValue(p: Painter, m: RenderModel, ch: CrosshairInfo, lines = true): void {
   const f = m.frame;
   const pal = f.palette;
   const ctx = p.ctx;
-  p.hLine(ch.y, 0, f.plotWidth, pal.crosshair, DASH);
+  if (lines) p.hLine(ch.y, 0, f.plotWidth, pal.crosshair, DASH);
 
   if (ch.source === 'touch') {
     ctx.beginPath();

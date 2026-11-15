@@ -3,7 +3,7 @@ export { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState 
 export type { ChartSettings, ChartState, ChartThemeColors, ChartThemePreset } from './settings';
 export type { ChartContextMenu, ChartEvents, ChartLayout, ChartOptions, ChartPaneLayout, CompareInfo, IndicatorLegendItem, LegendItem, LegendItemOptions, ReplayStatus, ScreenshotOptions } from './chart';
 export type { PriceScaleMode } from './model/price-scale';
-export type { CrosshairInfo, PaneId } from './render/renderer';
+export type { CrosshairInfo, CursorMode, PaneId } from './render/renderer';
 export type { Locale } from './model/time-format';
 export { browserLocale } from './model/time-format';
 export type { IndexRange, TimeScaleOptions } from './model/time-scale';

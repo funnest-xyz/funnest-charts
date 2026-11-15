@@ -1,4 +1,4 @@
-import { darkTheme, directionColors, lightTheme, type DirectionPreset, type DrawingDefaults, type DrawingType, type Resolution, type ThemeTokens } from '@funnest/charts';
+import { darkTheme, directionColors, lightTheme, type CursorMode, type DirectionPreset, type DrawingDefaults, type DrawingType, type Resolution, type ThemeTokens } from '@funnest/charts';
 import type { UiState } from './context';
 import { createStorage, type WidgetStorage } from './storage';
 import type { Store } from './store';
@@ -62,6 +62,7 @@ export interface ShellPane {
     setKeepDrawingTool(on: boolean): void;
     setDrawingsHidden(hidden: boolean): void;
     setDrawingDefaults(defaults: DrawingDefaults): void;
+    setCursorMode(mode: CursorMode): void;
   };
 }
 
@@ -92,7 +93,8 @@ export interface Shell {
   readonly storage: WidgetStorage;
   theme(): ThemeTokens;
   /** Initial UI-state fields owned by the shell (same for every pane). */
-  sharedState(): Pick<UiState, 'fullscreen' | 'favoriteIntervals' | 'drawbarCollapsed' | 'favoriteTools' | 'keepDrawing'>;
+  sharedState(): Pick<UiState, 'fullscreen' | 'favoriteIntervals' | 'drawbarCollapsed' | 'favoriteTools' | 'keepDrawing' | 'cursorMode'>;
+  setCursorMode(mode: CursorMode): void;
   /** Each tool's last color / style (saved; every pane starts with it). */
   drawingDefaults(): DrawingDefaults;
   saveDrawingDefaults(defaults: DrawingDefaults): void;
@@ -237,6 +239,7 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
   let favoriteTools = storage.get<DrawingType[]>('favorite-tools', []);
   let keepDrawing = storage.get('keep-drawing', false);
   let drawingDefaults = storage.get<DrawingDefaults>('drawing-defaults', {});
+  let cursorMode = storage.get<CursorMode>('cursor-mode', 'cross');
   const broadcast = (patch: Partial<UiState>) => {
     for (const p of panes()) p.store.set(patch);
   };
@@ -260,7 +263,13 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
     slots,
     storage,
     theme: () => theme,
-    sharedState: () => ({ fullscreen: isFullscreen(), favoriteIntervals, drawbarCollapsed, favoriteTools, keepDrawing }),
+    sharedState: () => ({ fullscreen: isFullscreen(), favoriteIntervals, drawbarCollapsed, favoriteTools, keepDrawing, cursorMode }),
+    setCursorMode: (mode) => {
+      cursorMode = mode;
+      storage.set('cursor-mode', mode);
+      for (const p of panes()) p.chart.setCursorMode(mode);
+      broadcast({ cursorMode });
+    },
     drawingDefaults: () => drawingDefaults,
     saveDrawingDefaults: (defaults) => {
       drawingDefaults = defaults;

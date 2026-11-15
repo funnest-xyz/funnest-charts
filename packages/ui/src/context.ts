@@ -4,6 +4,7 @@ import type {
   ChartLayout,
   ChartType,
   CompareInfo,
+  CursorMode,
   Datafeed,
   Drawing,
   DrawingType,
@@ -54,6 +55,8 @@ export interface UiState {
   keepDrawing: boolean;
   /** Every drawing hidden (the drawing bar's 👁). */
   drawingsHidden: boolean;
+  /** How the pointer looks (the drawing bar's cursor menu; same in every pane). */
+  cursorMode: CursorMode;
   canUndo: boolean;
   canRedo: boolean;
   compares: CompareInfo[];
@@ -143,6 +146,7 @@ export interface WidgetContext {
   toggleFavoriteInterval(resolution: Resolution): void;
   toggleFavoriteTool(tool: DrawingType): void;
   setKeepDrawing(on: boolean): void;
+  setCursorMode(mode: CursorMode): void;
   /** Hides or shows the drawings of every pane. */
   setDrawingsHidden(hidden: boolean): void;
   setSearchOpen(open: boolean, target?: 'symbol' | 'compare'): void;

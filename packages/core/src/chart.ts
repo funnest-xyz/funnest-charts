@@ -29,6 +29,7 @@ import {
   drawOverlay,
   type ChartType,
   type CrosshairInfo,
+  type CursorMode,
   type Frame,
   type Palette,
   type PaneFrame,
@@ -104,6 +105,11 @@ export interface ReplayStatus {
   interval: number;
 }
 
+/** The CSS cursor over the plot for each cursor mode (the eraser: an eraser icon, hot spot at its tip). */
+const ERASER_CURSOR =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 22 22'%3E%3Cpath d='M3 15.5 12.5 6l5 5L10 18.5H6z' fill='%23fff' stroke='%23222' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M7.5 11 12.5 16' stroke='%23222' stroke-width='1.4'/%3E%3C/svg%3E\") 4 18, auto";
+const CURSOR_CSS: Record<CursorMode, string> = { cross: 'crosshair', dot: 'none', arrow: 'default', demo: 'none', eraser: ERASER_CURSOR };
+
 export interface ChartEvents {
   crosshairMove: CrosshairInfo | null;
   visibleRangeChange: IndexRange;
@@ -126,6 +132,8 @@ export interface ChartEvents {
   keepDrawingToolChange: boolean;
   /** A tool's last color / style changed (save it to restore with `setDrawingDefaults`). */
   drawingDefaultsChange: DrawingDefaults;
+  /** The pointer's look changed (십자, 점, 화살표, 데모, 지우개). */
+  cursorModeChange: CursorMode;
   selectionChange: Drawing | null;
   magnetChange: boolean;
   chartTypeChange: ChartType;
@@ -347,6 +355,7 @@ export class Chart {
   private priceAxisWidth = MIN_PRICE_AXIS_WIDTH;
   private frame: Frame | null = null;
   private crosshair: { x: number; y: number; source: 'mouse' | 'touch' } | null = null;
+  private cursor: CursorMode = 'cross';
   /** Time (UTC ms) of a crosshair mirrored from a linked chart; see setSyncedCrosshair(). */
   private syncedTime: number | null = null;
   private lastCrosshairKey = '';
@@ -963,6 +972,18 @@ export class Chart {
 
   get drawingTool(): DrawingType | null {
     return this.drawings.tool;
+  }
+
+  /** How the pointer looks over the chart: 'cross' (default), 'dot', 'arrow', 'demo' or 'eraser'. */
+  setCursorMode(mode: CursorMode): void {
+    if (mode === this.cursor) return;
+    this.cursor = mode;
+    this.invalidate(false);
+    this.emitter.emit('cursorModeChange', mode);
+  }
+
+  get cursorMode(): CursorMode {
+    return this.cursor;
   }
 
   /** Hides every drawing (not drawn, not clickable) or shows them again. Arming a tool shows them. */
@@ -1725,6 +1746,9 @@ export class Chart {
       labels: LABELS[this.locale],
       chartType: this.chartType,
       replaySelecting: this.replaySelecting,
+      // A drawing tool (or replay picking) needs the cross to aim.
+      cursorMode: this.drawings.tool || this.replaySelecting ? 'cross' : this.cursor,
+      pointer: this.crosshair?.source === 'mouse' ? { x: this.crosshair.x, y: this.crosshair.y } : null,
       objects: {
         coords: this.paneCoords(),
         overlays: this.overlays,
@@ -2267,6 +2291,8 @@ export class Chart {
       resetPaneSizes: () => this.resetPaneSizes(),
 
       toolActive: () => (this.drawings.tool !== null || this.replaySelecting) && this.store.length > 0,
+      plotCursor: () => (this.drawings.tool || this.replaySelecting ? 'crosshair' : CURSOR_CSS[this.cursor]),
+      erasing: () => this.cursor === 'eraser' && !this.drawings.tool,
       hitObject: (x, y, touch) => {
         if (y > this.mainScale.height) return null;
         const tolerance = touch ? HIT_TOLERANCE.touch : HIT_TOLERANCE.mouse;
@@ -2290,6 +2316,12 @@ export class Chart {
         if (!this.replaySelecting) this.drawings.releaseAt(this.paneCoords(), x, y, moved);
       },
       objectDown: (hit, x, y) => {
+        // 지우개: a click on a drawing deletes it.
+        if (hit.kind === 'drawing' && this.cursor === 'eraser' && !this.drawings.tool) {
+          this.objectDrag = null;
+          this.drawings.remove(hit.id);
+          return;
+        }
         this.objectDrag = hit;
         if (hit.kind === 'drawing') this.drawings.beginDrag(this.paneCoords(), hit.id, hit.part, x, y);
         else if (hit.kind === 'execution') this.setTooltip(hit.key); // tap shows details on touch

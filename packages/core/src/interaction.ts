@@ -28,6 +28,10 @@ export interface InteractionHost {
   // Objects (drawings, order lines)
   /** A drawing tool is armed: presses create drawings instead of panning. */
   toolActive(): boolean;
+  /** The CSS cursor over the plot when nothing under it asks for another. */
+  plotCursor(): string;
+  /** The eraser cursor is on: a click on a drawing deletes it. */
+  erasing(): boolean;
   hitObject(x: number, y: number, touch: boolean): ObjectHit | null;
   drawAt(x: number, y: number): void;
   drawPreview(x: number, y: number): void;
@@ -101,7 +105,7 @@ export class Interaction {
     private readonly el: HTMLElement,
   ) {
     el.style.touchAction = 'pan-y';
-    el.style.cursor = 'crosshair';
+    el.style.cursor = host.plotCursor();
     this.listen('pointerdown', this.onPointerDown);
     this.listen('pointermove', this.onPointerMove);
     this.listen('pointerup', this.onPointerUp);
@@ -292,7 +296,7 @@ export class Interaction {
   private hover(p: Point): void {
     const region = this.host.hitTest(p.x, p.y);
     let cursor =
-      region.area === 'priceAxis' ? 'ns-resize' : region.area === 'timeAxis' ? 'ew-resize' : region.area === 'paneBorder' ? 'row-resize' : 'crosshair';
+      region.area === 'priceAxis' ? 'ns-resize' : region.area === 'timeAxis' ? 'ew-resize' : region.area === 'paneBorder' ? 'row-resize' : this.host.plotCursor();
     let hovered: ObjectHit | null = null;
     if (region.area === 'plot') {
       if (this.host.toolActive()) {
@@ -302,6 +306,7 @@ export class Interaction {
         hovered = hit;
         if (hit?.kind === 'order') cursor = hit.part === 'cancel' ? 'pointer' : 'ns-resize';
         else if (hit?.kind === 'execution') cursor = 'pointer';
+        else if (hit?.kind === 'drawing' && this.host.erasing()) cursor = this.host.plotCursor();
         else if (hit) cursor = hit.part === 'body' ? 'move' : 'grab';
       }
     }
