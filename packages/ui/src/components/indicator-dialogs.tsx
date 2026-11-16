@@ -12,11 +12,11 @@ import {
 } from '@funnest/charts';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { WidgetContext } from '../context';
-import { stringsOf, type Strings } from '../i18n';
-import { CloseIcon, SmallCloseIcon } from '../icons';
-import { useStore } from '../store';
-import { SettingsDialog } from './settings-dialog';
+import type { WidgetContext } from '../context.js';
+import { stringsOf, type Strings } from '../i18n.js';
+import { CloseIcon, SmallCloseIcon } from '../icons.js';
+import { useStore } from '../store.js';
+import { SettingsDialog } from './settings-dialog.js';
 
 function Dialog({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ComponentChildren; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);

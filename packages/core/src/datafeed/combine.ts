@@ -1,4 +1,4 @@
-import type { Bar, BarsRequest, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, SymbolSearchResult } from '../types';
+import type { Bar, BarsRequest, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, SymbolSearchResult } from '../types.js';
 
 /**
  * Serves several datafeeds through one chart. Symbols are namespaced as `KEY:SYMBOL`

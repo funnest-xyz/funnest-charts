@@ -1,8 +1,8 @@
-import type { Bar } from '../types';
-import type { Locale } from '../model/time-format';
-import type { Painter } from '../render/painter';
-import type { Palette } from '../render/renderer';
-import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext, type PaneCoords } from './types';
+import type { Bar } from '../types.js';
+import type { Locale } from '../model/time-format.js';
+import type { Painter } from '../render/painter.js';
+import type { Palette } from '../render/renderer.js';
+import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext, type PaneCoords } from './types.js';
 
 /** Built-in drawing tools. */
 export type BuiltinDrawingType = 'trendline' | 'horizontal' | 'fibonacci';
@@ -227,7 +227,7 @@ export function drawingRegistry(extra: readonly DrawingDefinition[] = []): Map<s
   return registry;
 }
 
-export type DrawingsChange = 'preview' | 'commit' | 'tool' | 'selection' | 'defaults' | 'hidden';
+export type DrawingsChange = 'preview' | 'commit' | 'tool' | 'selection' | 'defaults' | 'hidden' | 'text';
 
 /** The last color and line / text style used per tool type: new drawings of that type start with it. */
 export type DrawingDefaults = Record<string, { color?: string; style?: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize'> }>;
@@ -244,6 +244,8 @@ export class DrawingManager {
   drawings: Drawing[] = [];
   tool: DrawingType | null = null;
   selectedId: string | null = null;
+  /** A text drawing that was just placed without text: the widget opens its text field (read once). */
+  textEditId: string | null = null;
   /** Every drawing hidden at once (arming a tool shows them again). */
   hiddenAll = false;
   /** The tool stays armed after a drawing is placed (연속 그리기). */
@@ -426,12 +428,23 @@ export class DrawingManager {
     if (this.keepTool) {
       // 연속 그리기: the tool stays armed for the next one.
       this.onChange('commit');
-      return;
+    } else {
+      this.selectedId = drawing.id;
+      this.tool = null;
+      this.onChange('tool');
+      this.onChange('commit');
     }
-    this.selectedId = drawing.id;
-    this.tool = null;
-    this.onChange('tool');
-    this.onChange('commit');
+    // A text tool placed without text: typing comes next.
+    if (this.registry.get(drawing.type)?.text && !drawing.style?.text) {
+      this.textEditId = drawing.id;
+      this.onChange('text');
+    }
+  }
+
+  /** Whether a drawing's text can be typed in place (a text tool, not locked). */
+  textEditable(id: string): boolean {
+    const d = this.drawings.find((x) => x.id === id);
+    return !!d && !d.style?.locked && !!this.registry.get(d.type)?.text;
   }
 
   // ── Editing ───────────────────────────────────────────────────────

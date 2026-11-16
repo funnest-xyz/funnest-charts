@@ -1,6 +1,6 @@
-import type { Locale } from '../model/time-format';
-import type { Bar } from '../types';
-import { bollinger, ema, macd, rsi, sma } from './math';
+import type { Locale } from '../model/time-format.js';
+import type { Bar } from '../types.js';
+import { bollinger, ema, macd, rsi, sma } from './math.js';
 
 /** Built-in indicators. */
 export type BuiltinIndicatorType = 'ma' | 'ema' | 'bb' | 'rsi' | 'macd';

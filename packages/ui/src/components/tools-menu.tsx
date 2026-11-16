@@ -2,8 +2,8 @@
 import type { ChartType, PriceScaleMode } from '@funnest/charts';
 import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { LayoutSync, MultiControls, WidgetContext } from '../context';
-import { stringsOf, type Strings } from '../i18n';
+import type { LayoutSync, MultiControls, WidgetContext } from '../context.js';
+import { stringsOf, type Strings } from '../i18n.js';
 import {
   AreaChartIcon,
   CameraIcon,
@@ -14,11 +14,11 @@ import {
   ReplayIcon,
   SettingsIcon,
   ToolsIcon,
-} from '../icons';
-import { LAYOUT_GROUPS, LAYOUTS, paneCount } from '../layouts';
-import { useStore } from '../store';
-import { useKeepInView } from './keep-in-view';
-import { LayoutGlyph } from './layout-menu';
+} from '../icons.js';
+import { LAYOUT_GROUPS, LAYOUTS, paneCount } from '../layouts.js';
+import { useStore } from '../store.js';
+import { useKeepInView } from './keep-in-view.js';
+import { LayoutGlyph } from './layout-menu.js';
 
 const TYPES: { type: ChartType; label: keyof Strings; icon: () => JSX.Element }[] = [
   { type: 'candles', label: 'candles', icon: CandlesIcon },

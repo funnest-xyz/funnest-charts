@@ -1,10 +1,10 @@
 /** @jsxImportSource preact */
 import { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, type ChartSettings, type PriceScaleMode } from '@funnest/charts';
 import { useEffect, useState } from 'preact/hooks';
-import type { WidgetContext } from '../context';
-import { stringsOf, type Strings } from '../i18n';
-import { CloseIcon } from '../icons';
-import { useStore } from '../store';
+import type { WidgetContext } from '../context.js';
+import { stringsOf, type Strings } from '../i18n.js';
+import { CloseIcon } from '../icons.js';
+import { useStore } from '../store.js';
 
 /** Any CSS color (incl. var(--x) already resolved by the browser) → #rrggbb for <input type=color>. */
 function toHex(color: string): string {

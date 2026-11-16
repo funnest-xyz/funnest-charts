@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decimalsOf, formatCompact, formatPrice, krxTickSize, roundToTick } from './price';
+import { decimalsOf, formatCompact, formatPrice, krxTickSize, roundToTick } from './price.js';
 
 describe('decimalsOf', () => {
   it('counts decimals including exponent notation', () => {

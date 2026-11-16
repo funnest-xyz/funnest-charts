@@ -1,5 +1,5 @@
-import type { Bar } from '../types';
-import type { TimeScale } from './time-scale';
+import type { Bar } from '../types.js';
+import type { TimeScale } from './time-scale.js';
 
 export type Locale = 'ko' | 'en';
 

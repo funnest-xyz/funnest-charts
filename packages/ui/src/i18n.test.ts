@@ -1,6 +1,6 @@
 import { browserLocale, directionColors } from '@funnest/charts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { STRINGS, stringsOf } from './i18n';
+import { STRINGS, stringsOf } from './i18n.js';
 
 describe('language', () => {
   afterEach(() => vi.unstubAllGlobals());

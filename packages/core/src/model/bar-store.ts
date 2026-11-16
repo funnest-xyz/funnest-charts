@@ -1,4 +1,4 @@
-import type { Bar } from '../types';
+import type { Bar } from '../types.js';
 
 export type UpsertResult = 'append' | 'update' | 'ignored';
 

@@ -11,10 +11,10 @@
  * PercentageBarChart, CartesianChart
  * and its parts) built on the platform-neutral math in @funnest/charts-viz.
  */
-export { FnChart, FnChartSlot, useChartEvent, useFnChart } from './fn-chart';
-export type { FnChartProps } from './fn-chart';
-export { FnMultiChart, useFnMultiChart } from './fn-multi-chart';
-export type { FnMultiChartProps } from './fn-multi-chart';
+export { FnChart, FnChartSlot, useChartEvent, useFnChart } from './fn-chart.js';
+export type { FnChartProps } from './fn-chart.js';
+export { FnMultiChart, useFnMultiChart } from './fn-multi-chart.js';
+export type { FnMultiChartProps } from './fn-multi-chart.js';
 export type {
   ContextMenuItem,
   ContextMenuItems,
@@ -32,4 +32,4 @@ export type {
   ToolsMenuItem,
   ToolsMenuItems,
 } from '@funnest/charts-ui';
-export * from './viz';
+export * from './viz/index.js';

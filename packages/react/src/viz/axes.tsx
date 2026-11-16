@@ -1,5 +1,5 @@
 import { logTicks, sampleIndices, ticks as niceTicks } from '@funnest/charts-viz';
-import { formatNumber, scaleFor, useCartesianChart, VAR } from './context';
+import { formatNumber, scaleFor, useCartesianChart, VAR } from './context.js';
 
 export interface XAxisProps {
   position?: 'bottom' | 'top';

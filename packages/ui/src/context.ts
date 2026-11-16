@@ -15,10 +15,10 @@ import type {
   Resolution,
   SymbolInfo,
 } from '@funnest/charts';
-import type { LayoutId } from './layouts';
-import type { WidgetStorage } from './storage';
-import type { Strings } from './i18n';
-import type { Store } from './store';
+import type { LayoutId } from './layouts.js';
+import type { WidgetStorage } from './storage.js';
+import type { Strings } from './i18n.js';
+import type { Store } from './store.js';
 
 export interface UiState {
   locale: Locale;

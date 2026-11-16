@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sessionStatus } from './session';
+import { sessionStatus } from './session.js';
 
 const kst = (iso: string) => Date.parse(`${iso}+09:00`);
 

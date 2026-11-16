@@ -5,7 +5,9 @@
     "emitDeclarationOnly": true,
     "outDir": "dist",
     "rootDir": "src",
-    "customConditions": []
+    "customConditions": [],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
   "exclude": [
     "src/**/*.test.ts"

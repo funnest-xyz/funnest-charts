@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SymbolInfo } from '../types';
-import { TradingLayer } from './trading';
-import { TradingSync, type OrderInfo, type TradingAdapter, type TradingCallbacks } from './trading-sync';
+import type { SymbolInfo } from '../types.js';
+import { TradingLayer } from './trading.js';
+import { TradingSync, type OrderInfo, type TradingAdapter, type TradingCallbacks } from './trading-sync.js';
 
 const symbol: SymbolInfo = {
   symbol: 'TEST',

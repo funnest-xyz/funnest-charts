@@ -2,8 +2,8 @@
 import type { CursorMode, DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { WidgetContext } from '../context';
-import { stringsOf } from '../i18n';
+import type { WidgetContext } from '../context.js';
+import { stringsOf } from '../i18n.js';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -26,8 +26,8 @@ import {
   SvgIcon,
   TrashIcon,
   TrendLineIcon,
-} from '../icons';
-import { useStore } from '../store';
+} from '../icons.js';
+import { useStore } from '../store.js';
 
 const BUILTIN_ICONS: Record<string, () => JSX.Element> = {
   trendline: TrendLineIcon,

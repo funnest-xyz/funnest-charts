@@ -1,5 +1,5 @@
-import { DAY_MS, resolutionToMs } from './resolution';
-import type { Bar, Resolution } from './types';
+import { DAY_MS, resolutionToMs } from './resolution.js';
+import type { Bar, Resolution } from './types.js';
 
 const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings';
+import { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings.js';
 
 describe('parseChartState', () => {
   it('fills defaults and validates fields', () => {

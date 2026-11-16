@@ -1,5 +1,5 @@
 import { barPath } from '@funnest/charts-viz';
-import { DIM_OPACITY, useCartesianChart } from './context';
+import { DIM_OPACITY, useCartesianChart } from './context.js';
 
 export interface BarPlotProps {
   /** Only draw these series (default: all). */

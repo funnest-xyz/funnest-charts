@@ -1,7 +1,7 @@
 import { arcPath, arcs, seriesColor } from '@funnest/charts-viz';
 import { useId, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { formatNumber, VAR } from './context';
-import { Legend, type LegendShape } from './legend';
+import { formatNumber, VAR } from './context.js';
+import { Legend, type LegendShape } from './legend.js';
 
 export interface DonutItem {
   id: string;

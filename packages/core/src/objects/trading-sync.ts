@@ -1,5 +1,5 @@
-import type { SymbolInfo, Unsubscribe } from '../types';
-import type { ExecutionMarker, LineHandle, OrderLineOptions, PositionLineOptions, TradingLayer } from './trading';
+import type { SymbolInfo, Unsubscribe } from '../types.js';
+import type { ExecutionMarker, LineHandle, OrderLineOptions, PositionLineOptions, TradingLayer } from './trading.js';
 
 export interface PositionInfo {
   price: number;

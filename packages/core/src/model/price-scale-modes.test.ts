@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { logTicks, PriceScale } from './price-scale';
+import { logTicks, PriceScale } from './price-scale.js';
 
 const scale = (mode: PriceScale['mode']) => {
   const s = new PriceScale({ top: 0, bottom: 0 });

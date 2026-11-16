@@ -1,4 +1,4 @@
-import { decimalsOf } from '../price';
+import { decimalsOf } from '../price.js';
 
 export interface PriceScaleMargins {
   /** Fraction of pane height kept empty above the max price. */

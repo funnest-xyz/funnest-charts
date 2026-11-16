@@ -1,13 +1,13 @@
 import { percentages, seriesColor, type Curve } from '@funnest/charts-viz';
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { XAxis, YAxis, type XAxisProps, type YAxisProps } from './axes';
-import { BarPlot, type BarPlotProps } from './bar';
-import { CartesianChart, type CartesianChartProps } from './cartesian-chart';
-import { formatNumber, VAR, type LineStyle } from './context';
-import { Legend, type LegendShape } from './legend';
-import { HorizontalBarChart } from './horizontal-bar';
-import { Area, Line, type AreaFill, type GradientStop, type LineProps, type SplitColors } from './line';
-import { Scrubber, type ScrubberProps } from './scrubber';
+import { XAxis, YAxis, type XAxisProps, type YAxisProps } from './axes.js';
+import { BarPlot, type BarPlotProps } from './bar.js';
+import { CartesianChart, type CartesianChartProps } from './cartesian-chart.js';
+import { formatNumber, VAR, type LineStyle } from './context.js';
+import { Legend, type LegendShape } from './legend.js';
+import { HorizontalBarChart } from './horizontal-bar.js';
+import { Area, Line, type AreaFill, type GradientStop, type LineProps, type SplitColors } from './line.js';
+import { Scrubber, type ScrubberProps } from './scrubber.js';
 
 type AxisToggle<P> = boolean | P;
 const axisProps = <P,>(v: AxisToggle<P> | undefined): P | null => (v ? (v === true ? ({} as P) : v) : null);

@@ -8,11 +8,11 @@ export {
   DEFAULT_FAVORITE_INTERVALS,
   DEFAULT_INTERVAL_GROUPS,
   DEFAULT_SEARCH_CATEGORIES,
-} from './trading-chart';
-export { createMultiChart } from './multi-chart';
-export type { MultiChart, MultiChartEvents, MultiChartOptions, MultiChartState, PaneSpec } from './multi-chart';
-export { LAYOUT_GROUPS, LAYOUTS, MAX_PANES, paneCount } from './layouts';
-export type { LayoutId, SplitNode, SplitSizes } from './layouts';
-export type { ContextMenuItem, ContextMenuItems, IntervalGroup, LayoutSync, LegendValues, SearchCategory, SearchExchange, ToolsMenuItem, ToolsMenuItems } from './context';
-export type { ColorScheme, TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart';
-export { resolutionLabel, STRINGS, stringsOf, type Strings } from './i18n';
+} from './trading-chart.js';
+export { createMultiChart } from './multi-chart.js';
+export type { MultiChart, MultiChartEvents, MultiChartOptions, MultiChartState, PaneSpec } from './multi-chart.js';
+export { LAYOUT_GROUPS, LAYOUTS, MAX_PANES, paneCount } from './layouts.js';
+export type { LayoutId, SplitNode, SplitSizes } from './layouts.js';
+export type { ContextMenuItem, ContextMenuItems, IntervalGroup, LayoutSync, LegendValues, SearchCategory, SearchExchange, ToolsMenuItem, ToolsMenuItems } from './context.js';
+export type { ColorScheme, TradingChart, TradingChartOptions, TradingChartSlots } from './trading-chart.js';
+export { resolutionLabel, STRINGS, stringsOf, type Strings } from './i18n.js';

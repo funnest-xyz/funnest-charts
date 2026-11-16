@@ -1,10 +1,11 @@
 /** @jsxImportSource preact */
 import { formatCompact, formatPrice, type Bar, type IndicatorLegendItem, type LegendItem } from '@funnest/charts';
 import type { JSX } from 'preact';
-import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
-import type { MultiControls, WidgetContext } from '../context';
-import { resolutionLabel, stringsOf } from '../i18n';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'preact/hooks';
+import type { MultiControls, WidgetContext } from '../context.js';
+import { resolutionLabel, stringsOf } from '../i18n.js';
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronUpIcon,
@@ -23,11 +24,11 @@ import {
   SmallCloseIcon,
   StepIcon,
   ToRealtimeIcon,
-} from '../icons';
-import { useStore } from '../store';
-import { ContextMenu } from './context-menu';
-import { SelectionBar } from './drawing-toolbar';
-import { SymbolAvatar } from './symbol-avatar';
+} from '../icons.js';
+import { useStore } from '../store.js';
+import { ContextMenu } from './context-menu.js';
+import { SelectionBar } from './drawing-toolbar.js';
+import { SymbolAvatar } from './symbol-avatar.js';
 
 const ZOOM_STEP = 1.25;
 const CONTROL_OFFSET = 52; // px above the time axis
@@ -67,6 +68,23 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
         </b>
       ))}
       <span class="fnc-ind-actions">
+        {/* Order: among the overlays (legend order), or which pane comes first. */}
+        {ctx.chart.canMoveIndicator(item.id, -1) && (
+          <button class="fnc-ind-btn" data-tip={t.moveIndicatorUp} aria-label={`${item.title} ${t.moveIndicatorUp}`} onClick={(e) => {
+              e.stopPropagation();
+              ctx.chart.moveIndicator(item.id, -1);
+            }}>
+            <ChevronUpIcon />
+          </button>
+        )}
+        {ctx.chart.canMoveIndicator(item.id, 1) && (
+          <button class="fnc-ind-btn" data-tip={t.moveIndicatorDown} aria-label={`${item.title} ${t.moveIndicatorDown}`} onClick={(e) => {
+              e.stopPropagation();
+              ctx.chart.moveIndicator(item.id, 1);
+            }}>
+            <ChevronDownIcon />
+          </button>
+        )}
         <button
           class="fnc-ind-btn"
           data-tip={t.indicatorSettings}
@@ -129,6 +147,16 @@ function VolumeItem({ ctx, value }: { ctx: WidgetContext; value: string | null }
       <span class="fnc-ind-title">{t.settingVolume}</span>
       {value !== null && <b class="fnc-flat">{value}</b>}
       <span class="fnc-ind-actions">
+        {ctx.chart.canMoveIndicator('volume', -1) && (
+          <button class="fnc-ind-btn" data-tip={t.moveIndicatorUp} aria-label={`${t.settingVolume} ${t.moveIndicatorUp}`} onClick={() => ctx.chart.moveIndicator('volume', -1)}>
+            <ChevronUpIcon />
+          </button>
+        )}
+        {ctx.chart.canMoveIndicator('volume', 1) && (
+          <button class="fnc-ind-btn" data-tip={t.moveIndicatorDown} aria-label={`${t.settingVolume} ${t.moveIndicatorDown}`} onClick={() => ctx.chart.moveIndicator('volume', 1)}>
+            <ChevronDownIcon />
+          </button>
+        )}
         <button
           class="fnc-ind-btn"
           data-tip={t.chartSettings}
@@ -445,6 +473,107 @@ function ReplayBar({ ctx }: { ctx: WidgetContext }) {
   );
 }
 
+const TEXT_MAX = 200;
+
+/**
+ * Typing a text drawing's text where it sits on the chart: opens when a text tool is placed, or
+ * when a selected text drawing is clicked again (chart event `drawingTextEdit`). The text shows on
+ * the chart as it's typed. Enter (or clicking elsewhere) keeps it; Shift+Enter adds a line; Esc
+ * puts back what was there.
+ */
+function TextEditor({ ctx }: { ctx: WidgetContext }) {
+  const t = stringsOf(useStore(ctx.store));
+  const [edit, setEdit] = useState<{ id: string; x: number; y: number; before: string } | null>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    // The request comes while the button is still down (placing, or the second click): open the
+    // field once it's released, or the release would take the focus straight back out of it.
+    let pressed = false;
+    let pending: (() => void) | null = null;
+    const down = () => (pressed = true);
+    const up = () => {
+      pressed = false;
+      const open = pending;
+      pending = null;
+      if (open) setTimeout(open, 0);
+    };
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    const off = ctx.chart.on('drawingTextEdit', ({ id, x, y }) => {
+      const open = () => {
+        const d = ctx.chart.getDrawings().find((x) => x.id === id);
+        if (d) setEdit({ id, x, y, before: d.style?.text ?? '' });
+      };
+      if (pressed) pending = open;
+      else open();
+    });
+    return () => {
+      off();
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+    };
+  }, [ctx.chart]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !edit) return;
+    el.value = edit.before;
+    el.focus();
+    el.select();
+    fit(el);
+  }, [edit]);
+  if (!edit) return null;
+
+  const write = (text: string) => {
+    const d = ctx.chart.getDrawings().find((x) => x.id === edit.id);
+    if (d) ctx.chart.updateDrawing(edit.id, { style: { ...d.style, text } });
+  };
+  const close = (keep: boolean) => {
+    if (!keep) write(edit.before);
+    setEdit(null);
+  };
+  // Keep it on the chart: from the left edge, and from the bottom when near it.
+  const width = 220;
+  const left = Math.max(4, Math.min(edit.x - 8, ctx.chart.layout.plotWidth - width - 4));
+  return (
+    <div class="fnc-text-edit" style={{ left: `${left}px`, top: `${Math.max(4, edit.y - 18)}px`, width: `${width}px` }}>
+      <textarea
+        ref={ref}
+        rows={1}
+        maxLength={TEXT_MAX}
+        aria-label={t.drawingText}
+        placeholder={t.textPlaceholder}
+        onInput={(e) => {
+          const el = e.target as HTMLTextAreaElement;
+          fit(el);
+          write(el.value);
+        }}
+        onKeyDown={(e) => {
+          // The chart's shortcuts (Delete removes the drawing, arrows pan…) don't apply while typing.
+          e.stopPropagation();
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            close(false);
+          } else if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+            e.preventDefault();
+            close(true);
+          }
+        }}
+        onBlur={() => close(true)}
+        onPointerDown={(e) => e.stopPropagation()}
+      />
+      <small>{t.textEditHint}</small>
+    </div>
+  );
+}
+
+/** Grows the field with its lines (up to five). */
+function fit(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 5 * 20 + 8)}px`;
+}
+
 export function Overlay({ ctx }: { ctx: WidgetContext }) {
   return (
     <>
@@ -453,6 +582,7 @@ export function Overlay({ ctx }: { ctx: WidgetContext }) {
       <NavControls ctx={ctx} />
       <ReplayBar ctx={ctx} />
       <SelectionBar ctx={ctx} />
+      <TextEditor ctx={ctx} />
       <PaneTools ctx={ctx} />
       <ContextMenu ctx={ctx} />
     </>

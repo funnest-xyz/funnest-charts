@@ -20,8 +20,8 @@ export {
   type ReferenceLineSpec,
   type Row,
   type ValidationIssue,
-} from './spec';
-export { reactCode, renderHtml, renderPng, renderSvg, valueFormatter, type RenderOptions } from './render';
-export { parseCsv, parseData, suggestCharts, type Suggestion } from './data';
-export { messages, systemLocale, type CliLocale } from './i18n';
-export { datafeedTemplate, type DatafeedTemplateKind } from './templates';
+} from './spec.js';
+export { reactCode, renderHtml, renderPng, renderSvg, valueFormatter, type RenderOptions } from './render.js';
+export { parseCsv, parseData, suggestCharts, type Suggestion } from './data.js';
+export { messages, systemLocale, type CliLocale } from './i18n.js';
+export { datafeedTemplate, type DatafeedTemplateKind } from './templates.js';

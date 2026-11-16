@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve } from 'node:path';
-import { parseData, suggestCharts } from './data';
-import { messages, systemLocale, type CliLocale } from './i18n';
-import { reactCode, renderHtml, renderPng, renderSvg, type RenderOptions } from './render';
-import { CHARTS, CHART_TYPES, chartSchema, closest, exampleSpec, validateSpec, type ChartSpec, type ChartType } from './spec';
+import { parseData, suggestCharts } from './data.js';
+import { messages, systemLocale, type CliLocale } from './i18n.js';
+import { reactCode, renderHtml, renderPng, renderSvg, type RenderOptions } from './render.js';
+import { CHARTS, CHART_TYPES, chartSchema, closest, exampleSpec, validateSpec, type ChartSpec, type ChartType } from './spec.js';
 
 interface Args {
   _: string[];

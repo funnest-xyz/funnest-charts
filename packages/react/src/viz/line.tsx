@@ -1,6 +1,6 @@
 import { areaPath, linePath, segments, type Curve, type ValueScale, type XY } from '@funnest/charts-viz';
 import type { ReactNode } from 'react';
-import { dashFor, DIM_OPACITY, nearScrub, useCartesianChart, VAR, type CartesianContextValue, type LineStyle, type ResolvedSeries } from './context';
+import { dashFor, DIM_OPACITY, nearScrub, useCartesianChart, VAR, type CartesianContextValue, type LineStyle, type ResolvedSeries } from './context.js';
 
 export type AreaFill = 'gradient' | 'solid' | 'dotted' | 'none';
 

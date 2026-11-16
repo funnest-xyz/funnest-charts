@@ -1,5 +1,5 @@
-import type { ObjectHit } from './objects/types';
-import type { PaneId } from './render/renderer';
+import type { ObjectHit } from './objects/types.js';
+import type { PaneId } from './render/renderer.js';
 
 export interface HitRegion {
   area: 'plot' | 'priceAxis' | 'timeAxis' | 'paneBorder' | 'none';
@@ -431,6 +431,8 @@ export class Interaction {
   private onDoubleClick(e: MouseEvent): void {
     if (this.touch) return; // touch double-taps are handled in handleTap
     const p = this.local(e);
+    // On a drawing the two clicks already selected it (and, for text, opened its field).
+    if (this.host.hitObject(p.x, p.y, false)) return;
     const region = this.host.hitTest(p.x, p.y);
     if (region.area === 'priceAxis' && region.pane) this.host.resetPriceScale(region.pane);
     else if (region.area === 'paneBorder') this.host.resetPaneSizes();

@@ -1,12 +1,12 @@
-export { Chart, createChart, fallbackResolution } from './chart';
-export { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings';
-export type { ChartSettings, ChartState, ChartThemeColors, ChartThemePreset } from './settings';
-export type { ChartContextMenu, ChartEvents, ChartLayout, ChartOptions, ChartPaneLayout, CompareInfo, IndicatorLegendItem, LegendItem, LegendItemOptions, ReplayStatus, ScreenshotOptions } from './chart';
-export type { PriceScaleMode } from './model/price-scale';
-export type { CrosshairInfo, CursorMode, PaneId } from './render/renderer';
-export type { Locale } from './model/time-format';
-export { browserLocale } from './model/time-format';
-export type { IndexRange, TimeScaleOptions } from './model/time-scale';
+export { Chart, createChart, fallbackResolution } from './chart.js';
+export { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings.js';
+export type { ChartSettings, ChartState, ChartThemeColors, ChartThemePreset } from './settings.js';
+export type { ChartContextMenu, ChartEvents, ChartLayout, ChartOptions, ChartPaneLayout, CompareInfo, IndicatorLegendItem, LegendItem, LegendItemOptions, ReplayStatus, ScreenshotOptions } from './chart.js';
+export type { PriceScaleMode } from './model/price-scale.js';
+export type { CrosshairInfo, CursorMode, PaneId } from './render/renderer.js';
+export type { Locale } from './model/time-format.js';
+export { browserLocale } from './model/time-format.js';
+export type { IndexRange, TimeScaleOptions } from './model/time-scale.js';
 export type {
   Bar,
   BarsRequest,
@@ -20,13 +20,13 @@ export type {
   SymbolSearchResult,
   Quote,
   ConnectionState,
-} from './types';
-export type { DirectionPreset, ThemeTokens } from './theme';
-export { createTheme, darkTheme, directionColors, lightTheme } from './theme';
-export type { FormatPriceOptions } from './price';
-export { decimalsOf, formatCompact, formatPrice, krxTickSize, resolveTickSize, roundToTick } from './price';
-export { isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution';
-export type { ChartType } from './render/renderer';
+} from './types.js';
+export type { DirectionPreset, ThemeTokens } from './theme.js';
+export { createTheme, darkTheme, directionColors, lightTheme } from './theme.js';
+export type { FormatPriceOptions } from './price.js';
+export { decimalsOf, formatCompact, formatPrice, krxTickSize, resolveTickSize, roundToTick } from './price.js';
+export { isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution.js';
+export type { ChartType } from './render/renderer.js';
 export type {
   BuiltinDrawingType,
   Drawing,
@@ -38,18 +38,18 @@ export type {
   DrawingStyle,
   DrawingColorSlot,
   DrawingType,
-} from './objects/drawings';
-export { BUILTIN_DRAWINGS, distToSegment, FIB_LEVELS } from './objects/drawings';
-export type { ChartOverlay, ObjectRenderContext, PaneCoords } from './objects/types';
-export type { Painter } from './render/painter';
-export type { Palette } from './render/renderer';
-export { snapToOhlc } from './objects/magnet';
-export { DEFAULT_TRADING_LABEL_OPTIONS } from './objects/trading';
-export type { AlertLineOptions, ExecutionGroup, ExecutionMarker, LineHandle, OrderLineOptions, PositionLineOptions, TradingLabelOptions } from './objects/trading';
-export type { Execution, OrderInfo, PositionInfo, TradingAdapter, TradingCallbacks } from './objects/trading-sync';
-export { bucketStart, TickAggregator, timeZoneOffset } from './realtime';
-export type { Tick } from './realtime';
-export { INDICATORS, SERIES_COLORS } from './indicators/definitions';
+} from './objects/drawings.js';
+export { BUILTIN_DRAWINGS, distToSegment, FIB_LEVELS } from './objects/drawings.js';
+export type { ChartOverlay, ObjectRenderContext, PaneCoords } from './objects/types.js';
+export type { Painter } from './render/painter.js';
+export type { Palette } from './render/renderer.js';
+export { snapToOhlc } from './objects/magnet.js';
+export { DEFAULT_TRADING_LABEL_OPTIONS } from './objects/trading.js';
+export type { AlertLineOptions, ExecutionGroup, ExecutionMarker, LineHandle, OrderLineOptions, PositionLineOptions, TradingLabelOptions } from './objects/trading.js';
+export type { Execution, OrderInfo, PositionInfo, TradingAdapter, TradingCallbacks } from './objects/trading-sync.js';
+export { bucketStart, TickAggregator, timeZoneOffset } from './realtime.js';
+export type { Tick } from './realtime.js';
+export { INDICATORS, SERIES_COLORS } from './indicators/definitions.js';
 export type {
   BuiltinIndicatorType,
   IndicatorDefinition,
@@ -58,16 +58,16 @@ export type {
   IndicatorParamSpec,
   IndicatorSeries,
   IndicatorType,
-} from './indicators/definitions';
-export type { IndicatorConfig, IndicatorPatch } from './indicators/manager';
-export { maLines, PRICE_SOURCES, priceSource } from './indicators/definitions';
-export type { MaLine, PriceSource, SeriesStyle } from './indicators/definitions';
+} from './indicators/definitions.js';
+export type { IndicatorConfig, IndicatorPatch } from './indicators/manager.js';
+export { maLines, PRICE_SOURCES, priceSource } from './indicators/definitions.js';
+export type { MaLine, PriceSource, SeriesStyle } from './indicators/definitions.js';
 /** Indicator math, reusable in strategy/backtest code. */
-export { bollinger, ema, macd, rsi, sma, stdev } from './indicators/math';
-export { sessionStatus } from './session';
-export type { SessionStatus } from './session';
+export { bollinger, ema, macd, rsi, sma, stdev } from './indicators/math.js';
+export { sessionStatus } from './session.js';
+export type { SessionStatus } from './session.js';
 /** Exchange-agnostic realtime helpers for writing your own Datafeed. */
-export { ReconnectingWebSocket, toConnectionStatus } from './datafeed/socket';
-export type { ReconnectingWebSocketOptions, SocketStatus } from './datafeed/socket';
-export { monitorLatency } from './datafeed/latency';
-export { combineDatafeeds } from './datafeed/combine';
+export { ReconnectingWebSocket, toConnectionStatus } from './datafeed/socket.js';
+export type { ReconnectingWebSocketOptions, SocketStatus } from './datafeed/socket.js';
+export { monitorLatency } from './datafeed/latency.js';
+export { combineDatafeeds } from './datafeed/combine.js';

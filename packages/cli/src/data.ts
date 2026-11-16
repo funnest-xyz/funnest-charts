@@ -1,4 +1,4 @@
-import type { ChartSpec, Row } from './spec';
+import type { ChartSpec, Row } from './spec.js';
 
 /** Minimal RFC 4180 CSV parser (quoted fields, escaped quotes, CRLF). Numbers become numbers. */
 export function parseCsv(text: string): Row[] {

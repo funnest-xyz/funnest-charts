@@ -1,21 +1,21 @@
 /** @jsxImportSource preact */
 import { browserLocale, parseChartState, type Chart, type ChartState, type Locale, type Resolution, type ThemeTokens } from '@funnest/charts';
 import { render } from 'preact';
-import { DrawingToolbar } from './components/drawing-toolbar';
-import { Toolbar } from './components/toolbar';
-import type { LayoutSync, MultiControls, MultiState } from './context';
-import { resolutionLabel, stringsOf } from './i18n';
-import { isLayoutId, LAYOUTS, MAX_PANES, paneCount, resizePair, sizesFor, type LayoutId, type SplitNode, type SplitSizes } from './layouts';
-import { createPane, type Pane } from './pane';
-import { bindWidgetKeys, createShell, div, type ColorScheme, type TradingChartSlots } from './shell';
-import { Store, useStore } from './store';
+import { DrawingToolbar } from './components/drawing-toolbar.js';
+import { Toolbar } from './components/toolbar.js';
+import type { LayoutSync, MultiControls, MultiState } from './context.js';
+import { resolutionLabel, stringsOf } from './i18n.js';
+import { isLayoutId, LAYOUTS, MAX_PANES, paneCount, resizePair, sizesFor, type LayoutId, type SplitNode, type SplitSizes } from './layouts.js';
+import { createPane, type Pane } from './pane.js';
+import { bindWidgetKeys, createShell, div, type ColorScheme, type TradingChartSlots } from './shell.js';
+import { Store, useStore } from './store.js';
 import {
   DEFAULT_FAVORITE_INTERVALS,
   DEFAULT_INTERVAL_GROUPS,
   DEFAULT_SEARCH_CATEGORIES,
   defaultDisplayTimezone,
   type TradingChartOptions,
-} from './trading-chart';
+} from './trading-chart.js';
 
 export interface PaneSpec {
   symbol: string;

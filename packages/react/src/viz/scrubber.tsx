@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { formatNumber, seriesY, useCartesianChart, VAR } from './context';
+import { formatNumber, seriesY, useCartesianChart, VAR } from './context.js';
 
 export interface ScrubberProps {
   /** Text above the scrub line. Default: the x label (`xAxis.data[index]`). Return '' to hide. */

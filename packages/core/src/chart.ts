@@ -1,13 +1,13 @@
-import { Emitter } from './events';
-import { Interaction, type HitRegion, type InteractionHost } from './interaction';
-import { BarStore } from './model/bar-store';
-import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/price-scale';
-import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale, browserLocale } from './model/time-format';
-import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleOptions } from './model/time-scale';
-import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price';
-import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorType } from './indicators/definitions';
-import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager';
-import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingType } from './objects/drawings';
+import { Emitter } from './events.js';
+import { Interaction, type HitRegion, type InteractionHost } from './interaction.js';
+import { BarStore } from './model/bar-store.js';
+import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/price-scale.js';
+import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale, browserLocale } from './model/time-format.js';
+import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleOptions } from './model/time-scale.js';
+import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price.js';
+import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorType } from './indicators/definitions.js';
+import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager.js';
+import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingType } from './objects/drawings.js';
 import {
   TradingLayer,
   type AlertLineOptions,
@@ -17,13 +17,13 @@ import {
   type PositionLineOptions,
   type TradingLabelOptions,
   type TradingLabels,
-} from './objects/trading';
-import { snapToOhlc } from './objects/magnet';
-import { DEFAULT_CHART_SETTINGS, parseChartState, type ChartSettings, type ChartState } from './settings';
-import { TradingSync, type TradingAdapter } from './objects/trading-sync';
-import type { ChartOverlay, ObjectHit, PaneCoords } from './objects/types';
-import { CanvasLayer } from './render/canvas-layer';
-import { ColorResolver } from './render/color-resolver';
+} from './objects/trading.js';
+import { snapToOhlc } from './objects/magnet.js';
+import { DEFAULT_CHART_SETTINGS, parseChartState, type ChartSettings, type ChartState } from './settings.js';
+import { TradingSync, type TradingAdapter } from './objects/trading-sync.js';
+import type { ChartOverlay, ObjectHit, PaneCoords } from './objects/types.js';
+import { CanvasLayer } from './render/canvas-layer.js';
+import { ColorResolver } from './render/color-resolver.js';
 import {
   drawMain,
   drawOverlay,
@@ -36,7 +36,7 @@ import {
   type PaneId,
   type RenderModel,
   type Tooltip,
-} from './render/renderer';
+} from './render/renderer.js';
 import {
   canvasMeasure,
   layoutLegend,
@@ -47,11 +47,11 @@ import {
   paintLegend,
   type LegendGroup,
   type LegendRow,
-} from './render/screenshot-legend';
-import { DAY_MS, isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution';
-import { sessionStatus } from './session';
-import { lightTheme, type ThemeTokens } from './theme';
-import type { Bar, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, TickSize, Unsubscribe } from './types';
+} from './render/screenshot-legend.js';
+import { DAY_MS, isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution.js';
+import { sessionStatus } from './session.js';
+import { lightTheme, type ThemeTokens } from './theme.js';
+import type { Bar, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, TickSize, Unsubscribe } from './types.js';
 
 export interface ChartOptions {
   /** Merged over the light theme. Values may use CSS variables: `{ background: 'var(--bg)' }`. */
@@ -135,6 +135,12 @@ export interface ChartEvents {
   /** The pointer's look changed (십자, 점, 화살표, 데모, 지우개). */
   cursorModeChange: CursorMode;
   selectionChange: Drawing | null;
+  /**
+   * A text drawing wants its text typed in place: just placed without text, or clicked again
+   * once selected (or double-clicked). (x, y) is where to put the field, in px from the chart's
+   * top-left. The widget shows the field; apps without the widget can listen and do their own.
+   */
+  drawingTextEdit: { id: string; x: number; y: number };
   magnetChange: boolean;
   chartTypeChange: ChartType;
   settingsChange: ChartSettings;
@@ -338,6 +344,8 @@ export class Chart {
   private chartType: ChartType = 'candles';
   private magnet = false;
   private objectDrag: ObjectHit | null = null;
+  /** The press on a drawing that was already selected: releasing it without a drag edits its text. */
+  private reclick: { id: string; x: number; y: number } | null = null;
 
   private theme: ThemeTokens;
   private locale: Locale;
@@ -407,6 +415,8 @@ export class Chart {
   /** Pane height weights the user set by dragging borders (unset panes use PANE_WEIGHT). */
   private readonly paneWeights = new Map<PaneId, number>();
   private paneWeightTotal = 1;
+  /** How many indicator panes sit above the volume pane (the user moves it with ↑ / ↓). */
+  private volumeSlot = 0;
 
   constructor(container: HTMLElement, options: ChartOptions = {}) {
     this.theme = { ...lightTheme, ...options.theme };
@@ -452,6 +462,12 @@ export class Chart {
       if (change === 'hidden') this.emitter.emit('drawingsHiddenChange', this.drawings.hiddenAll);
       if (change === 'defaults') this.emitter.emit('drawingDefaultsChange', { ...this.drawings.defaults });
       if (change === 'defaults') return;
+      if (change === 'text') {
+        const id = this.drawings.textEditId;
+        this.drawings.textEditId = null;
+        if (id) this.requestTextEdit(id);
+        return;
+      }
       if (change !== 'preview') {
         // Emit a copy: listeners (e.g. UI stores) compare by reference, and drawings mutate in place.
         const d = this.drawings.selected;
@@ -907,6 +923,7 @@ export class Chart {
       view: { barSpacing: this.timeScale.barSpacing, rightOffset: this.timeScale.rightOffset },
       compares: [...this.compares.keys()],
       paneWeights: Object.fromEntries(this.paneWeights),
+      volumeSlot: this.volumeSlot,
     };
   }
 
@@ -937,6 +954,7 @@ export class Chart {
     this.timeScale.clamp();
     this.paneWeights.clear();
     for (const [id, w] of Object.entries(state.paneWeights ?? {})) if (w > 0) this.paneWeights.set(id, w);
+    this.volumeSlot = state.volumeSlot ?? 0;
     const compares = state.compares ?? [];
     for (const symbol of [...this.compares.keys()]) if (!compares.includes(symbol)) this.removeCompare(symbol);
     if (this.datafeed) for (const symbol of compares) void this.addCompare(symbol);
@@ -1056,6 +1074,26 @@ export class Chart {
     this.drawings.clear();
   }
 
+  /**
+   * Opens a text drawing's field (as if it were clicked again): `drawingTextEdit` is emitted at its
+   * last point. Nothing happens for drawings without text or locked ones.
+   */
+  editDrawingText(id: string): void {
+    if (!this.drawings.textEditable(id)) return;
+    this.drawings.select(id);
+    this.requestTextEdit(id);
+  }
+
+  private requestTextEdit(id: string): void {
+    const d = this.drawings.drawings.find((x) => x.id === id);
+    const last = d?.points[d.points.length - 1];
+    if (!d || !last) return;
+    const c = this.paneCoords();
+    const x = Math.max(8, Math.min(c.plotWidth - 8, c.timeToX(last.time)));
+    const y = Math.max(8, Math.min(this.mainScale.height - 8, c.priceToY(last.price)));
+    this.emitter.emit('drawingTextEdit', { id, x, y });
+  }
+
   get selectedDrawing(): Drawing | null {
     return this.drawings.selected;
   }
@@ -1083,6 +1121,49 @@ export class Chart {
   /** Changes params, per-series styles (color/width/visible) and/or overall visibility. */
   updateIndicator(id: string, patch: IndicatorPatch): void {
     if (this.indicators.update(id, patch)) this.indicatorsChanged();
+  }
+
+  /**
+   * Moves an indicator one place up (-1) or down (+1). Overlays change their order in the legend
+   * (and which draws on top). Panes — pane indicators and the volume pane, `id` 'volume' — swap
+   * places with the pane next to them, so 거래량 can go below RSI and back. Returns false when it
+   * can't go further that way.
+   */
+  moveIndicator(id: string, by: -1 | 1): boolean {
+    if (id !== 'volume' && this.indicators.overlays.some((c) => c.id === id)) {
+      if (!this.indicators.move(id, by)) return false;
+      this.indicatorsChanged();
+      return true;
+    }
+    const order = this.paneOrder();
+    const i = order.indexOf(id);
+    const other = order[i + by];
+    if (i < 0 || other === undefined) return false;
+    // Swapping with the volume pane moves it, not the list; otherwise the list changes.
+    if (id === 'volume') this.volumeSlot = Math.max(0, Math.min(this.indicators.panes.length, this.volumeSlotOf(order) + by));
+    else if (other === 'volume') this.volumeSlot = Math.max(0, this.volumeSlotOf(order) - by);
+    else this.indicators.move(id, by);
+    this.indicatorsChanged();
+    return true;
+  }
+
+  /** Whether `moveIndicator(id, by)` would move it (for enabling ↑ / ↓ buttons). */
+  canMoveIndicator(id: string, by: -1 | 1): boolean {
+    if (id !== 'volume' && this.indicators.overlays.some((c) => c.id === id)) return this.indicators.canMove(id, by);
+    const i = this.paneOrder().indexOf(id);
+    return i >= 0 && this.paneOrder()[i + by] !== undefined;
+  }
+
+  /** The panes under the price pane, top to bottom: pane indicator ids, and 'volume' where it sits. */
+  private paneOrder(): string[] {
+    const ids = this.indicators.panes.map((c) => c.id);
+    if (!this.settingsValue.volume) return ids;
+    const slot = Math.min(this.volumeSlot, ids.length);
+    return [...ids.slice(0, slot), 'volume', ...ids.slice(slot)];
+  }
+
+  private volumeSlotOf(order: string[]): number {
+    return Math.max(0, order.indexOf('volume'));
   }
 
   setIndicatorVisible(id: string, visible: boolean): void {
@@ -1202,7 +1283,7 @@ export class Chart {
   }
 
   private historySnapshot(): string {
-    return JSON.stringify([this.drawings.drawings, this.indicators.list]);
+    return JSON.stringify([this.drawings.drawings, this.indicators.list, this.volumeSlot]);
   }
 
   private recordHistory(): void {
@@ -1225,9 +1306,10 @@ export class Chart {
   }
 
   private applyHistory(snapshot: string): void {
-    const [drawings, indicators] = JSON.parse(snapshot) as [Drawing[], IndicatorConfig[]];
+    const [drawings, indicators, volumeSlot] = JSON.parse(snapshot) as [Drawing[], IndicatorConfig[], number | undefined];
     this.history.applying = true;
     try {
+      this.volumeSlot = volumeSlot ?? 0;
       this.drawings.set(drawings);
       this.setIndicators(indicators);
     } finally {
@@ -1907,19 +1989,25 @@ export class Chart {
       },
     ];
     let top = mainHeight;
-    if (volumeHeight > 0) {
-      panes.push({
-        id: 'volume',
-        kind: 'volume',
-        top,
-        height: volumeHeight,
-        scale: this.volumeScale,
-        ticks: [],
-        format: (v) => formatCompact(Math.max(0, v), this.locale),
-      });
-      top += volumeHeight;
-    }
-    subPanes.forEach((p, i) => {
+    // Top to bottom as the user ordered them (the volume pane among the indicator panes).
+    const subIndex = new Map(subPanes.map((p, i) => [p.config.id, i]));
+    for (const id of this.paneOrder()) {
+      if (id === 'volume') {
+        if (volumeHeight <= 0) continue;
+        panes.push({
+          id: 'volume',
+          kind: 'volume',
+          top,
+          height: volumeHeight,
+          scale: this.volumeScale,
+          ticks: [],
+          format: (v) => formatCompact(Math.max(0, v), this.locale),
+        });
+        top += volumeHeight;
+        continue;
+      }
+      const i = subIndex.get(id)!;
+      const p = subPanes[i]!;
       panes.push({
         id: p.config.id,
         kind: 'indicator',
@@ -1932,7 +2020,7 @@ export class Chart {
         indicator: p.output,
       });
       top += p.scale.height;
-    });
+    }
 
     return {
       width,
@@ -2323,6 +2411,7 @@ export class Chart {
           return;
         }
         this.objectDrag = hit;
+        this.reclick = hit.kind === 'drawing' && this.drawings.selectedId === hit.id ? { id: hit.id, x, y } : null;
         if (hit.kind === 'drawing') this.drawings.beginDrag(this.paneCoords(), hit.id, hit.part, x, y);
         else if (hit.kind === 'execution') this.setTooltip(hit.key); // tap shows details on touch
         else if (hit.part === 'line') this.trading.beginDrag(hit.id);
@@ -2339,8 +2428,12 @@ export class Chart {
         const hit = this.objectDrag;
         this.objectDrag = null;
         if (!hit) return;
-        if (hit.kind === 'drawing') this.drawings.endDrag(moved);
-        else if (hit.kind === 'order' && hit.part === 'line') this.trading.endDrag();
+        if (hit.kind === 'drawing') {
+          this.drawings.endDrag(moved);
+          // A click on a text drawing that was already selected: type in it.
+          const again = this.reclick;
+          if (!moved && again && again.id === hit.id && this.drawings.textEditable(hit.id)) this.emitter.emit('drawingTextEdit', again);
+        } else if (hit.kind === 'order' && hit.part === 'line') this.trading.endDrag();
         else if (hit.kind === 'order' && !moved) this.trading.cancel(hit.id);
       },
       hoverObject: (hit) => this.setTooltip(hit?.kind === 'execution' ? hit.key : null),

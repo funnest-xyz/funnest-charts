@@ -13,14 +13,14 @@ import {
   type ThemeTokens,
 } from '@funnest/charts';
 import { render } from 'preact';
-import { DrawingToolbar } from './components/drawing-toolbar';
-import { Toolbar } from './components/toolbar';
-import type { ContextMenuItems, IntervalGroup, LegendValues, SearchCategory, SearchExchange, ToolsMenuItems } from './context';
-import type { Strings } from './i18n';
-import { createPane } from './pane';
-import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell';
+import { DrawingToolbar } from './components/drawing-toolbar.js';
+import { Toolbar } from './components/toolbar.js';
+import type { ContextMenuItems, IntervalGroup, LegendValues, SearchCategory, SearchExchange, ToolsMenuItems } from './context.js';
+import type { Strings } from './i18n.js';
+import { createPane } from './pane.js';
+import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell.js';
 
-export type { ColorScheme, TradingChartSlots } from './shell';
+export type { ColorScheme, TradingChartSlots } from './shell.js';
 
 /** Interval menu: 분 | 시간 | 일. '12M' is shown as 1년. */
 export const DEFAULT_INTERVAL_GROUPS: readonly IntervalGroup[] = [

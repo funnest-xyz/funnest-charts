@@ -1,6 +1,6 @@
 import { seriesColor, treemap } from '@funnest/charts-viz';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { formatNumber, VAR } from './context';
+import { formatNumber, VAR } from './context.js';
 
 export interface TreemapItem {
   id: string;

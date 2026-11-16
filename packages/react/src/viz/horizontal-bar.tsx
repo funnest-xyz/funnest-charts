@@ -1,7 +1,7 @@
 import { bandScale, barPath, extent, linearScale, seriesColor, stack, stackedExtent, ticks as niceTicks } from '@funnest/charts-viz';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { DIM_OPACITY, formatNumber, VAR, type ChartSeries } from './context';
-import { Legend, type LegendShape } from './legend';
+import { DIM_OPACITY, formatNumber, VAR, type ChartSeries } from './context.js';
+import { Legend, type LegendShape } from './legend.js';
 
 export interface HorizontalBarChartProps {
   series: readonly ChartSeries[];

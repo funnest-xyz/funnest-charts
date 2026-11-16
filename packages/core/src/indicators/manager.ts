@@ -1,6 +1,6 @@
-import { newId } from '../objects/types';
-import type { Bar } from '../types';
-import { INDICATORS, maLines, type IndicatorDefinition, type IndicatorOutput, type IndicatorParams, type IndicatorType, type SeriesStyle } from './definitions';
+import { newId } from '../objects/types.js';
+import type { Bar } from '../types.js';
+import { INDICATORS, maLines, type IndicatorDefinition, type IndicatorOutput, type IndicatorParams, type IndicatorType, type SeriesStyle } from './definitions.js';
 
 export interface IndicatorConfig {
   id: string;
@@ -58,6 +58,32 @@ export class IndicatorManager {
     this.list = this.list.filter((c) => c.id !== id);
     this.cache.delete(id);
     return this.list.length !== before;
+  }
+
+  /** The neighbour of the same kind (overlay or pane) `by` places away, as an index into the list. */
+  private neighbour(id: string, by: -1 | 1): [number, number] | null {
+    const i = this.list.findIndex((c) => c.id === id);
+    if (i < 0) return null;
+    const overlay = !!this.def(this.list[i]!.type).overlay;
+    for (let j = i + by; j >= 0 && j < this.list.length; j += by) {
+      if (!!this.def(this.list[j]!.type).overlay === overlay) return [i, j];
+    }
+    return null;
+  }
+
+  canMove(id: string, by: -1 | 1): boolean {
+    return this.neighbour(id, by) !== null;
+  }
+
+  /** Swaps the indicator with its neighbour of the same kind. */
+  move(id: string, by: -1 | 1): boolean {
+    const pair = this.neighbour(id, by);
+    if (!pair) return false;
+    const [i, j] = pair;
+    const list = [...this.list];
+    [list[i], list[j]] = [list[j]!, list[i]!];
+    this.list = list;
+    return true;
   }
 
   update(id: string, patch: IndicatorPatch): boolean {

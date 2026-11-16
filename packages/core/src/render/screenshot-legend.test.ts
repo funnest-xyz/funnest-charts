@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layoutLegend, type LegendRow, type MeasureText } from './screenshot-legend';
+import { layoutLegend, type LegendRow, type MeasureText } from './screenshot-legend.js';
 
 // Every character is 10px wide.
 const measure: MeasureText = (text) => text.length * 10;

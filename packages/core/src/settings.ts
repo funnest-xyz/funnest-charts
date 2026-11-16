@@ -1,8 +1,8 @@
-import type { Drawing } from './objects/drawings';
-import type { IndicatorConfig } from './indicators/manager';
-import type { PriceScaleMode } from './model/price-scale';
-import type { ChartType } from './render/renderer';
-import type { Resolution } from './types';
+import type { Drawing } from './objects/drawings.js';
+import type { IndicatorConfig } from './indicators/manager.js';
+import type { PriceScaleMode } from './model/price-scale.js';
+import type { ChartType } from './render/renderer.js';
+import type { Resolution } from './types.js';
 
 /** User-facing chart preferences (the "차트 설정" dialog). */
 export interface ChartSettings {
@@ -122,6 +122,8 @@ export interface ChartState {
   compares?: string[];
   /** Pane heights the user dragged, as weights by pane id ('main', 'volume', indicator ids). */
   paneWeights?: Record<string, number>;
+  /** How many indicator panes sit above the volume pane (0: right under the price pane). */
+  volumeSlot?: number;
 }
 
 const CHART_TYPES: readonly ChartType[] = ['candles', 'line', 'area'];
@@ -143,6 +145,7 @@ export function parseChartState(input: unknown): ChartState {
         ? Object.fromEntries(Object.entries(s.paneWeights).filter(([, w]) => typeof w === 'number' && w > 0))
         : {},
     compares: Array.isArray(s.compares) ? s.compares.filter((x): x is string => typeof x === 'string') : [],
+    volumeSlot: Number.isInteger(s.volumeSlot) && (s.volumeSlot as number) >= 0 ? (s.volumeSlot as number) : 0,
     view: {
       barSpacing: Number(s.view?.barSpacing) || 8,
       rightOffset: Number.isFinite(Number(s.view?.rightOffset)) ? Number(s.view?.rightOffset) : 5,

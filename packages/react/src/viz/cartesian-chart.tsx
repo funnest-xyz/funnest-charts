@@ -26,8 +26,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { CartesianContext, formatNumber, VAR, type CartesianContextValue, type ChartSeries, type PlotRect, type ResolvedSeries } from './context';
-import { Legend, type LegendPosition, type LegendShape } from './legend';
+import { CartesianContext, formatNumber, VAR, type CartesianContextValue, type ChartSeries, type PlotRect, type ResolvedSeries } from './context.js';
+import { Legend, type LegendPosition, type LegendShape } from './legend.js';
 
 export type Inset = number | Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
 

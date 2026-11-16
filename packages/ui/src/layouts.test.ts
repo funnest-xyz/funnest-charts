@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLayoutId, LAYOUT_GROUPS, LAYOUTS, layoutRects, MAX_PANES, paneCount, resizePair, sizesFor } from './layouts';
+import { isLayoutId, LAYOUT_GROUPS, LAYOUTS, layoutRects, MAX_PANES, paneCount, resizePair, sizesFor } from './layouts.js';
 
 describe('split layouts', () => {
   it('pane counts match the menu group and use each index once', () => {

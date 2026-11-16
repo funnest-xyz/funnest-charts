@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isIntradayResolution, resolutionToMs } from './resolution';
+import { isIntradayResolution, resolutionToMs } from './resolution.js';
 
 describe('resolution', () => {
   it('parses TradingView-style resolutions', () => {
@@ -16,7 +16,7 @@ describe('resolution', () => {
 
 describe('fallbackResolution', () => {
   it('keeps supported resolutions and steps down to the nearest shorter one', async () => {
-    const { fallbackResolution } = await import('./chart');
+    const { fallbackResolution } = await import('./chart.js');
     const binance = ['1', '5', '15', '60', '240', '1D', '1W', '1M'];
     expect(fallbackResolution('5', binance)).toBe('5');
     expect(fallbackResolution('3M', binance)).toBe('1M');

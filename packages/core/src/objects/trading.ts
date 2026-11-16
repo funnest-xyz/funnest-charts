@@ -1,6 +1,6 @@
-import type { Bar } from '../types';
-import { inRect, type PillSegment, type Rect } from '../render/painter';
-import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext } from './types';
+import type { Bar } from '../types.js';
+import { inRect, type PillSegment, type Rect } from '../render/painter.js';
+import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext } from './types.js';
 
 export interface PositionLineOptions {
   /** Average entry price. */

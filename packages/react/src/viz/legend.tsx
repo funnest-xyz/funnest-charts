@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { VAR } from './context';
+import { VAR } from './context.js';
 
 export type LegendPosition = 'top' | 'bottom' | 'left' | 'right';
 export type LegendShape = 'circle' | 'square' | 'squircle' | 'pill' | 'line';

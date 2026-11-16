@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BarStore } from './model/bar-store';
-import { bucketStart, TickAggregator, timeZoneOffset } from './realtime';
+import { BarStore } from './model/bar-store.js';
+import { bucketStart, TickAggregator, timeZoneOffset } from './realtime.js';
 
 const kst = (iso: string) => Date.parse(`${iso}+09:00`);
 

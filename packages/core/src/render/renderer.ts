@@ -1,14 +1,14 @@
-import type { PriceScale } from '../model/price-scale';
-import type { TimeTick } from '../model/time-format';
-import type { IndexRange, TimeScale } from '../model/time-scale';
-import type { Bar } from '../types';
-import type { CanvasLayer } from './canvas-layer';
-import { Painter } from './painter';
-import type { DrawingManager } from '../objects/drawings';
-import type { TradingLabels, TradingLayer } from '../objects/trading';
-import type { AxisBadge, ChartOverlay, PaneCoords } from '../objects/types';
-import type { IndicatorOutput } from '../indicators/definitions';
-import type { ChartSettings } from '../settings';
+import type { PriceScale } from '../model/price-scale.js';
+import type { TimeTick } from '../model/time-format.js';
+import type { IndexRange, TimeScale } from '../model/time-scale.js';
+import type { Bar } from '../types.js';
+import type { CanvasLayer } from './canvas-layer.js';
+import { Painter } from './painter.js';
+import type { DrawingManager } from '../objects/drawings.js';
+import type { TradingLabels, TradingLayer } from '../objects/trading.js';
+import type { AxisBadge, ChartOverlay, PaneCoords } from '../objects/types.js';
+import type { IndicatorOutput } from '../indicators/definitions.js';
+import type { ChartSettings } from '../settings.js';
 
 export type ChartType = 'candles' | 'line' | 'area';
 
@@ -353,7 +353,9 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   const p = new Painter(ctx, layer.dpr);
   const f = m.frame;
   const pal = f.palette;
-  const [main, volume] = f.panes as [PaneFrame, PaneFrame | undefined];
+  const main = f.panes[0]!;
+  // Anywhere among the lower panes: the user can move it below indicators.
+  const volume = f.panes.find((x) => x.kind === 'volume');
 
   ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, f.width, f.height);

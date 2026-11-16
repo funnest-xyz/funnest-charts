@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { VAR } from './context';
+import { VAR } from './context.js';
 
 export interface Period {
   id: string;

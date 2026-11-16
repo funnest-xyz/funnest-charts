@@ -2,7 +2,7 @@ import { AreaChart, BarChart, CandlestickChart, DonutChart, LineChart, Point, Re
 import { percentages, seriesColor } from '@funnest/charts-viz';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { ChartSpec, Row } from './spec';
+import type { ChartSpec, Row } from './spec.js';
 
 const UP = '#F04452';
 const DOWN = '#3182F6';

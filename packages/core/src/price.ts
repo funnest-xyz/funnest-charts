@@ -1,4 +1,4 @@
-import type { TickSize } from './types';
+import type { TickSize } from './types.js';
 
 /** Number of decimal places in a finite number (handles exponent notation like 1e-8). */
 export function decimalsOf(value: number): number {

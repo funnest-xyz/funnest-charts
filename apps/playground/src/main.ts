@@ -34,6 +34,22 @@ const widget = createTradingChart($('chart'), {
   datafeed,
   symbol: params.get('symbol') ?? 'DEMO:005930',
   resolution: params.get('resolution') ?? '1D',
+  // A text tool of the page's own: placing it (or clicking it again once selected) types in place.
+  drawingDefinitions: [
+    {
+      type: 'note',
+      name: { ko: '메모', en: 'Note' },
+      group: 'annotate',
+      icon: '<path d="M4 5h12M10 5v11"/>',
+      clicks: 1,
+      text: true,
+      distance: (g, x, y) => (Math.abs(x - g.points[0]![0] - 40) <= 48 && Math.abs(y - g.points[0]![1]) <= 12 ? 0 : 99),
+      render: (d, rc) => {
+        const [x, y] = rc.points[0]!;
+        rc.painter.text(d.style?.text || '텍스트', x, y, rc.color, 'left', 'middle');
+      },
+    },
+  ],
   // Host CSS variables: the widget follows the page's [data-theme] switch automatically.
   theme: {
     background: 'var(--bg)',

@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { LAYOUTS, layoutRects, type LayoutId } from '../layouts';
+import { LAYOUTS, layoutRects, type LayoutId } from '../layouts.js';
 
 /** Mini drawing of a split layout. */
 export function LayoutGlyph({ id }: { id: LayoutId }) {

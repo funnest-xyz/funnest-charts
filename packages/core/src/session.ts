@@ -1,4 +1,4 @@
-import { timeZoneOffset } from './realtime';
+import { timeZoneOffset } from './realtime.js';
 
 const DAY = 86_400_000;
 const MINUTE = 60_000;

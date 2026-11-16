@@ -1,4 +1,4 @@
-import type { Bar } from '../types';
+import type { Bar } from '../types.js';
 
 /**
  * Magnet mode: the bar's open/high/low/close closest to pointer y (in pixels).

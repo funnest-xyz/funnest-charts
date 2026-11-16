@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Datafeed, SymbolInfo } from '../types';
-import { combineDatafeeds } from './combine';
+import type { Datafeed, SymbolInfo } from '../types.js';
+import { combineDatafeeds } from './combine.js';
 
 const info = (symbol: string, exchange: string): SymbolInfo => ({ symbol, name: symbol, exchange, timezone: 'UTC', session: '24x7', pricePrecision: 2, tickSize: 0.01 });
 

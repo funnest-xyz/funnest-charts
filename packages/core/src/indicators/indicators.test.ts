@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { INDICATORS } from './definitions';
-import { IndicatorManager } from './manager';
-import { bollinger, ema, macd, rsi, sma } from './math';
+import { INDICATORS } from './definitions.js';
+import { IndicatorManager } from './manager.js';
+import { bollinger, ema, macd, rsi, sma } from './math.js';
 
 const arr = (a: Float64Array) => Array.from(a, (v) => (Number.isNaN(v) ? null : Math.round(v * 1e6) / 1e6));
 
@@ -60,6 +60,23 @@ describe('IndicatorManager', () => {
     expect(a.series[0]!.values[4]).toBe(2);
     expect(m.remove(r)).toBe(true);
     expect(m.panes).toHaveLength(0);
+  });
+
+  it('moves an indicator up or down among its own kind', () => {
+    const m = new IndicatorManager();
+    const ma = m.add('ma');
+    const rsi = m.add('rsi');
+    const ema = m.add('ema');
+    const macd = m.add('macd');
+    // Overlays: ma, ema. Panes: rsi, macd.
+    expect([m.canMove(ma, -1), m.canMove(ma, 1), m.canMove(ema, 1)]).toEqual([false, true, false]);
+    expect(m.move(ema, -1)).toBe(true);
+    expect(m.overlays.map((c) => c.id)).toEqual([ema, ma]);
+    expect(m.panes.map((c) => c.id)).toEqual([rsi, macd]); // panes untouched
+    expect(m.move(rsi, 1)).toBe(true);
+    expect(m.panes.map((c) => c.id)).toEqual([macd, rsi]);
+    expect(m.move(rsi, 1)).toBe(false); // already last
+    expect(m.move('nope', 1)).toBe(false);
   });
 
   it('supports per-line period, source, width, color and visibility', () => {

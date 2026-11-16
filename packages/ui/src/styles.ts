@@ -207,6 +207,9 @@ const CSS = /* css */ `
 .fnc-part-reset { margin-top: 4px; border-top: 1px solid var(--fnc-border); color: var(--fnc-text-2); }
 .fnc-selbar-text { width: 150px; height: 28px; padding: 0 8px; border: 1px solid var(--fnc-border); border-radius: var(--fnc-radius); background: var(--fnc-surface); color: var(--fnc-text); font: inherit; font-size: 13px; outline: none; }
 .fnc-selbar-text:focus { border-color: var(--fnc-text-2); }
+.fnc-text-edit { position: absolute; z-index: 30; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; }
+.fnc-text-edit textarea { width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--fnc-text-2); border-radius: var(--fnc-radius); background: var(--fnc-surface); color: var(--fnc-text); font: inherit; font-size: 13px; line-height: 20px; resize: none; outline: none; box-shadow: var(--fnc-shadow, 0 6px 20px rgba(0,0,0,.25)); }
+.fnc-text-edit small { color: var(--fnc-text-3, var(--fnc-text-2)); font-size: 11px; white-space: nowrap; text-shadow: 0 0 3px var(--fnc-bg, transparent); }
 .fnc-overlay { pointer-events: none; }
 .fnc-overlay button { pointer-events: auto; }
 

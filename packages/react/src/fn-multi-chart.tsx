@@ -1,6 +1,6 @@
 import { createMultiChart, type MultiChart, type MultiChartOptions } from '@funnest/charts-ui';
 import { createContext, forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { SlotsContext } from './fn-chart';
+import { SlotsContext } from './fn-chart.js';
 
 const MultiContext = createContext<MultiChart | null>(null);
 

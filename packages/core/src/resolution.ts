@@ -1,5 +1,5 @@
-import type { Locale } from './model/time-format';
-import type { Resolution } from './types';
+import type { Locale } from './model/time-format.js';
+import type { Resolution } from './types.js';
 
 const MINUTE = 60_000;
 export const DAY_MS = 86_400_000;

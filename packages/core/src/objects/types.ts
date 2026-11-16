@@ -1,5 +1,5 @@
-import type { Painter } from '../render/painter';
-import type { Palette } from '../render/renderer';
+import type { Painter } from '../render/painter.js';
+import type { Palette } from '../render/renderer.js';
 
 /** Coordinate helpers for objects living in the main price pane. */
 export interface PaneCoords {

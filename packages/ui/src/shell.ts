@@ -1,8 +1,8 @@
 import { darkTheme, directionColors, lightTheme, type CursorMode, type DirectionPreset, type DrawingDefaults, type DrawingType, type Resolution, type ThemeTokens } from '@funnest/charts';
-import type { UiState } from './context';
-import { createStorage, type WidgetStorage } from './storage';
-import type { Store } from './store';
-import { injectStyles } from './styles';
+import type { UiState } from './context.js';
+import { createStorage, type WidgetStorage } from './storage.js';
+import type { Store } from './store.js';
+import { injectStyles } from './styles.js';
 
 export type ColorScheme = 'light' | 'dark' | 'system';
 

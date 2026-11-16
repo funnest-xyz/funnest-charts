@@ -1,4 +1,4 @@
-import { messages, type CliLocale } from './i18n';
+import { messages, type CliLocale } from './i18n.js';
 
 /** A row of tabular data: column name → value. */
 export type Row = Record<string, unknown>;

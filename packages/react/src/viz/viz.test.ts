@@ -1,13 +1,13 @@
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { YAxis } from './axes';
-import { CartesianChart } from './cartesian-chart';
-import { BarChart, LineChart, PercentageBarChart } from './charts';
-import { useCartesianChart } from './context';
-import { CandlestickChart } from './candles';
-import { DonutChart } from './donut';
-import { fitLabel, TreemapChart } from './treemap';
+import { YAxis } from './axes.js';
+import { CartesianChart } from './cartesian-chart.js';
+import { BarChart, LineChart, PercentageBarChart } from './charts.js';
+import { useCartesianChart } from './context.js';
+import { CandlestickChart } from './candles.js';
+import { DonutChart } from './donut.js';
+import { fitLabel, TreemapChart } from './treemap.js';
 
 const render = (el: ReturnType<typeof h>) => renderToStaticMarkup(el);
 

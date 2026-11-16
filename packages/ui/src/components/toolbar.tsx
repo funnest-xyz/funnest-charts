@@ -1,14 +1,14 @@
 /** @jsxImportSource preact */
-import type { WidgetContext } from '../context';
-import { stringsOf } from '../i18n';
-import { ChevronDownIcon, CollapseIcon, ExpandIcon, IndicatorIcon, PencilIcon, SearchIcon } from '../icons';
-import { useStore } from '../store';
-import { Dialogs } from './indicator-dialogs';
-import { IntervalPicker } from './interval-picker';
-import { Slot } from './slot';
-import { SymbolAvatar } from './symbol-avatar';
-import { SymbolSearch } from './symbol-search';
-import { ToolsMenu } from './tools-menu';
+import type { WidgetContext } from '../context.js';
+import { stringsOf } from '../i18n.js';
+import { ChevronDownIcon, CollapseIcon, ExpandIcon, IndicatorIcon, PencilIcon, SearchIcon } from '../icons.js';
+import { useStore } from '../store.js';
+import { Dialogs } from './indicator-dialogs.js';
+import { IntervalPicker } from './interval-picker.js';
+import { Slot } from './slot.js';
+import { SymbolAvatar } from './symbol-avatar.js';
+import { SymbolSearch } from './symbol-search.js';
+import { ToolsMenu } from './tools-menu.js';
 
 export function Toolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);

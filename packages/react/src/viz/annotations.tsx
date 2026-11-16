@@ -1,4 +1,4 @@
-import { formatNumber, nearScrub, scaleFor, useCartesianChart, VAR } from './context';
+import { formatNumber, nearScrub, scaleFor, useCartesianChart, VAR } from './context.js';
 
 export interface ReferenceLineProps {
   /** Horizontal line at this value (target price, average entry, 0%). */

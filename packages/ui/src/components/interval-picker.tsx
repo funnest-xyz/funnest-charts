@@ -1,11 +1,11 @@
 /** @jsxImportSource preact */
 import type { Resolution } from '@funnest/charts';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { IntervalGroup, WidgetContext } from '../context';
-import { resolutionLabel, stringsOf, type Strings } from '../i18n';
-import { ChevronDownIcon, StarIcon } from '../icons';
-import { useStore } from '../store';
-import { useKeepInView } from './keep-in-view';
+import type { IntervalGroup, WidgetContext } from '../context.js';
+import { resolutionLabel, stringsOf, type Strings } from '../i18n.js';
+import { ChevronDownIcon, StarIcon } from '../icons.js';
+import { useStore } from '../store.js';
+import { useKeepInView } from './keep-in-view.js';
 
 const GROUP_LABEL: Record<IntervalGroup['id'], keyof Strings> = {
   minutes: 'intervalMinutes',

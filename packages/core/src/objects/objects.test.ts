@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DrawingManager, drawingRegistry, type DrawingDefinition } from './drawings';
-import { TradingLayer } from './trading';
-import type { PaneCoords } from './types';
+import { DrawingManager, drawingRegistry, type DrawingDefinition } from './drawings.js';
+import { TradingLayer } from './trading.js';
+import type { PaneCoords } from './types.js';
 
 /** 1 bar = 10px = 1000ms, price = 1000 - y. */
 const coords: PaneCoords = {
@@ -61,6 +61,25 @@ describe('DrawingManager', () => {
     // 100, then one every ≥ 3 px: 103, 106, … 139
     expect(m.drawings[0]!.points.length).toBe(1 + 13);
     expect(m.tool).toBeNull();
+  });
+
+  it('a text tool placed without text asks for its text; locked or textless drawings never do', () => {
+    const note: DrawingDefinition = { type: 'note', name: { ko: '메모', en: 'Note' }, clicks: 1, text: true, distance: () => 0, render: () => {} };
+    const changes: string[] = [];
+    const m = new DrawingManager((c) => changes.push(c), drawingRegistry([note]));
+    m.setTool('note');
+    m.createAt(coords, 100, 500);
+    expect(changes.slice(-1)).toEqual(['text']);
+    expect(m.textEditId).toBe(m.drawings[0]!.id);
+    expect(m.textEditable(m.drawings[0]!.id)).toBe(true);
+    m.textEditId = null;
+    // A trend line has no text; a locked note can't be typed in.
+    m.setTool('trendline');
+    m.createAt(coords, 100, 500);
+    m.createAt(coords, 200, 500);
+    expect(m.textEditable(m.drawings[m.drawings.length - 1]!.id)).toBe(false);
+    m.update(m.drawings[0]!.id, { style: { locked: true } });
+    expect(m.textEditable(m.drawings[0]!.id)).toBe(false);
   });
 
   it('locked drawings select but do not drag', () => {
@@ -157,7 +176,7 @@ describe('TradingLayer orders', () => {
 
 describe('snapToOhlc', () => {
   it('picks the OHLC value nearest to the pointer', async () => {
-    const { snapToOhlc } = await import('./magnet');
+    const { snapToOhlc } = await import('./magnet.js');
     const bar = { time: 0, open: 100, high: 120, low: 90, close: 110 };
     const priceToY = (p: number) => 1000 - p * 5; // 120 → 400, 110 → 450, 100 → 500, 90 → 550
     expect(snapToOhlc(bar, 390, priceToY)).toBe(120);

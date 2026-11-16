@@ -15,7 +15,7 @@ import {
   stack,
   stackedExtent,
   ticks,
-} from './index';
+} from './index.js';
 
 describe('scales', () => {
   it('linear maps and inverts (y axis flipped)', () => {
@@ -133,7 +133,7 @@ describe('bar path ends', () => {
   });
 });
 
-import { arcPath, arcs, treemap } from './shapes';
+import { arcPath, arcs, treemap } from './shapes.js';
 
 describe('shapes', () => {
   it('splits a circle by value and pads between segments', () => {

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { XAxis, YAxis, type XAxisProps, type YAxisProps } from './axes';
-import { BarPlot } from './bar';
-import { CartesianChart, type CartesianChartProps } from './cartesian-chart';
-import { formatNumber, scaleFor, useCartesianChart, VAR } from './context';
+import { XAxis, YAxis, type XAxisProps, type YAxisProps } from './axes.js';
+import { BarPlot } from './bar.js';
+import { CartesianChart, type CartesianChartProps } from './cartesian-chart.js';
+import { formatNumber, scaleFor, useCartesianChart, VAR } from './context.js';
 
 export interface Candle {
   open: number;

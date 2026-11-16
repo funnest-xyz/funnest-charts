@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseCsv, suggestCharts } from './data';
-import { reactCode, renderSvg } from './render';
-import { systemLocale } from './i18n';
-import { CHART_TYPES, chartSchema, closest, exampleSpec, validateSpec } from './spec';
+import { parseCsv, suggestCharts } from './data.js';
+import { reactCode, renderSvg } from './render.js';
+import { systemLocale } from './i18n.js';
+import { CHART_TYPES, chartSchema, closest, exampleSpec, validateSpec } from './spec.js';
 
 describe('spec validation', () => {
   it('accepts every example', () => {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Bar } from '../types';
-import { BarStore } from './bar-store';
-import { niceTicks, PriceScale } from './price-scale';
-import { boundaryWeight, computeTimeTicks, TickWeight, TimeFormatter } from './time-format';
-import { TimeScale } from './time-scale';
+import type { Bar } from '../types.js';
+import { BarStore } from './bar-store.js';
+import { niceTicks, PriceScale } from './price-scale.js';
+import { boundaryWeight, computeTimeTicks, TickWeight, TimeFormatter } from './time-format.js';
+import { TimeScale } from './time-scale.js';
 
 const bar = (time: number, close = 100): Bar => ({ time, open: close, high: close, low: close, close });
 

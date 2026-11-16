@@ -1,9 +1,9 @@
 /** @jsxImportSource preact */
 import { formatPrice, type ChartContextMenu } from '@funnest/charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { ContextMenuItem, WidgetContext } from '../context';
-import { stringsOf } from '../i18n';
-import { useStore } from '../store';
+import type { ContextMenuItem, WidgetContext } from '../context.js';
+import { stringsOf } from '../i18n.js';
+import { useStore } from '../store.js';
 
 const MARGIN = 8;
 

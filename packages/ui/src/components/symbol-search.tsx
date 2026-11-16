@@ -2,11 +2,11 @@
 import { formatPrice, type SymbolInfo, type SymbolSearchResult } from '@funnest/charts';
 import { Fragment, type ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { WidgetContext } from '../context';
-import { stringsOf } from '../i18n';
-import { SearchIcon, SmallCloseIcon, StarIcon } from '../icons';
-import { useStore } from '../store';
-import { SymbolAvatar } from './symbol-avatar';
+import type { WidgetContext } from '../context.js';
+import { stringsOf } from '../i18n.js';
+import { SearchIcon, SmallCloseIcon, StarIcon } from '../icons.js';
+import { useStore } from '../store.js';
+import { SymbolAvatar } from './symbol-avatar.js';
 
 const DEBOUNCE_MS = 150;
 const RECENT_KEY = 'recent-symbols';
