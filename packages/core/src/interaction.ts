@@ -158,7 +158,7 @@ export class Interaction {
     this.start = p;
     this.last = p;
     this.moved = false;
-    this.samples = [{ t: performance.now(), x: p.x }];
+    this.samples = [{ t: this.view().performance.now(), x: p.x }];
     this.region = this.host.hitTest(p.x, p.y);
 
     switch (this.region.area) {
@@ -319,13 +319,13 @@ export class Interaction {
   private pan(p: Point): void {
     this.host.panTime(p.x - this.last.x);
     if (this.region.pane) this.host.panPrice(this.region.pane, p.y - this.last.y);
-    const t = performance.now();
+    const t = this.view().performance.now();
     this.samples.push({ t, x: p.x });
     while (this.samples.length > 2 && t - this.samples[0]!.t > VELOCITY_WINDOW_MS) this.samples.shift();
   }
 
   private handleTap(p: Point): void {
-    const t = performance.now();
+    const t = this.view().performance.now();
     const isDouble = t - this.lastTap.t < DOUBLE_TAP_MS && dist(p, this.lastTap) < DOUBLE_TAP_SLOP;
     if (isDouble) {
       this.lastTap.t = 0;
@@ -380,26 +380,31 @@ export class Interaction {
 
   // ── Inertia ─────────────────────────────────────────────────────────
 
+  /** The chart's own window (frames run there, even when it is a picture-in-picture window). */
+  private view(): Window {
+    return this.el.ownerDocument.defaultView ?? window;
+  }
+
   private startKinetic(): void {
     const first = this.samples[0];
     const last = this.samples[this.samples.length - 1];
-    if (!first || !last || last.t - first.t <= 0 || performance.now() - last.t > 50) return;
+    if (!first || !last || last.t - first.t <= 0 || this.view().performance.now() - last.t > 50) return;
     let velocity = (last.x - first.x) / (last.t - first.t);
     if (Math.abs(velocity) < KINETIC_MIN_VELOCITY) return;
 
-    let prev = performance.now();
+    let prev = this.view().performance.now();
     const step = (now: number) => {
-      const dt = Math.min(32, now - prev);
+      const dt = Math.max(0, Math.min(32, now - prev));
       prev = now;
       this.host.panTime(velocity * dt);
       velocity *= KINETIC_FRICTION ** dt;
-      this.kineticFrame = Math.abs(velocity) > KINETIC_STOP_VELOCITY ? requestAnimationFrame(step) : 0;
+      this.kineticFrame = Math.abs(velocity) > KINETIC_STOP_VELOCITY ? this.view().requestAnimationFrame(step) : 0;
     };
-    this.kineticFrame = requestAnimationFrame(step);
+    this.kineticFrame = this.view().requestAnimationFrame(step);
   }
 
   private stopKinetic(): void {
-    if (this.kineticFrame) cancelAnimationFrame(this.kineticFrame);
+    if (this.kineticFrame) this.view().cancelAnimationFrame(this.kineticFrame);
     this.kineticFrame = 0;
   }
 

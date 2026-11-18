@@ -13,7 +13,7 @@ export class ColorResolver {
     return this.lookup(`c:${value}`, () => {
       this.probe.style.color = '';
       this.probe.style.color = value;
-      return getComputedStyle(this.probe).color;
+      return this.view().getComputedStyle(this.probe).color;
     });
   }
 
@@ -22,8 +22,13 @@ export class ColorResolver {
     return this.lookup(`f:${value}`, () => {
       this.probe.style.fontFamily = '';
       this.probe.style.fontFamily = value;
-      return getComputedStyle(this.probe).fontFamily;
+      return this.view().getComputedStyle(this.probe).fontFamily;
     });
+  }
+
+  /** The probe's own window: a chart in a picture-in-picture window resolves against that window's styles. */
+  private view(): Window {
+    return this.probe.ownerDocument.defaultView ?? window;
   }
 
   clear(): void {

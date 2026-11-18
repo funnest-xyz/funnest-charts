@@ -326,6 +326,9 @@ export class Chart {
   readonly timeScale: TimeScale;
 
   private readonly root: HTMLDivElement;
+  /** The document / window the chart lives in — not always the page's own (a picture-in-picture window, an iframe). */
+  private readonly doc: Document;
+  private readonly win: Window & typeof globalThis;
   private readonly mainLayer: CanvasLayer;
   private readonly overlayLayer: CanvasLayer;
   private readonly store = new BarStore();
@@ -435,7 +438,9 @@ export class Chart {
     if (options.displayTimezone) this.formatter = new TimeFormatter(options.displayTimezone, this.locale);
     this.timeScale = new TimeScale({ ...DEFAULT_TIME_SCALE_OPTIONS, ...options.timeScale });
 
-    this.root = document.createElement('div');
+    this.doc = container.ownerDocument;
+    this.win = this.doc.defaultView ?? window;
+    this.root = this.doc.createElement('div');
     this.root.className = 'fnc-chart';
     Object.assign(this.root.style, {
       position: 'relative',
@@ -447,7 +452,7 @@ export class Chart {
     this.root.style.setProperty('-webkit-user-select', 'none');
     this.root.style.setProperty('-webkit-touch-callout', 'none');
     this.root.style.setProperty('-webkit-tap-highlight-color', 'transparent');
-    const probe = document.createElement('span');
+    const probe = this.doc.createElement('span');
     probe.style.display = 'none';
     this.root.appendChild(probe);
     container.appendChild(this.root);
@@ -767,7 +772,7 @@ export class Chart {
   takeScreenshot(options: ScreenshotOptions = {}): HTMLCanvasElement {
     if (this.rafId || this.mainDirty) this.render();
     const src = this.mainLayer.canvas;
-    const out = document.createElement('canvas');
+    const out = this.doc.createElement('canvas');
     out.width = src.width;
     out.height = src.height;
     const ctx = out.getContext('2d');
@@ -1807,7 +1812,7 @@ export class Chart {
     for (const entry of this.compares.values()) entry.unsubscribe?.();
     this.stopReplayTimer();
     this.tradingSync.detach();
-    if (this.rafId) cancelAnimationFrame(this.rafId);
+    if (this.rafId) this.win.cancelAnimationFrame(this.rafId);
     this.interaction.destroy();
     for (const cleanup of this.cleanups) cleanup();
     this.emitter.clear();
@@ -1820,7 +1825,7 @@ export class Chart {
   private invalidate(main = true): void {
     if (this.destroyed) return;
     if (main) this.mainDirty = true;
-    if (!this.rafId) this.rafId = requestAnimationFrame(() => this.render());
+    if (!this.rafId) this.rafId = this.win.requestAnimationFrame(() => this.render());
   }
 
   private render(): void {
@@ -2481,8 +2486,8 @@ export class Chart {
         this.drawings.remove(this.drawings.selectedId);
       }
     };
-    document.addEventListener('keydown', onKeyDown);
-    this.cleanups.push(() => document.removeEventListener('keydown', onKeyDown));
+    this.doc.addEventListener('keydown', onKeyDown);
+    this.cleanups.push(() => this.doc.removeEventListener('keydown', onKeyDown));
   }
 
   // ── Environment observers ──────────────────────────────────────────
@@ -2490,7 +2495,7 @@ export class Chart {
   /** Repaints when the bar-close countdown ticks over (once a second, only while it shows or changes). */
   private observeCountdown(): void {
     const timer = setInterval(() => {
-      if (this.destroyed || document.hidden) return;
+      if (this.destroyed || this.doc.hidden) return;
       if (this.countdownText() !== this.countdownLabel) this.invalidate();
     }, 1000);
     this.cleanups.push(() => clearInterval(timer));
@@ -2498,7 +2503,7 @@ export class Chart {
 
   private observeSize(): void {
     const apply = (width: number, height: number) => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = this.win.devicePixelRatio || 1;
       if (width === this.size.width && height === this.size.height && dpr === this.size.dpr) return;
       this.size = { width, height, dpr };
       this.mainLayer.resize(width, height, dpr);
@@ -2506,7 +2511,7 @@ export class Chart {
       this.invalidate();
     };
 
-    const ro = new ResizeObserver((entries) => {
+    const ro = new this.win.ResizeObserver((entries) => {
       const rect = entries[entries.length - 1]?.contentRect;
       if (rect) apply(Math.floor(rect.width), Math.floor(rect.height));
     });
@@ -2521,7 +2526,7 @@ export class Chart {
     };
     const watchDpr = () => {
       mq?.removeEventListener('change', onDprChange);
-      mq = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      mq = this.win.matchMedia(`(resolution: ${this.win.devicePixelRatio || 1}dppx)`);
       mq.addEventListener('change', onDprChange);
     };
     watchDpr();
@@ -2538,11 +2543,11 @@ export class Chart {
       if (!Object.values(t).some((v) => typeof v === 'string' && v.includes('var('))) return;
       this.refreshTheme();
     };
-    const mo = new MutationObserver(onChange);
-    for (const el of [document.documentElement, document.body]) {
+    const mo = new this.win.MutationObserver(onChange);
+    for (const el of [this.doc.documentElement, this.doc.body]) {
       if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
     }
-    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const mq = this.win.matchMedia('(prefers-color-scheme: dark)');
     mq.addEventListener('change', onChange);
     this.cleanups.push(() => {
       mo.disconnect();

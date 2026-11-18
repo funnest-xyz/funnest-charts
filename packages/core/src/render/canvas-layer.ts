@@ -7,7 +7,7 @@ export class CanvasLayer {
   dpr = 1;
 
   constructor(parent: HTMLElement) {
-    this.canvas = document.createElement('canvas');
+    this.canvas = parent.ownerDocument.createElement('canvas');
     Object.assign(this.canvas.style, { position: 'absolute', left: '0', top: '0', display: 'block' });
     parent.appendChild(this.canvas);
     const ctx = this.canvas.getContext('2d');
