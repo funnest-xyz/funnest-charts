@@ -48,6 +48,7 @@ import {
   type LegendGroup,
   type LegendRow,
 } from './render/screenshot-legend.js';
+import { alignCloses } from './compare-align.js';
 import { DAY_MS, isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution.js';
 import { sessionStatus } from './session.js';
 import { lightTheme, type ThemeTokens } from './theme.js';
@@ -270,6 +271,8 @@ interface CompareEntry {
   store: BarStore;
   color: string;
   unsubscribe: Unsubscribe | null;
+  /** The interval its bars are at: the chart's, or the nearest one the symbol has (a stock has no 3분봉). */
+  resolution: Resolution | null;
   loadingOlder: boolean;
   noMoreOlder: boolean;
   /** Closes aligned to the main bars (NaN before the compare's first bar). */
@@ -629,6 +632,8 @@ export class Chart {
           this.emitter.emit('quoteChange', this.latestQuote);
         }) ?? null;
     }
+    // Now the main symbol: no longer compared with itself.
+    if (this.compares.has(info.symbol)) this.removeCompare(info.symbol);
     // Compared symbols follow the interval (and get bars covering the new history).
     for (const entry of this.compares.values()) void this.reloadCompare(entry);
     this.emitter.emit('symbolChange', info);
@@ -1339,6 +1344,7 @@ export class Chart {
       store: new BarStore(),
       color: COMPARE_COLORS.find((c) => !used.has(c)) ?? COMPARE_COLORS[0]!,
       unsubscribe: null,
+      resolution: null,
       loadingOlder: false,
       noMoreOlder: false,
       aligned: null,
@@ -1391,13 +1397,20 @@ export class Chart {
     const current = () => this.compares.get(entry.symbol) === entry && token === this.loadToken;
     entry.unsubscribe?.();
     entry.unsubscribe = null;
+    // A page still loading for the previous interval is dropped when it lands (its token is
+    // old); this load pages afresh.
+    entry.loadingOlder = false;
+    entry.noMoreOlder = false;
     try {
       const info = entry.info ?? (await feed.resolveSymbol(entry.symbol));
       if (!current()) return;
       entry.info = info;
+      // The nearest interval it has: a 3분 BTC chart compares a stock at 1분 or 5분 rather than not at all.
+      const own = fallbackResolution(resolution, info.supportedResolutions);
+      entry.resolution = own;
       const to = Date.now();
       const from = this.store.first()?.time ?? to - resolutionToMs(resolution) * this.historyBatchSize;
-      const result = await feed.getBars(info, resolution, {
+      const result = await feed.getBars(info, own, {
         from,
         to,
         countBack: Math.max(this.historyBatchSize, this.store.length + 1),
@@ -1407,14 +1420,17 @@ export class Chart {
       entry.noMoreOlder = result.noMoreData;
       entry.unsubscribe = feed.subscribeBars(
         info,
-        resolution,
+        own,
         (bar) => {
           if (!current()) return;
           entry.store.upsert(bar);
           this.compareVersion++;
           this.invalidate();
         },
-        () => {},
+        // The feed lost bars (a reconnect after a gap): load them again rather than leave a hole.
+        () => {
+          if (current()) void this.reloadCompare(entry);
+        },
       );
       this.comparesChanged();
       void this.loadOlderCompare(entry);
@@ -1430,38 +1446,43 @@ export class Chart {
     const feed = this.datafeed;
     const first = entry.store.first();
     const mainFirst = this.store.first();
-    if (!feed || !entry.info || !this.resolution || !first || !mainFirst) return;
+    const resolution = entry.resolution ?? this.resolution;
+    if (!feed || !entry.info || !resolution || !first || !mainFirst) return;
     if (entry.loadingOlder || entry.noMoreOlder || first.time <= mainFirst.time) return;
     const token = this.loadToken;
     entry.loadingOlder = true;
     try {
       const to = first.time - 1;
-      const result = await feed.getBars(entry.info, this.resolution, { from: mainFirst.time, to, countBack: this.historyBatchSize });
+      const result = await feed.getBars(entry.info, resolution, { from: mainFirst.time, to, countBack: this.historyBatchSize });
       if (this.compares.get(entry.symbol) !== entry || token !== this.loadToken) return;
+      const before = entry.store.first()?.time;
       entry.store.prepend(result.bars);
-      entry.noMoreOlder = result.noMoreData || result.bars.length === 0;
+      // No older bar came (or the source says so): nothing more to page.
+      entry.noMoreOlder = result.noMoreData || result.bars.length === 0 || entry.store.first()?.time === before;
       this.compareVersion++;
       this.invalidate();
     } catch (error) {
+      entry.noMoreOlder = true;
       this.emitter.emit('error', error);
     } finally {
       entry.loadingOlder = false;
     }
+    // A page of the compared symbol may cover less time than the chart (a coin's 24 hourly bars
+    // a day next to a stock's 7): keep paging until it reaches the chart's first bar.
+    if (this.compares.get(entry.symbol) === entry && token === this.loadToken) void this.loadOlderCompare(entry);
   }
 
   /** Compare closes at each main bar (the compare bar at or before its time). */
   private alignedCompare(entry: CompareEntry): Float64Array {
     const key = `${this.dataVersion}:${this.compareVersion}`;
     if (entry.aligned?.key === key) return entry.aligned.values;
-    const bars = this.store.bars;
-    const other = entry.store.bars;
-    const values = new Float64Array(bars.length).fill(Number.NaN);
-    let j = -1;
-    for (let i = 0; i < bars.length; i++) {
-      const t = bars[i]!.time;
-      while (j + 1 < other.length && other[j + 1]!.time <= t) j++;
-      if (j >= 0) values[i] = other[j]!.close;
-    }
+    // Daily and longer: by trading date (markets start their days at different instants).
+    const byDate = !!this.resolution && !isIntradayResolution(this.resolution);
+    const values = alignCloses(
+      this.store.bars.map((b) => b.time),
+      entry.store.bars,
+      byDate,
+    );
     entry.aligned = { key, values };
     return values;
   }
