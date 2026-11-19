@@ -47,35 +47,148 @@ export interface SeriesStyle {
   visible?: boolean;
 }
 
+/**
+ * Colors in indicator output: any canvas color, a CSS variable (`var(--x)`), or `'up'` / `'down'`
+ * — the chart's own rising / falling colors (they follow the theme and the user's settings).
+ */
+export type IndicatorColor = string;
+
+/** A color per bar, compactly: `index[i]` picks from `palette`; 255 = the default color (or nothing). */
+export interface BarColors {
+  palette: IndicatorColor[];
+  index: Uint8Array;
+}
+
+export type LineStyle = 'solid' | 'dotted' | 'dashed';
+
+/**
+ * How a series is drawn. 'histogram' bars from zero colored by sign (unless `colors` is given);
+ * 'columns' bars from zero in the series' color; 'step' a staircase line; 'area' a line with a
+ * shade down to the pane's bottom; 'circles' / 'cross' a mark per value.
+ */
+export type SeriesKind = 'line' | 'histogram' | 'columns' | 'step' | 'area' | 'circles' | 'cross';
+
 export interface IndicatorSeries {
   key: string;
   label: string;
   values: Float64Array;
-  /** Ignored for histograms, which are colored up/down by sign. */
-  color: string;
+  /** Ignored for histograms without `colors`, which are colored up/down by sign. */
+  color: IndicatorColor;
   width: number;
   visible: boolean;
-  kind: 'line' | 'histogram';
+  kind: SeriesKind;
   /**
    * Draw `values[i]` this many bars to the right (Ichimoku spans lead by 25). Points past the
    * last bar land in the empty space on the right. Default 0.
    */
   shift?: number;
+  /** A color per bar (a line's segment ending on that bar); 255 keeps `color`. */
+  colors?: BarColors;
+  /** Lines only. Default 'solid'. */
+  lineStyle?: LineStyle;
+}
+
+/**
+ * Shaded area between two series (Bollinger band). With `downColor`, stretches where `lower` is
+ * above `upper` use it instead (Ichimoku cloud); with `colors`, each bar's own color (255: none).
+ * Painted see-through.
+ */
+export interface IndicatorFill {
+  upper: string;
+  lower: string;
+  color: IndicatorColor;
+  downColor?: IndicatorColor;
+  colors?: BarColors;
+}
+
+/** A horizontal reference line: a value, or a value with its own color, name and style. */
+export type IndicatorLevel = number | { value: number; color?: IndicatorColor; label?: string; style?: LineStyle; width?: number };
+
+/** Where a mark sits: over the bar's high / under its low (on a price pane), at a price, or at the pane's top / bottom. */
+export type MarkLocation = 'above' | 'below' | 'price' | 'top' | 'bottom';
+export type MarkShape = 'triangleup' | 'triangledown' | 'arrowup' | 'arrowdown' | 'circle' | 'square' | 'diamond' | 'cross' | 'xcross' | 'flag';
+export type MarkSize = 'tiny' | 'small' | 'normal' | 'large';
+/** Where a line or box keeps going: past its right end, left end, or both (to the pane's edges). */
+export type Extend = 'none' | 'left' | 'right' | 'both';
+export type TablePosition = 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'middle-center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+
+/**
+ * Free-form things an indicator draws in its pane (a script's plotshape / label / line / box /
+ * table…). Bars are data indices — past the last bar is the empty space on the right — and
+ * prices are in the pane's units.
+ */
+export interface IndicatorGraphics {
+  /** Bars shaded behind everything in the pane (one entry per layer, a color per bar; 255 = none). */
+  backgrounds?: { colors: BarColors }[];
+  /** A mark on every bar where `when` is 1. */
+  shapes?: {
+    when: Uint8Array;
+    shape: MarkShape;
+    location: MarkLocation;
+    /** With location 'price': where, per bar. */
+    price?: Float64Array;
+    color: IndicatorColor;
+    text?: string;
+    textColor?: IndicatorColor;
+    size: MarkSize;
+  }[];
+  labels?: {
+    bar: number;
+    text: string;
+    location: MarkLocation;
+    price?: number;
+    /** The box's color ('box'), or the text's ('text'). */
+    color?: IndicatorColor;
+    textColor?: IndicatorColor;
+    /** 'box' text in a filled box; 'text' text only. */
+    style: 'box' | 'text';
+    /** Which side of the point the label grows to: 'right' starts at it (text to its right). */
+    align: 'left' | 'center' | 'right';
+    size: MarkSize;
+  }[];
+  lines?: { x1: number; y1: number; x2: number; y2: number; color: IndicatorColor; width: number; style: LineStyle; extend: Extend }[];
+  boxes?: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+    /** Border; omit for none. */
+    color?: IndicatorColor;
+    /** Fill (painted as given: say the alpha with #rrggbbaa). */
+    bg?: IndicatorColor;
+    width: number;
+    style: LineStyle;
+    extend: Extend;
+    text?: string;
+    textColor?: IndicatorColor;
+  }[];
+  /** Tables pinned to a corner / edge of the pane (dashboards). */
+  tables?: {
+    position: TablePosition;
+    rows: { text: string; color?: IndicatorColor; bg?: IndicatorColor; align?: 'left' | 'center' | 'right' }[][];
+    bg?: IndicatorColor;
+    textColor?: IndicatorColor;
+    border?: IndicatorColor;
+    size: MarkSize;
+  }[];
 }
 
 export interface IndicatorOutput {
   series: IndicatorSeries[];
-  /**
-   * Shaded area between two series (Bollinger band). With `downColor`, stretches where
-   * `lower` is above `upper` use it instead (Ichimoku cloud).
-   */
-  fill?: { upper: string; lower: string; color: string; downColor?: string };
+  /** Shaded area between two series (see IndicatorFill). */
+  fill?: IndicatorFill;
+  /** More fills, drawn after `fill`. */
+  fills?: IndicatorFill[];
   /** Horizontal reference lines (RSI 30/70). */
-  levels?: number[];
+  levels?: IndicatorLevel[];
   /** Fixed value range instead of auto-scaling (RSI 0–100). */
   range?: [number, number];
   /** Decimals for labels; null = the symbol's price precision. */
   precision: number | null;
+  /** Indicators over the candles: a candle color per bar (255 keeps the candle's own). */
+  barColors?: BarColors;
+  /** Shapes, labels, lines, boxes, tables, backgrounds. */
+  graphics?: IndicatorGraphics;
 }
 
 export interface IndicatorDefinition {

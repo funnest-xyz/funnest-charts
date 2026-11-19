@@ -51,13 +51,25 @@ export { bucketStart, TickAggregator, timeZoneOffset } from './realtime.js';
 export type { Tick } from './realtime.js';
 export { INDICATORS, SERIES_COLORS } from './indicators/definitions.js';
 export type {
+  BarColors,
   BuiltinIndicatorType,
+  Extend,
+  IndicatorColor,
   IndicatorDefinition,
+  IndicatorFill,
+  IndicatorGraphics,
+  IndicatorLevel,
   IndicatorOutput,
   IndicatorParams,
   IndicatorParamSpec,
   IndicatorSeries,
   IndicatorType,
+  LineStyle,
+  MarkLocation,
+  MarkShape,
+  MarkSize,
+  SeriesKind,
+  TablePosition,
 } from './indicators/definitions.js';
 export type { IndicatorConfig, IndicatorPatch } from './indicators/manager.js';
 export { maLines, PRICE_SOURCES, priceSource } from './indicators/definitions.js';

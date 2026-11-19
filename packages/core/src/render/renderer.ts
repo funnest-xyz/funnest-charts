@@ -9,6 +9,7 @@ import type { TradingLabels, TradingLayer } from '../objects/trading.js';
 import type { AxisBadge, ChartOverlay, PaneCoords } from '../objects/types.js';
 import type { IndicatorOutput } from '../indicators/definitions.js';
 import type { ChartSettings } from '../settings.js';
+import { barColorOf, drawIndicator, drawIndicatorBackgrounds, drawIndicatorTables } from './indicator-draw.js';
 
 export type ChartType = 'candles' | 'line' | 'area';
 
@@ -102,6 +103,8 @@ export interface RenderModel {
   timeScale: TimeScale;
   formatPrice(price: number): string;
   formatVolume(volume: number): string;
+  /** An indicator color for the canvas: CSS variables resolved, 'up' / 'down' the palette's. */
+  color(value: string): string;
   formatCrosshairTime(time: number): string;
   labels: { high: string; low: string };
   chartType: ChartType;
@@ -142,13 +145,19 @@ function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel,
   const s = pane.scale;
   const y = (price: number) => Math.round((pane.top + s.priceToY(price)) * dpr);
 
+  // Candles an indicator recolors (barColors) are drawn in their own color, the rest up / down.
+  const own = frame.overlays.some((o) => o.barColors) ? (i: number) => barColorOf(frame.overlays, i) : null;
+  const custom = new Map<string, number[]>();
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  for (const up of [true, false]) {
-    ctx.beginPath();
+  if (own)
     for (let i = from; i <= to; i++) {
+      const color = own(i);
+      if (color) (custom.get(color) ?? custom.set(color, []).get(color)!).push(i);
+    }
+  const paint = (indices: Iterable<number>) => {
+    for (const i of indices) {
       const bar = bars[i]!;
-      if (bar.close >= bar.open !== up) continue;
       const left = Math.round(timeScale.indexToX(i) * dpr) - half;
       const yHigh = y(bar.high);
       const yLow = y(bar.low);
@@ -160,7 +169,20 @@ function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel,
         ctx.rect(left - inset, top, body, Math.max(1, Math.max(yOpen, yClose) - top));
       }
     }
+  };
+  const recolored = new Set([...custom.values()].flat());
+  for (const up of [true, false]) {
+    ctx.beginPath();
+    const indices: number[] = [];
+    for (let i = from; i <= to; i++) if (bars[i]!.close >= bars[i]!.open === up && !recolored.has(i)) indices.push(i);
+    paint(indices);
     ctx.fillStyle = up ? frame.palette.up : frame.palette.down;
+    ctx.fill();
+  }
+  for (const [color, indices] of custom) {
+    ctx.beginPath();
+    paint(indices);
+    ctx.fillStyle = m.color(color);
     ctx.fill();
   }
   ctx.restore();
@@ -197,105 +219,6 @@ function drawLineSeries(ctx: CanvasRenderingContext2D, m: RenderModel, pane: Pan
     ctx.globalAlpha = 0.18;
     ctx.fillStyle = gradient;
     ctx.fill();
-  }
-  ctx.restore();
-}
-
-/** Lines, histograms, band fill and reference levels of one indicator inside `pane`. */
-function drawIndicator(ctx: CanvasRenderingContext2D, p: Painter, m: RenderModel, pane: PaneFrame, output: IndicatorOutput): void {
-  const { timeScale, frame } = m;
-  const pal = frame.palette;
-  const n = m.bars.length;
-  if (frame.range.to < frame.range.from) return;
-  /** Data indices to draw for a series shifted right by `shift` bars (into the empty space past the last bar). */
-  const span = (shift: number): [number, number] => {
-    const lastX = Math.ceil(timeScale.xToIndexFloat(frame.plotWidth)) + 1;
-    return [Math.max(0, frame.range.from - 1 - shift), Math.min(n - 1, (shift > 0 ? lastX : frame.range.to + 1) - shift)];
-  };
-  const [from, to] = span(0);
-  const yOf = (v: number) => pane.top + pane.scale.priceToY(v);
-  const byKey = (key: string) => output.series.find((s) => s.key === key);
-
-  for (const level of output.levels ?? []) p.hLine(yOf(level), 0, frame.plotWidth, pal.textSecondary, [3, 4]);
-
-  if (output.fill) {
-    const upperSeries = byKey(output.fill.upper);
-    const lower = byKey(output.fill.lower)?.values;
-    if (upperSeries && lower) {
-      const upper = upperSeries.values;
-      const shift = upperSeries.shift ?? 0;
-      const [f0, f1] = span(shift);
-      const { color, downColor } = output.fill;
-      const sideOf = (j: number) => (downColor && lower[j]! > upper[j]! ? 1 : 0);
-      const valid = (j: number) => !Number.isNaN(upper[j]!) && !Number.isNaN(lower[j]!);
-      ctx.save();
-      ctx.globalAlpha = 0.07;
-      // One polygon per contiguous run of valid values on the same side (cloud color flips).
-      let i = f0;
-      while (i <= f1) {
-        while (i <= f1 && !valid(i)) i++;
-        const start = i;
-        const side = valid(i) ? sideOf(i) : 0;
-        while (i <= f1 && valid(i) && sideOf(i) === side) i++;
-        // Overlap one bar into the next run so there's no gap where the color flips.
-        const end = i <= f1 && valid(i) ? i + 1 : i;
-        if (end - start < 2) continue;
-        ctx.fillStyle = side ? downColor! : color;
-        ctx.beginPath();
-        for (let j = start; j < end; j++) ctx.lineTo(timeScale.indexToX(j + shift), yOf(upper[j]!));
-        for (let j = end - 1; j >= start; j--) ctx.lineTo(timeScale.indexToX(j + shift), yOf(lower[j]!));
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-  }
-
-  for (const series of output.series) {
-    if (series.kind !== 'histogram') continue;
-    const { wick, body } = barGeometry(timeScale.barSpacing, layerDpr(ctx));
-    const dpr = layerDpr(ctx);
-    const zero = Math.round(yOf(0) * dpr);
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalAlpha = 0.6;
-    for (const positive of [true, false]) {
-      ctx.beginPath();
-      for (let i = from; i <= to; i++) {
-        const v = series.values[i]!;
-        if (Number.isNaN(v) || v >= 0 !== positive) continue;
-        const left = Math.round(timeScale.indexToX(i) * dpr) - (wick >> 1) - (body - wick) / 2;
-        const y = Math.round(yOf(v) * dpr);
-        ctx.rect(left, Math.min(y, zero), body, Math.max(1, Math.abs(zero - y)));
-      }
-      ctx.fillStyle = positive ? pal.up : pal.down;
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  ctx.save();
-  ctx.lineJoin = 'round';
-  for (const series of output.series) {
-    if (series.kind !== 'line') continue;
-    ctx.lineWidth = series.width;
-    ctx.beginPath();
-    let pen = false;
-    const shift = series.shift ?? 0;
-    const [s0, s1] = span(shift);
-    for (let i = s0; i <= s1; i++) {
-      const v = series.values[i]!;
-      if (Number.isNaN(v)) {
-        pen = false;
-        continue;
-      }
-      const x = timeScale.indexToX(i + shift);
-      if (pen) ctx.lineTo(x, yOf(v));
-      else ctx.moveTo(x, yOf(v));
-      pen = true;
-    }
-    ctx.strokeStyle = series.color;
-    ctx.stroke();
   }
   ctx.restore();
 }
@@ -411,10 +334,12 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     ctx.beginPath();
     ctx.rect(0, main.top, f.plotWidth, main.height);
     ctx.clip();
+    for (const overlay of f.overlays) drawIndicatorBackgrounds(ctx, p, m, main, overlay);
     if (m.chartType === 'candles') drawCandles(ctx, layer.dpr, m, main);
     else drawLineSeries(ctx, m, main, m.chartType === 'area');
     for (const overlay of f.overlays) drawIndicator(ctx, p, m, main, overlay);
     if (f.settings.highLowMarkers) drawHighLow(p, m, main);
+    for (const overlay of f.overlays) drawIndicatorTables(ctx, p, m, main, overlay);
     ctx.restore();
 
     if (volume && volume.kind === 'volume' && volume.height > 0) {
@@ -439,7 +364,9 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     ctx.beginPath();
     ctx.rect(0, pane.top, f.plotWidth, pane.height);
     ctx.clip();
+    drawIndicatorBackgrounds(ctx, p, m, pane, pane.indicator);
     drawIndicator(ctx, p, m, pane, pane.indicator);
+    drawIndicatorTables(ctx, p, m, pane, pane.indicator);
     ctx.restore();
   }
 

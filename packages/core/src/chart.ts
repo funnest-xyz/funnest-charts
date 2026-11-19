@@ -5,7 +5,8 @@ import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/pr
 import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale, browserLocale } from './model/time-format.js';
 import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleOptions } from './model/time-scale.js';
 import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price.js';
-import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorType } from './indicators/definitions.js';
+import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorSeries, IndicatorType } from './indicators/definitions.js';
+import { graphicsRange, resolveIndicatorColor } from './render/indicator-draw.js';
 import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager.js';
 import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingType } from './objects/drawings.js';
 import {
@@ -1209,11 +1210,18 @@ export class Chart {
             key: series.key,
             label: series.label,
             value: v === undefined || Number.isNaN(v) ? '—' : formatPrice(v, precision),
-            color: series.kind === 'histogram' ? (v !== undefined && v < 0 ? this.theme.down : this.theme.up) : series.color,
+            color: this.legendColor(series, index - (series.shift ?? 0), v),
           };
         }),
       };
     });
+  }
+
+/** A series' color at a bar, for the legend: its own color there, histograms by sign, 'up' / 'down' resolved. */
+  private legendColor(series: IndicatorSeries, i: number, v: number | undefined): string {
+    const own = series.colors ? series.colors.palette[series.colors.index[i] ?? 255] : undefined;
+    const color = own ?? (series.kind === 'histogram' ? (v !== undefined && v < 0 ? 'down' : 'up') : series.color);
+    return resolveIndicatorColor(color, this.theme.up, this.theme.down, (c) => c);
   }
 
   private indicatorsChanged(): void {
@@ -1850,6 +1858,7 @@ export class Chart {
       timeScale: this.timeScale,
       formatPrice: (p) => formatPrice(p, this.pricePrecision),
       formatVolume: (v) => formatCompact(v, this.locale),
+      color: (v) => resolveIndicatorColor(v, frame.palette.up, frame.palette.down, (c) => this.colors.color(c)),
       formatCrosshairTime: (t) => this.formatter.crosshairLabel(t, this.isIntraday()),
       labels: LABELS[this.locale],
       chartType: this.chartType,
@@ -2172,7 +2181,7 @@ export class Chart {
     let min = Infinity;
     let max = -Infinity;
     for (const series of output.series) {
-      if (series.kind === 'histogram') {
+      if (series.kind === 'histogram' || series.kind === 'columns' || series.kind === 'area') {
         min = Math.min(min, 0);
         max = Math.max(max, 0);
       }
@@ -2182,6 +2191,13 @@ export class Chart {
         if (v < min) min = v;
         if (v > max) max = v;
       }
+    }
+    // Graphics count where nothing else does (a pane of boxes and labels), or reach past the series.
+    const g = graphicsRange(output.graphics, range.from, range.to);
+    if (g) [min, max] = [Math.min(min, g[0]), Math.max(max, g[1])];
+    for (const level of output.levels ?? []) {
+      const v = typeof level === 'number' ? null : level.value;
+      if (v !== null && Number.isFinite(v) && Number.isFinite(min)) [min, max] = [Math.min(min, v), Math.max(max, v)];
     }
     if (Number.isFinite(min) && Number.isFinite(max)) scale.setRange(min, max);
     else scale.setRange(0, 1);
