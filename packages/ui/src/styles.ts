@@ -308,8 +308,6 @@ const CSS = /* css */ `
 .fnc-interval-picker { position: relative; display: flex; align-items: center; min-width: 0; }
 .fnc-interval-trigger { gap: 2px; padding: 0 6px; }
 .fnc-interval-current { display: none; font-size: 13px; color: var(--fnc-text); }
-.fnc-interval-trigger-active { background: var(--fnc-surface); }
-.fnc-interval-trigger-active .fnc-interval-current { display: inline; }
 .fnc-chip:disabled { opacity: 0.35; cursor: default; background: none; }
 .fnc-interval-menu {
   width: 208px;

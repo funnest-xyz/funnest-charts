@@ -1740,12 +1740,12 @@ export class Chart {
     };
   }
 
-  /** Fill markers (▲ buy under the bar, ▼ sell above; ⚡ at the price for liquidations). Replaces the previous set. */
+  /** Fill markers (buys under the bar, sells above, as setTradingLabels' marker / markerSize say; ⚡ at the price for liquidations). Replaces the previous set. */
   setExecutions(markers: readonly ExecutionMarker[]): void {
     this.trading.setExecutions(markers);
   }
 
-  /** What position/order/alert line labels show and where (direction, price, size, P&L, ×, alignment, line width). */
+  /** What position/order/alert line labels show and where (direction, price, size, P&L, ×, alignment, line width), and how fill markers look (B / S, ▲ / ▼ or a bare triangle; small, normal, large). */
   setTradingLabels(patch: Partial<TradingLabelOptions>): void {
     this.trading.setLabelOptions(patch);
   }

@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import type { Resolution } from '@funnest/charts';
+import { resolutionToMs, type Resolution } from '@funnest/charts';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { IntervalGroup, WidgetContext } from '../context.js';
 import { resolutionLabel, stringsOf, type Strings } from '../i18n.js';
@@ -15,8 +15,9 @@ const GROUP_LABEL: Record<IntervalGroup['id'], keyof Strings> = {
 
 /**
  * Favorite intervals as toolbar chips + a grouped menu (분 | 시간 | 일) where hovering a row
- * reveals a ★ to pin/unpin it. On narrow screens only the menu trigger (showing the current
- * interval) remains.
+ * reveals a ★ to pin/unpin it. The current interval is among the chips even when it isn't a
+ * favorite, in time order (15분 | 일 picking 1분 reads 1분 | 15분 | 일, not 15분 | 일 | 1분). On
+ * narrow screens only the menu trigger (showing the current interval) remains.
  */
 export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
@@ -40,7 +41,10 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
   const supported = s.symbol?.supportedResolutions;
   const isSupported = (r: Resolution) => !supported || supported.includes(r);
   const order = ctx.intervalGroups.flatMap((g) => g.intervals);
-  const favorites = [...s.favoriteIntervals].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const favorites = s.favoriteIntervals;
+  // Shortest first: by the menu's order where both are in it, else by length.
+  const byTime = (a: Resolution, b: Resolution) => (order.includes(a) && order.includes(b) ? order.indexOf(a) - order.indexOf(b) : resolutionToMs(a) - resolutionToMs(b));
+  const chips = [...new Set([...favorites, ...(s.resolution ? [s.resolution] : [])])].sort(byTime);
   const select = (r: Resolution) => {
     setOpen(false);
     ctx.selectResolution(r);
@@ -49,9 +53,9 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
   return (
     <div class="fnc-interval-picker" ref={ref}>
       <div class="fnc-intervals">
-        {favorites.map((r) => (
+        {chips.map((r) => (
           <button
-            class="fnc-chip"
+            class={favorites.includes(r) ? 'fnc-chip' : 'fnc-chip fnc-chip-extra'}
             aria-pressed={r === s.resolution}
             disabled={!isSupported(r)}
             data-tip={isSupported(r) ? resolutionLabel(r, s.locale, 'long') : t.unsupportedInterval}
@@ -62,7 +66,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
         ))}
       </div>
       <button
-        class={`fnc-btn fnc-btn-wide fnc-interval-trigger${favorites.includes(s.resolution) ? '' : ' fnc-interval-trigger-active'}`}
+        class="fnc-btn fnc-btn-wide fnc-interval-trigger"
         data-tip={t.moreIntervals}
         aria-label={t.moreIntervals}
         aria-haspopup="menu"

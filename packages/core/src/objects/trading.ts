@@ -63,6 +63,12 @@ export interface TradingLabelOptions {
   align: 'left' | 'center' | 'right';
   /** Draw lines across the whole chart; off, only from the label to the price axis. */
   fullWidth: boolean;
+  /**
+   * Fill markers: 'letter' — B / S in a badge with a stem to the bar; 'arrow' — ▲ / ▼ in the same
+   * badge; 'triangle' — a bare triangle (the look before 0.7.1).
+   */
+  marker: 'letter' | 'arrow' | 'triangle';
+  markerSize: 'small' | 'normal' | 'large';
 }
 
 export const DEFAULT_TRADING_LABEL_OPTIONS: TradingLabelOptions = {
@@ -73,6 +79,8 @@ export const DEFAULT_TRADING_LABEL_OPTIONS: TradingLabelOptions = {
   buttons: true,
   align: 'left',
   fullWidth: true,
+  marker: 'letter',
+  markerSize: 'normal',
 };
 
 /** Fills on the same bar and side, shown as one marker. */
@@ -87,7 +95,10 @@ export interface ExecutionGroup {
   /** Earliest fill time in the group. */
   time: number;
   x: number;
+  /** The marker's center. */
   y: number;
+  /** The bar's low (buys) or high (sells), where the marker's stem reaches. */
+  edge: number;
 }
 
 export interface LineHandle<T> {
@@ -105,6 +116,9 @@ export interface TradingLabels {
 
 type LineEntry = OrderLineOptions & { alert?: boolean };
 
+/** A fill marker's badge radius by size; its center sits this far plus 10px past the bar's low or high. */
+const MARK_R = { small: 6.5, normal: 8, large: 10 } as const;
+const markGap = (r: number) => r + 10;
 const LABEL_X = 12;
 const LABEL_HEIGHT = 20;
 const LABEL_GAP = 6;
@@ -185,8 +199,9 @@ export class TradingLayer {
   // ── Interaction ───────────────────────────────────────────────────
 
   hitTest(priceToY: (p: number) => number, x: number, y: number, tolerance: number): ObjectHit | null {
+    const reach = MARK_R[this.labelOptions.markerSize] + 1 + tolerance / 2;
     for (const g of this.groups) {
-      if (Math.abs(g.x - x) <= 6 + tolerance / 2 && Math.abs(g.y - y) <= 6 + tolerance / 2) return { kind: 'execution', key: g.key };
+      if (Math.abs(g.x - x) <= reach && Math.abs(g.y - y) <= reach) return { kind: 'execution', key: g.key };
     }
     for (const [id, order] of this.orders) {
       const rects = this.labelRects.get(id);
@@ -254,7 +269,10 @@ export class TradingLayer {
     const last = bars[bars.length - 1];
     const visible = (y: number) => y >= 0 && y <= c.height;
 
-    // Executions: one marker per bar and side — ▲ under the bar for buys, ▼ above for sells.
+    // Executions: one marker per bar and side — under the bar for buys, above for sells.
+    const markR = MARK_R[this.labelOptions.markerSize];
+    const triangle = this.labelOptions.marker === 'triangle';
+    const gap = triangle ? 10 * (markR / MARK_R.normal) : markGap(markR);
     const byKey = new Map<string, ExecutionGroup & { weighted: number; weight: number }>();
     for (const e of this.executions) {
       const index = barIndexAt(e.time);
@@ -274,7 +292,8 @@ export class TradingLayer {
           averagePrice: 0,
           time: e.time,
           x: indexToX(index),
-          y: liquidation ? c.priceToY(e.price) : buy ? c.priceToY(bar.low) + 10 : c.priceToY(bar.high) - 10,
+          y: liquidation ? c.priceToY(e.price) : buy ? c.priceToY(bar.low) + gap : c.priceToY(bar.high) - gap,
+          edge: liquidation ? 0 : buy ? c.priceToY(bar.low) + 2 : c.priceToY(bar.high) - 2,
           weighted: 0,
           weight: 0,
         };
@@ -310,14 +329,54 @@ export class TradingLayer {
         continue;
       }
       const buy = g.side === 'buy';
+      const color = buy ? palette.up : palette.down;
+      if (triangle) {
+        // The bare triangle, scaled with the size.
+        const k = markR / MARK_R.normal;
+        ctx.beginPath();
+        ctx.moveTo(g.x, buy ? g.y - 5 * k : g.y + 5 * k);
+        ctx.lineTo(g.x - 5 * k, buy ? g.y + 4 * k : g.y - 4 * k);
+        ctx.lineTo(g.x + 5 * k, buy ? g.y + 4 * k : g.y - 4 * k);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        if (g.count > 1) p.text(String(g.count), g.x + 7 * k, g.y, color, 'left', 'middle');
+        continue;
+      }
+      // A badge: a circle in the side's color with a white B / S (or ▲ / ▼), ringed in the chart's
+      // background so it stands off same-colored candles, and a stem to its bar.
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.7;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(g.x, buy ? g.y - 5 : g.y + 5);
-      ctx.lineTo(g.x - 5, buy ? g.y + 4 : g.y - 4);
-      ctx.lineTo(g.x + 5, buy ? g.y + 4 : g.y - 4);
-      ctx.closePath();
-      ctx.fillStyle = buy ? palette.up : palette.down;
+      ctx.moveTo(g.x, g.edge);
+      ctx.lineTo(g.x, buy ? g.y - markR : g.y + markR);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, markR, 0, Math.PI * 2);
+      ctx.fillStyle = color;
       ctx.fill();
-      if (g.count > 1) p.text(String(g.count), g.x + 7, g.y, buy ? palette.up : palette.down, 'left', 'middle');
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = palette.background;
+      ctx.stroke();
+      if (this.labelOptions.marker === 'arrow') {
+        const a = markR * 0.44;
+        ctx.beginPath();
+        ctx.moveTo(g.x, buy ? g.y - a : g.y + a);
+        ctx.lineTo(g.x - a, buy ? g.y + a * 0.7 : g.y - a * 0.7);
+        ctx.lineTo(g.x + a, buy ? g.y + a * 0.7 : g.y - a * 0.7);
+        ctx.closePath();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+      } else {
+        // The letter in the chart's own font, bold.
+        const font = ctx.font;
+        ctx.font = `700 ${Math.round(markR * 1.25)}px ${font.replace(/^.*?\d+(\.\d+)?px\s*/, '') || 'sans-serif'}`;
+        p.text(buy ? 'B' : 'S', g.x, g.y + 0.5, '#FFFFFF', 'center', 'middle');
+        ctx.font = font;
+      }
+      if (g.count > 1) p.text(String(g.count), g.x + markR + 4, g.y, color, 'left', 'middle');
     }
 
     // Labels sit at the chosen side (left, centre, right). Labels of lines at nearly the same
