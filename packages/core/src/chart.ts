@@ -105,6 +105,8 @@ export interface ReplayStatus {
   remaining: number;
   /** Milliseconds between bars while playing. */
   interval: number;
+  /** Each bar plays in steps of this interval (setReplayUpdate); null: a whole bar per step. */
+  update: Resolution | null;
 }
 
 /** The CSS cursor over the plot for each cursor mode (the eraser: an eraser icon, hot spot at its tip). */
@@ -418,6 +420,15 @@ export class Chart {
   /** Base bar index of the % axis and compare lines (the first visible bar). */
   private percentBaseIndex = 0;
   private replayState: { future: Bar[]; timer: ReturnType<typeof setInterval> | null; interval: number } | null = null;
+  /**
+   * Intrabar replay (setReplayUpdate): each hidden bar plays as the smaller bars it's made of —
+   * the next bar shows partway (its O/H/L/C/V so far) until its last piece, then whole. Pieces come
+   * from the datafeed per bar and a couple ahead; while one is still loading, a step waits.
+   */
+  private replayUpdate: Resolution | null = null;
+  private replayPieces = new Map<number, Bar[] | 'loading' | 'none'>();
+  /** Pieces of the next hidden bar already shown. */
+  private replayShown = 0;
   private replaySelecting = false;
   /** Pane height weights the user set by dragging borders (unset panes use PANE_WEIGHT). */
   private readonly paneWeights = new Map<PaneId, number>();
@@ -1538,6 +1549,7 @@ export class Chart {
       playing: r?.timer != null,
       remaining: r?.future.length ?? 0,
       interval: r?.interval ?? 1000,
+      update: this.replayUpdate,
     };
   }
 
@@ -1552,7 +1564,10 @@ export class Chart {
 
   /** Hides every bar after `time` (UTC ms); reveal them with replayStep/replayPlay. */
   startReplay(time: number): void {
-    const all = this.replayState ? [...this.store.bars, ...this.replayState.future] : [...this.store.bars];
+    const shown = [...this.store.bars];
+    if (this.replayState && this.replayShown > 0 && shown.at(-1)?.time === this.replayState.future[0]?.time) shown.pop();
+    const all = this.replayState ? [...shown, ...this.replayState.future] : shown;
+    this.replayShown = 0;
     let cut = -1;
     while (cut + 1 < all.length && all[cut + 1]!.time <= time) cut++;
     // Keep at least one bar visible and one to replay.
@@ -1569,6 +1584,9 @@ export class Chart {
     this.mainScale.autoScale = true;
     this.dataVersion++;
     this.invalidate();
+    // With an update interval: the first bars' pieces, asked before the first step.
+    const next = this.replayState.future[0];
+    if (this.replayUpdate && next) this.replayPiecesOf(next);
     this.emitReplay();
   }
 
@@ -1577,8 +1595,29 @@ export class Chart {
     const r = this.replayState;
     if (!r) return;
     for (let k = 0; k < count && r.future.length > 0; k++) {
+      const next = r.future[0]!;
+      const pieces = this.replayPiecesOf(next);
+      // Its pieces still on their way: wait (a playing replay tries again next tick).
+      if (pieces === 'loading') break;
+      if (pieces && this.replayShown + 1 < pieces.length) {
+        this.replayShown++;
+        const part = pieces.slice(0, this.replayShown);
+        const result = this.store.upsert({
+          time: next.time,
+          open: part[0]!.open,
+          high: Math.max(...part.map((b) => b.high)),
+          low: Math.min(...part.map((b) => b.low)),
+          close: part[part.length - 1]!.close,
+          volume: part.reduce((sum, b) => sum + (b.volume ?? 0), 0),
+        });
+        if (result === 'append' && this.timeScale.rightOffset < 0) this.timeScale.rightOffset -= 1;
+        continue;
+      }
+      const appended = this.replayShown === 0;
+      this.replayShown = 0;
+      this.replayPieces.delete(next.time);
       this.store.upsert(r.future.shift()!);
-      if (this.timeScale.rightOffset < 0) this.timeScale.rightOffset -= 1;
+      if (appended && this.timeScale.rightOffset < 0) this.timeScale.rightOffset -= 1;
     }
     this.timeScale.barCount = this.store.length;
     this.dataVersion++;
@@ -1614,6 +1653,50 @@ export class Chart {
     this.emitReplay();
   }
 
+  /**
+   * Plays each bar in steps of a smaller interval ('60' on a daily chart: hour by hour), the bar
+   * forming as it did — or a whole bar per step again (null). Needs the `datafeed` option; an
+   * interval not below the chart's, or a bar the datafeed has no pieces for, plays whole.
+   */
+  setReplayUpdate(resolution: Resolution | null): void {
+    const own = this.resolution;
+    const usable = resolution && own && this.datafeed && resolutionToMs(resolution) < resolutionToMs(own) ? resolution : null;
+    if (usable === this.replayUpdate) return;
+    this.replayUpdate = usable;
+    this.replayPieces.clear();
+    // A bar shown partway stays until the next step completes it. The next ones' pieces: asked now.
+    const next = this.replayState?.future[0];
+    if (next) this.replayPiecesOf(next);
+    this.emitReplay();
+  }
+
+  /** The pieces of a hidden bar: loaded, 'loading' (asked now if not yet), or null (play it whole). */
+  private replayPiecesOf(bar: Bar): Bar[] | 'loading' | null {
+    const update = this.replayUpdate;
+    const info = this.symbol;
+    const feed = this.datafeed;
+    const own = this.resolution;
+    if (!update || !info || !feed || !own) return null;
+    const ahead = this.replayState?.future.slice(0, 3) ?? [];
+    for (const b of ahead) {
+      if (this.replayPieces.has(b.time)) continue;
+      this.replayPieces.set(b.time, 'loading');
+      const end = b.time + resolutionToMs(own);
+      const count = Math.ceil(resolutionToMs(own) / resolutionToMs(update)) + 2;
+      void feed
+        .getBars(info, update, { from: b.time, to: end - 1, countBack: count })
+        .then((res) => {
+          const pieces = res.bars.filter((p) => p.time >= b.time && p.time < end).sort((x, y) => x.time - y.time);
+          this.replayPieces.set(b.time, pieces.length > 1 ? pieces : 'none');
+        })
+        .catch(() => this.replayPieces.set(b.time, 'none'));
+    }
+    // Pieces of bars already played go (a long replay shouldn't keep every day's hours).
+    if (this.replayPieces.size > 12) for (const t of this.replayPieces.keys()) if (t < bar.time) this.replayPieces.delete(t);
+    const got = this.replayPieces.get(bar.time);
+    return got === 'none' || got === undefined ? null : got;
+  }
+
   /** Leaves replay and shows every bar again (including live ones that arrived meanwhile). */
   stopReplay(): void {
     this.endReplay(true);
@@ -1632,6 +1715,8 @@ export class Chart {
     }
     this.stopReplayTimer();
     this.replayState = null;
+    this.replayShown = 0;
+    this.replayPieces.clear();
     if (restore) {
       for (const bar of r.future) this.store.upsert(bar);
       this.timeScale.barCount = this.store.length;
