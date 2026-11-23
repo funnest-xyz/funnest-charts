@@ -1,5 +1,6 @@
 import type { Bar } from '../types.js';
 import { inRect, type PillSegment, type Rect } from '../render/painter.js';
+import { formatPrice } from '../price.js';
 import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext } from './types.js';
 
 export interface PositionLineOptions {
@@ -9,6 +10,29 @@ export interface PositionLineOptions {
   side: 'long' | 'short';
   /** Overrides the default "평균단가" / "Avg" text. */
   label?: string;
+  /**
+   * Decimals of the P&L amount (it is money, not a price): e.g. 2 for a USDT position, so a
+   * −0.16 USDT loss on BTC (priced in whole dollars) reads −0.16, not 0. Default: the price's.
+   */
+  pnlPrecision?: number;
+}
+
+/**
+ * A position's P&L against `last` as its label shows it: "+12.34 (+1.20%)". `formatPriceOf` is
+ * the chart's price format, used when the position sets no `pnlPrecision`.
+ */
+export function positionPnlText(
+  pos: Pick<PositionLineOptions, 'price' | 'quantity' | 'side' | 'pnlPrecision'>,
+  last: number,
+  formatPriceOf: (p: number) => string,
+): { text: string; pnl: number } {
+  const dir = pos.side === 'long' ? 1 : -1;
+  const pnl = (last - pos.price) * pos.quantity * dir;
+  const pct = pos.price ? ((last - pos.price) / pos.price) * 100 * dir : 0;
+  const amount = pos.pnlPrecision === undefined ? formatPriceOf(pnl) : formatPrice(pnl, pos.pnlPrecision);
+  const sign = pnl > 0 && Number(amount.replace(/,/g, '')) !== 0 ? '+' : '';
+  const pctSign = pct > 0 && Number(pct.toFixed(2)) !== 0 ? '+' : '';
+  return { text: `${sign}${amount} (${pctSign}${pct.toFixed(2)}%)`, pnl };
 }
 
 export interface OrderLineOptions {
@@ -421,11 +445,9 @@ export class TradingLayer {
         .join(' · ');
       const segments: PillSegment[] = main ? [{ text: main, bg: palette.text, fg: palette.background }] : [];
       if (last && opts.pnl) {
-        const pnl = (last.close - pos.price) * pos.quantity * (pos.side === 'long' ? 1 : -1);
-        const pct = pos.price ? ((last.close - pos.price) / pos.price) * 100 * (pos.side === 'long' ? 1 : -1) : 0;
-        const sign = pnl > 0 ? '+' : '';
+        const { text, pnl } = positionPnlText(pos, last.close, c.formatPrice);
         segments.push({
-          text: `${sign}${c.formatPrice(pnl)} (${sign}${pct.toFixed(2)}%)`,
+          text,
           bg: pnl >= 0 ? palette.up : palette.down,
           fg: '#FFFFFF',
         });
