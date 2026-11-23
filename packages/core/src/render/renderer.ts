@@ -4,6 +4,7 @@ import type { IndexRange, TimeScale } from '../model/time-scale.js';
 import type { Bar } from '../types.js';
 import type { CanvasLayer } from './canvas-layer.js';
 import { Painter } from './painter.js';
+import { heikinAshi } from './heikin-ashi.js';
 import type { DrawingManager } from '../objects/drawings.js';
 import type { TradingLabels, TradingLayer } from '../objects/trading.js';
 import type { AxisBadge, ChartOverlay, PaneCoords } from '../objects/types.js';
@@ -11,7 +12,11 @@ import type { IndicatorOutput } from '../indicators/definitions.js';
 import type { ChartSettings } from '../settings.js';
 import { barColorOf, drawIndicator, drawIndicatorBackgrounds, drawIndicatorTables } from './indicator-draw.js';
 
-export type ChartType = 'candles' | 'line' | 'area';
+/**
+ * candles · hollow (속 빈 캔들: hollow when it closed above its open, colored by the close against
+ * the previous close) · heikin (하이킨아시, render/heikin-ashi.ts) · line · area.
+ */
+export type ChartType = 'candles' | 'hollow' | 'heikin' | 'line' | 'area';
 
 /** 'main', 'volume', or an indicator id for indicator panes. */
 export type PaneId = string;
@@ -136,8 +141,8 @@ function barGeometry(barSpacing: number, dpr: number): { wick: number; body: num
   return { wick, body };
 }
 
-function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame): void {
-  const { bars, timeScale, frame } = m;
+function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame, bars: readonly Bar[] = m.bars): void {
+  const { timeScale, frame } = m;
   const { from, to } = frame.range;
   const { wick, body } = barGeometry(timeScale.barSpacing, dpr);
   const half = wick >> 1;
@@ -183,6 +188,65 @@ function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel,
     ctx.beginPath();
     paint(indices);
     ctx.fillStyle = m.color(color);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * 속 빈 캔들 (TradingView's hollow candles): the color says whether it closed above the previous
+ * close (up) or below (down); a hollow body says it closed above its own open, a filled one below.
+ */
+function drawHollowCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame): void {
+  const { bars, timeScale, frame } = m;
+  const { from, to } = frame.range;
+  const { wick, body } = barGeometry(timeScale.barSpacing, dpr);
+  const half = wick >> 1;
+  const inset = (body - wick) / 2;
+  const s = pane.scale;
+  const y = (price: number) => Math.round((pane.top + s.priceToY(price)) * dpr);
+  // An outline as wide as the wick, kept inside the body (so hollow and filled bodies line up).
+  const line = Math.max(1, wick);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (const up of [true, false]) {
+    const color = up ? frame.palette.up : frame.palette.down;
+    const filled: number[] = [];
+    const hollow: number[] = [];
+    for (let i = from; i <= to; i++) {
+      const bar = bars[i]!;
+      const prev = bars[i - 1];
+      if ((prev ? bar.close >= prev.close : bar.close >= bar.open) !== up) continue;
+      (bar.close > bar.open && body > wick + 2 * line ? hollow : filled).push(i);
+    }
+    const solid = new Set(filled);
+    ctx.beginPath();
+    for (const i of [...filled, ...hollow]) {
+      const bar = bars[i]!;
+      const left = Math.round(timeScale.indexToX(i) * dpr) - half;
+      const yOpen = y(bar.open);
+      const yClose = y(bar.close);
+      const top = Math.min(yOpen, yClose);
+      const bottom = Math.max(yOpen, yClose);
+      const yHigh = y(bar.high);
+      const yLow = y(bar.low);
+      // The wick above and below the body (not through a hollow one).
+      if (body > wick) {
+        ctx.rect(left, yHigh, wick, Math.max(0, top - yHigh));
+        ctx.rect(left, bottom, wick, Math.max(0, yLow - bottom));
+      } else ctx.rect(left, yHigh, wick, Math.max(1, yLow - yHigh));
+      if (body <= wick) continue;
+      const h = Math.max(1, bottom - top);
+      if (solid.has(i) || h <= 2 * line) ctx.rect(left - inset, top, body, h);
+      else {
+        // A frame: four sides of the body.
+        ctx.rect(left - inset, top, body, line);
+        ctx.rect(left - inset, top + h - line, body, line);
+        ctx.rect(left - inset, top + line, line, h - 2 * line);
+        ctx.rect(left - inset + body - line, top + line, line, h - 2 * line);
+      }
+    }
+    ctx.fillStyle = color;
     ctx.fill();
   }
   ctx.restore();
@@ -336,6 +400,8 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     ctx.clip();
     for (const overlay of f.overlays) drawIndicatorBackgrounds(ctx, p, m, main, overlay);
     if (m.chartType === 'candles') drawCandles(ctx, layer.dpr, m, main);
+    else if (m.chartType === 'heikin') drawCandles(ctx, layer.dpr, m, main, heikinAshi(m.bars));
+    else if (m.chartType === 'hollow') drawHollowCandles(ctx, layer.dpr, m, main);
     else drawLineSeries(ctx, m, main, m.chartType === 'area');
     for (const overlay of f.overlays) drawIndicator(ctx, p, m, main, overlay);
     if (f.settings.highLowMarkers) drawHighLow(p, m, main);

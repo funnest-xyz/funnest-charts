@@ -8,6 +8,8 @@ import {
   AreaChartIcon,
   CameraIcon,
   CandlesIcon,
+  HeikinAshiIcon,
+  HollowCandlesIcon,
   ChevronDownIcon,
   CompareIcon,
   LineChartIcon,
@@ -22,6 +24,8 @@ import { LayoutGlyph } from './layout-menu.js';
 
 const TYPES: { type: ChartType; label: keyof Strings; icon: () => JSX.Element }[] = [
   { type: 'candles', label: 'candles', icon: CandlesIcon },
+  { type: 'hollow', label: 'hollowCandles', icon: HollowCandlesIcon },
+  { type: 'heikin', label: 'heikinAshi', icon: HeikinAshiIcon },
   { type: 'line', label: 'line', icon: LineChartIcon },
   { type: 'area', label: 'area', icon: AreaChartIcon },
 ];
@@ -149,7 +153,7 @@ export function ToolsMenu({ ctx }: { ctx: WidgetContext }) {
       {open && (
         <div class="fnc-menu fnc-tools-menu" role="menu" aria-label={t.tools} ref={menuRef}>
           <div class="fnc-tools-section">{t.chartType}</div>
-          <div class="fnc-seg fnc-tools-seg" role="radiogroup" aria-label={t.chartType}>
+          <div class="fnc-seg fnc-tools-seg" role="radiogroup" aria-label={t.chartType} data-count={TYPES.length}>
             {TYPES.map(({ type, label, icon: Icon }) => (
               <button
                 type="button"

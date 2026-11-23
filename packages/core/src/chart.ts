@@ -24,6 +24,7 @@ import { DEFAULT_CHART_SETTINGS, parseChartState, type ChartSettings, type Chart
 import { TradingSync, type TradingAdapter } from './objects/trading-sync.js';
 import type { ChartOverlay, ObjectHit, PaneCoords } from './objects/types.js';
 import { CanvasLayer } from './render/canvas-layer.js';
+import { heikinAshi } from './render/heikin-ashi.js';
 import { ColorResolver } from './render/color-resolver.js';
 import {
   drawMain,
@@ -2220,7 +2221,7 @@ export class Chart {
 
   /** Auto-scales the price pane to visible candles and overlay indicators; returns the candle extremes. */
   private autoScale(range: IndexRange, overlays: IndicatorOutput[]): Frame['highLow'] {
-    const bars = this.store.bars;
+    const bars = this.chartType === 'heikin' ? heikinAshi(this.store.bars) : this.store.bars;
     let high = -Infinity;
     let low = Infinity;
     let highIndex = -1;

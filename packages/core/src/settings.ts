@@ -126,7 +126,7 @@ export interface ChartState {
   volumeSlot?: number;
 }
 
-const CHART_TYPES: readonly ChartType[] = ['candles', 'line', 'area'];
+const CHART_TYPES: readonly ChartType[] = ['candles', 'hollow', 'heikin', 'line', 'area'];
 
 /** Validates untrusted JSON (e.g. from storage) into a ChartState; throws on an incompatible shape. */
 export function parseChartState(input: unknown): ChartState {

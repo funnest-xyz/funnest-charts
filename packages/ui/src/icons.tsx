@@ -143,6 +143,23 @@ export const CandlesIcon = () => (
   </Icon>
 );
 
+export const HollowCandlesIcon = () => (
+  <Icon>
+    <path d="M6.5 3.5v2.5M6.5 12v4.5M13.5 3.5v4.5M13.5 13v3.5" />
+    <rect x="4.5" y="6" width="4" height="6" rx="0.8" />
+    <rect x="11.5" y="8" width="4" height="5" rx="0.8" fill="currentColor" />
+  </Icon>
+);
+
+export const HeikinAshiIcon = () => (
+  <Icon>
+    <path d="M5 4v12M10 3v12M15 5v11" />
+    <rect x="3.3" y="7" width="3.4" height="5" rx="0.7" fill="currentColor" />
+    <rect x="8.3" y="5.5" width="3.4" height="6" rx="0.7" fill="currentColor" />
+    <rect x="13.3" y="7.5" width="3.4" height="5" rx="0.7" />
+  </Icon>
+);
+
 export const LineChartIcon = () => (
   <Icon>
     <path d="M3 14l4.5-5 3.5 3 6-7" />
