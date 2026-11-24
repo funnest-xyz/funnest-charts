@@ -262,6 +262,15 @@ export const GearIcon = () => (
   </Icon>
 );
 
+/** 레벨 설정: lines at different heights with a value tick. */
+export const LevelsIcon = () => (
+  <Icon>
+    <path d="M3 5h9M3 10h14M3 15h11" />
+    <circle cx="15" cy="5" r="1.4" />
+    <circle cx="17" cy="15" r="1.4" />
+  </Icon>
+);
+
 /** 그리기 템플릿: stacked cards. */
 export const TemplateIcon = () => (
   <Icon>

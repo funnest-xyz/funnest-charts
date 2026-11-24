@@ -37,9 +37,11 @@ export type {
   DrawingRenderContext,
   DrawingStyle,
   DrawingColorSlot,
+  DrawingLevel,
+  DrawingLevelSpec,
   DrawingType,
 } from './objects/drawings.js';
-export { BUILTIN_DRAWINGS, distToSegment, FIB_LEVELS } from './objects/drawings.js';
+export { BUILTIN_DRAWINGS, distToSegment, drawingLevels, FIB_LEVELS } from './objects/drawings.js';
 export type { ChartOverlay, ObjectRenderContext, PaneCoords } from './objects/types.js';
 export type { Painter } from './render/painter.js';
 export type { Palette } from './render/renderer.js';

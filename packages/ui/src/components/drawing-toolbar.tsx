@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import type { CursorMode, DrawingDefinition, DrawingStyle, DrawingType, Locale } from '@funnest/charts';
+import { drawingLevels, type CursorMode, type DrawingDefinition, type DrawingLevel, type DrawingStyle, type DrawingType, type Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
@@ -22,6 +22,7 @@ import {
   LockIcon,
   SmallCloseIcon,
   TemplateIcon,
+  LevelsIcon,
   PaletteIcon,
   FibonacciIcon,
   HorizontalLineIcon,
@@ -368,11 +369,17 @@ const TEMPLATES_MAX = 20;
 interface DrawingTemplate {
   name: string;
   color?: string;
-  style: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize' | 'colors'>;
+  style: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize' | 'colors' | 'levels'>;
 }
 const lookOf = (style: DrawingStyle): DrawingTemplate['style'] => {
-  const { width, dash, fontSize, colors } = style;
-  return { ...(width ? { width } : {}), ...(dash ? { dash } : {}), ...(fontSize ? { fontSize } : {}), ...(colors ? { colors: { ...colors } } : {}) };
+  const { width, dash, fontSize, colors, levels } = style;
+  return {
+    ...(width ? { width } : {}),
+    ...(dash ? { dash } : {}),
+    ...(fontSize ? { fontSize } : {}),
+    ...(colors ? { colors: { ...colors } } : {}),
+    ...(levels ? { levels: levels.map((l) => ({ ...l })) } : {}),
+  };
 };
 const readJson = <T,>(key: string, fallback: T): T => {
   try {
@@ -410,7 +417,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels'>(null);
   const [templates, setTemplates] = useState<Record<string, DrawingTemplate[]>>(() => readJson(TEMPLATES_KEY, {}));
   const [naming, setNaming] = useState<string | null>(null);
   const colorInput = useRef<HTMLInputElement>(null);
@@ -419,15 +426,28 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const def = ctx.chart.drawingDefinitions().find((x) => x.type === d.type);
   const style = d.style ?? {};
   const setStyle = (patch: Partial<DrawingStyle>) => ctx.chart.updateDrawing(d.id, { style: { ...style, ...patch } });
+  const setStyleRaw = (next: DrawingStyle) => ctx.chart.updateDrawing(d.id, { style: next });
   const current = d.color ?? SWATCHES[0]!;
   // A main color recolors every part too (their own colors are dropped).
   const pickColor = (color: string) => {
-    if (style.colors) {
+    if (style.colors || style.levels?.some((l) => l.color)) {
       const { colors: _drop, ...rest } = style;
-      ctx.chart.updateDrawing(d.id, { color, style: rest });
+      const levels = rest.levels?.map(({ color: _c, ...l }) => l);
+      ctx.chart.updateDrawing(d.id, { color, style: { ...rest, ...(levels ? { levels } : {}) } });
     } else ctx.chart.updateDrawing(d.id, { color });
   };
-  const slots = def?.colors ?? [];
+  // Tools with editable levels color them in 레벨 설정 instead.
+  const slots = def?.levels ? [] : (def?.colors ?? []);
+  // 레벨 설정: every level as it stands (colors resolved), edited as a whole list.
+  const levelRows: DrawingLevel[] = def?.levels ? drawingLevels(def, d) : [];
+  const setLevels = (next: DrawingLevel[]) => {
+    const { colors: _drop, ...rest } = style;
+    setStyleRaw({ ...rest, levels: next });
+  };
+  const resetLevels = () => {
+    const { colors: _c, levels: _l, ...rest } = style;
+    setStyleRaw(rest);
+  };
   const slotColor = (key: string, fallback: string) => style.colors?.[key] ?? d.color ?? fallback;
   const addRecent = (color: string) => {
     const next = [color, ...recent.filter((c) => c !== color)].slice(0, 3);
@@ -538,6 +558,68 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
                 }}
               >
                 {t.resetColors}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {def?.levels && (
+        <div class="fnc-selbar-menu">
+          <button class="fnc-btn" data-tip={t.levels} aria-label={t.levels} aria-expanded={menu === 'levels'} onClick={() => setMenu(menu === 'levels' ? null : 'levels')}>
+            <LevelsIcon />
+          </button>
+          {menu === 'levels' && (
+            <div class="fnc-menu fnc-selbar-pop fnc-levels-menu" role="menu" onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+              <div class="fnc-levels-list fnc-scroll">
+                {levelRows.map((l, i) => (
+                  <div class="fnc-level-row" key={`${i}:${l.value}`}>
+                    <input
+                      type="checkbox"
+                      checked={l.on !== false}
+                      aria-label={`${t.levelShown} ${l.value}`}
+                      onChange={(e) => setLevels(levelRows.map((x, j) => (j === i ? { ...x, on: (e.target as HTMLInputElement).checked } : x)))}
+                    />
+                    <input
+                      class="fnc-input fnc-level-value"
+                      type="number"
+                      step="any"
+                      defaultValue={String(l.value)}
+                      aria-label={t.levelValue}
+                      onChange={(e) => {
+                        const v = Number((e.target as HTMLInputElement).value);
+                        if (Number.isFinite(v) && Math.abs(v) <= 1000) setLevels(levelRows.map((x, j) => (j === i ? { ...x, value: v } : x)));
+                      }}
+                    />
+                    <label class="fnc-swatch fnc-level-color" style={{ background: l.color }} data-tip={t.levelColor}>
+                      <input
+                        type="color"
+                        aria-label={`${t.levelColor} ${l.value}`}
+                        value={/^#[0-9a-f]{6}$/i.test(l.color ?? '') ? l.color : '#3182f6'}
+                        onInput={(e) => setLevels(levelRows.map((x, j) => (j === i ? { ...x, color: (e.target as HTMLInputElement).value } : x)))}
+                      />
+                    </label>
+                    <button class="fnc-ind-btn" data-tip={t.removeLevel} aria-label={`${l.value} ${t.removeLevel}`} onClick={() => setLevels(levelRows.filter((_, j) => j !== i))}>
+                      <SmallCloseIcon />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div class="fnc-menu-sep" />
+              <button
+                class="fnc-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  // The next one up: past the largest by the last gap (or 1).
+                  const values = levelRows.map((x) => x.value);
+                  const top = values.length ? Math.max(...values) : 0;
+                  const gap = values.length > 1 ? Math.abs(values[values.length - 1]! - values[values.length - 2]!) || 1 : 1;
+                  setLevels([...levelRows, { value: Number((top + gap).toFixed(4)), on: true, color: current }]);
+                }}
+              >
+                + {t.addLevel}
+              </button>
+              <button class="fnc-menu-item" role="menuitem" onClick={resetLevels}>
+                {t.resetLevels}
               </button>
             </div>
           )}

@@ -31,6 +31,42 @@ export interface DrawingStyle {
   hidden?: boolean;
   /** Colors of the tool's parts (`DrawingDefinition.colors` keys), where set apart from the rest. */
   colors?: Record<string, string>;
+  /**
+   * The tool's levels as the user set them (피보나치 레벨: values, which are shown, their colors),
+   * for tools with `DrawingDefinition.levels`. Absent: the tool's own.
+   */
+  levels?: DrawingLevel[];
+}
+
+/** One level of a level tool (0.618 of a retracement…). */
+export interface DrawingLevel {
+  value: number;
+  /** Shown (default true). */
+  on?: boolean;
+  /** Its own color; absent: the drawing's color, else the tool's default for that place. */
+  color?: string;
+}
+
+/** A tool's levels: the defaults, their colors, and the key each one's color had under `style.colors`. */
+export interface DrawingLevelSpec {
+  values: number[];
+  /** Default colors, by place (repeating). */
+  colors?: string[];
+  /** The `style.colors` key of default level i (colors set before levels could be edited). Default: `l${i}`. */
+  key?(index: number): string;
+}
+
+/**
+ * Every level of a drawing as it stands (off ones too), each with its color resolved: the
+ * drawing's own list, else the tool's defaults with any part colors set on them.
+ */
+export function drawingLevels(def: Pick<DrawingDefinition, 'levels'>, drawing: Pick<Drawing, 'color' | 'style'>, fallback = '#8B95A1'): Required<DrawingLevel>[] {
+  const spec = def.levels;
+  if (!spec) return [];
+  const own = drawing.style?.levels;
+  const base = (i: number) => spec.colors?.length ? spec.colors[i % spec.colors.length]! : fallback;
+  if (own) return own.map((l, i) => ({ value: l.value, on: l.on !== false, color: l.color ?? drawing.color ?? base(i) }));
+  return spec.values.map((value, i) => ({ value, on: true, color: drawing.style?.colors?.[spec.key?.(i) ?? `l${i}`] ?? drawing.color ?? base(i) }));
 }
 
 /**
@@ -72,6 +108,8 @@ export interface DrawingRenderContext extends DrawingGeometry {
   colorOf(key: string): string;
   /** The main line width: the drawing's style, else the tool's default. */
   width(fallback: number): number;
+  /** The levels to draw (shown ones, in order), for tools with `DrawingDefinition.levels`. */
+  levels(): { value: number; color: string }[];
   /** The main line dash pattern for canvas: the drawing's style, else the tool's default. */
   dash(fallback?: readonly number[]): number[];
   /** The chart's bars (oldest first), for tools that measure them (VWAP, volume profile…). */
@@ -126,8 +164,13 @@ export interface DrawingDefinition {
   text?: boolean;
   /** Parts with their own colors: the widget lets each be recolored (read them with `rc.colorOf`). */
   colors?: DrawingColorSlot[];
-  /** Distance in px from (x, y) to the shape, for hit testing. */
-  distance(geometry: DrawingGeometry, x: number, y: number): number;
+  /**
+   * Levels the user can edit (values, on / off, colors, more of them): the widget's 레벨 설정.
+   * Read them with `rc.levels()` (and `drawingLevels` when hit testing).
+   */
+  levels?: DrawingLevelSpec;
+  /** Distance in px from (x, y) to the shape, for hit testing (`drawing`: the one tested, for its style). */
+  distance(geometry: DrawingGeometry, x: number, y: number, drawing?: Drawing): number;
   render(drawing: Drawing, rc: DrawingRenderContext): void;
 }
 
@@ -180,41 +223,50 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     group: 'fib',
     section: { ko: '피보나치', en: 'Fibonacci' },
     clicks: 2,
-    colors: FIB_LEVELS.map((level, i) => ({ key: String(level), name: { ko: String(level), en: String(level) }, color: FIB_COLORS[i]! })),
-    distance: (g, x, y) => {
+    levels: { values: FIB_LEVELS, colors: FIB_COLORS, key: (i) => String(FIB_LEVELS[i]) },
+    distance: (g, x, y, d) => {
       // Nearest level line within its horizontal span, or the diagonal.
       const [x1, y1] = p0(g);
       const [x2, y2] = p1(g);
       let best = distToSegment(x, y, x1, y1, x2, y2);
       if (x >= Math.min(x1, x2) && x <= Math.max(x1, x2)) {
-        for (const level of FIB_LEVELS) best = Math.min(best, Math.abs(y - (y2 + (y1 - y2) * level)));
+        const levels = d ? drawingLevels(BUILTIN_DRAWINGS.find((t) => t.type === 'fibonacci')!, d).filter((l) => l.on) : FIB_LEVELS.map((value) => ({ value }));
+        for (const { value } of levels) best = Math.min(best, Math.abs(y - (y2 + (y1 - y2) * value)));
       }
       return best;
     },
-    render: (d, { painter: p, coords: c, palette, ...g }) => {
+    render: (d, rc) => {
+      const { painter: p, coords: c, palette } = rc;
       // Level 0 at the second point, 1 at the first.
-      const [x1, y1] = p0(g);
-      const [x2, y2] = p1(g);
+      const [x1, y1] = p0(rc);
+      const [x2, y2] = p1(rc);
       const left = Math.min(x1, x2);
       const right = Math.max(x1, x2, left + 1);
       const a = d.points[0]!.price;
       const b = d.points[1]!.price;
       const { ctx } = p;
-      FIB_LEVELS.forEach((level, i) => {
-        const price = b + (a - b) * level;
-        const y = c.priceToY(price);
-        const levelColor = d.style?.colors?.[String(level)] ?? d.color ?? FIB_COLORS[i]!;
-        if (i > 0) {
-          const prevY = c.priceToY(b + (a - b) * FIB_LEVELS[i - 1]!);
-          ctx.save();
-          ctx.globalAlpha = 0.07;
-          ctx.fillStyle = levelColor;
-          ctx.fillRect(left, Math.min(y, prevY), right - left, Math.abs(y - prevY));
-          ctx.restore();
-        }
-        p.hLine(y, left, right, levelColor);
-        p.text(`${level} (${c.formatPrice(price)})`, left + 4, y - 7, levelColor, 'left', 'middle');
+      const levels = rc.levels();
+      const width = rc.width(1);
+      const dash = rc.dash();
+      // Shaded between neighbouring levels (by value, whatever order they were set in).
+      const sorted = [...levels].sort((u, v) => u.value - v.value);
+      sorted.forEach((lv, i) => {
+        if (i === 0) return;
+        const y = c.priceToY(b + (a - b) * lv.value);
+        const prevY = c.priceToY(b + (a - b) * sorted[i - 1]!.value);
+        ctx.save();
+        ctx.globalAlpha = 0.07;
+        ctx.fillStyle = lv.color;
+        ctx.fillRect(left, Math.min(y, prevY), right - left, Math.abs(y - prevY));
+        ctx.restore();
       });
+      for (const lv of levels) {
+        const price = b + (a - b) * lv.value;
+        const y = c.priceToY(price);
+        if (width === 1 && !dash.length) p.hLine(y, left, right, lv.color);
+        else p.line(left, y, right, y, lv.color, width, dash);
+        p.text(`${Number(lv.value.toFixed(4))} (${c.formatPrice(price)})`, left + 4, y - 7, lv.color, 'left', 'middle');
+      }
       p.line(x1, y1, x2, y2, palette.textSecondary, 1, [4, 4]);
     },
   },
@@ -471,7 +523,7 @@ export class DrawingManager {
       const d = this.drawings[i]!;
       if (d.style?.hidden) continue;
       const def = this.registry.get(d.type);
-      if (def && def.distance(this.geometry(c, d), x, y) <= tolerance) return { kind: 'drawing', id: d.id, part: 'body' };
+      if (def && def.distance(this.geometry(c, d), x, y, d) <= tolerance) return { kind: 'drawing', id: d.id, part: 'body' };
     }
     return null;
   }
@@ -527,6 +579,7 @@ export class DrawingManager {
           colorOf: (key) => style.colors?.[key] ?? d.color ?? def.colors?.find((c) => c.key === key)?.color ?? color,
           width: (fallback) => Math.min(8, Math.max(0.5, style.width ?? fallback)),
           dash: (fallback = []) => (style.dash ? DASHES[style.dash] : [...fallback]),
+          levels: () => drawingLevels(def, d, color).filter((l) => l.on).map(({ value, color: c }) => ({ value, color: c })),
           bars,
           barIndexAt,
           badge: (y, text, bg, fg = '#FFFFFF') => badges.push({ y, text, bg, fg }),

@@ -1013,6 +1013,13 @@ const CSS = /* css */ `
 .fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-template-menu { min-width: 220px; }
+.fnc-levels-menu { min-width: 230px; }
+.fnc-levels-list { max-height: 300px; overflow-y: auto; padding: 2px 0; }
+.fnc-level-row { display: flex; align-items: center; gap: 8px; padding: 3px 8px; }
+.fnc-level-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--fnc-accent, #3182f6); }
+.fnc-level-value { flex: none; width: 84px; height: 28px; padding: 0 8px; font-size: 13px; }
+.fnc-level-color { position: relative; flex: none; overflow: hidden; }
+.fnc-level-color input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .fnc-template-row { display: flex; align-items: center; }
 .fnc-template-row .fnc-menu-item { flex: 1; min-width: 0; gap: 8px; }
 .fnc-template-row .fnc-menu-item span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
