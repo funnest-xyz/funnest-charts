@@ -183,6 +183,8 @@ export interface ChartContextMenu {
   price: number | null;
   /** Time of the bar under the pointer, or null past the data. */
   time: number | null;
+  /** The drawing under the pointer (a line to set an alert on, …), or null. */
+  drawing: Drawing | null;
 }
 
 export interface ChartPaneLayout {
@@ -2572,12 +2574,14 @@ export class Chart {
         const pane = this.paneAt(f, y);
         const index = this.timeScale.xToIndex(x);
         const bar = this.store.at(index);
+        const hit = pane.kind === 'main' && y <= this.mainScale.height ? this.drawings.hitTest(this.paneCoords(), x, y, HIT_TOLERANCE.mouse) : null;
         this.emitter.emit('contextMenu', {
           x,
           y,
           pane: pane.id,
           price: pane.kind === 'main' ? roundToTick(this.mainScale.yToPrice(y), this.tickSize) : null,
           time: bar?.time ?? null,
+          drawing: hit?.kind === 'drawing' ? (this.getDrawings().find((d) => d.id === hit.id) ?? null) : null,
         });
         return true;
       },
