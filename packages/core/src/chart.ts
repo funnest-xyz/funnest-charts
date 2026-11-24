@@ -1,5 +1,6 @@
 import { derivedBase, withDerivedResolutions } from './datafeed/derived.js';
 import { Emitter } from './events.js';
+import { timeZoneOffset } from './realtime.js';
 import { Interaction, type HitRegion, type InteractionHost } from './interaction.js';
 import { BarStore } from './model/bar-store.js';
 import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/price-scale.js';
@@ -656,8 +657,12 @@ export class Chart {
       this.unsubscribeQuotes =
         feed.subscribeQuotes?.(info, (quote) => {
           if (quoteToken !== this.quoteToken) return;
+          const before = this.latestQuote?.extended;
           this.latestQuote = { ...this.latestQuote, ...quote };
           this.emitter.emit('quoteChange', this.latestQuote);
+          // The pre-market / after-hours line is drawn from the quote: repaint when it moves.
+          const after = this.latestQuote.extended;
+          if (before?.price !== after?.price || before?.session !== after?.session) this.invalidate();
         }) ?? null;
     }
     // Now the main symbol: no longer compared with itself.
@@ -2234,7 +2239,41 @@ export class Chart {
       font,
       radius: this.theme.radius,
       countdown: this.countdownLabel,
+      extendedPrice: this.extendedPriceFrame(),
+      sessionShade: this.sessionShade(range, plotWidth),
     };
+  }
+
+  /** The quote's pre-market / after-hours price, when the setting shows it. */
+  private extendedPriceFrame(): Frame['extendedPrice'] {
+    const ext = this.latestQuote?.extended;
+    if (!ext || !this.settingsValue.extendedPriceLine || !(ext.price > 0)) return null;
+    const en = this.locale === 'en';
+    return { price: ext.price, session: ext.session, label: ext.session === 'pre' ? (en ? 'Pre-market' : '프리마켓') : en ? 'After-hours' : '애프터마켓' };
+  }
+
+  /** Intraday bars outside the regular session, when the symbol's bars include extended hours: x ranges to shade. */
+  private sessionShade(range: IndexRange, plotWidth: number): [number, number][] {
+    const info = this.symbol;
+    if (!info?.extendedSession || !this.resolution || !isIntradayResolution(this.resolution)) return [];
+    const m = /^(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(info.session.trim());
+    if (!m) return [];
+    const open = Number(m[1]) * 60 + Number(m[2]);
+    const close = Number(m[3]) * 60 + Number(m[4]);
+    const half = this.timeScale.barSpacing / 2;
+    const out: [number, number][] = [];
+    for (let i = Math.max(0, range.from); i <= Math.min(this.store.length - 1, range.to); i++) {
+      const t = this.store.at(i)!.time;
+      const local = (((t + timeZoneOffset(t, info.timezone)) % DAY_MS) + DAY_MS) % DAY_MS / 60_000;
+      if (local >= open && local < close) continue;
+      const x = this.timeScale.indexToX(i);
+      const x0 = Math.max(0, x - half);
+      const x1 = Math.min(plotWidth, x + half);
+      const prev = out[out.length - 1];
+      if (prev && x0 - prev[1] < 1) prev[1] = x1;
+      else out.push([x0, x1]);
+    }
+    return out;
   }
 
   /** Price-pane tick values for the current axis mode. */

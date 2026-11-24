@@ -22,6 +22,11 @@ export interface SymbolInfo {
   timezone: string;
   /** Trading session, e.g. '0900-1530' or '24x7'. */
   session: string;
+  /**
+   * The bars include trading outside `session` (US pre-market and after-hours: '0400-2000'):
+   * intraday bars outside the regular session get a shaded background.
+   */
+  extendedSession?: string;
   /** Number of decimals to display. */
   pricePrecision: number;
   tickSize: TickSize;
@@ -71,6 +76,11 @@ export interface Quote {
   fundingRate?: number;
   /** Futures: next funding time, UTC ms. */
   nextFundingTime?: number;
+  /**
+   * Stocks outside the regular session: the pre-market or after-hours price (change against the
+   * regular close). Shown as its own line and axis badge (ChartSettings.extendedPriceLine).
+   */
+  extended?: { session: 'pre' | 'post'; price: number; change?: number; changePercent?: number };
 }
 
 export interface ConnectionState {

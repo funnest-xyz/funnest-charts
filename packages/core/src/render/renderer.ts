@@ -73,6 +73,10 @@ export interface Frame {
   radius: number;
   /** Time left in the current bar ("04:59"), shown under the last-price badge. */
   countdown: string | null;
+  /** Pre-market / after-hours price (its own dotted line and badge), with the word for its session. */
+  extendedPrice: { price: number; session: 'pre' | 'post'; label: string } | null;
+  /** x ranges (plot pixels) of intraday bars outside the regular session, shaded. */
+  sessionShade: [number, number][];
 }
 
 export interface CrosshairInfo {
@@ -134,6 +138,22 @@ const VOLUME_ALPHA = 0.35;
 const BADGE_HEIGHT = 20;
 const DASH: readonly [number, number] = [4, 4];
 const DOT: readonly [number, number] = [2, 3];
+/** Pre-market and after-hours lines: apart from the up/down colors (red/blue here, green/red elsewhere). */
+/** A dark background (#rgb / #rrggbb / rgb()), for a shade that shows on it. */
+function isDarkColor(color: string): boolean {
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  let rgb: number[] | null = null;
+  if (hex) {
+    const h = hex[1]!.length === 3 ? hex[1]!.split('').map((x) => x + x).join('') : hex[1]!;
+    rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  } else {
+    const m = /rgba?\(([^)]+)\)/.exec(color);
+    if (m) rgb = m[1]!.split(',').slice(0, 3).map((x) => Number(x));
+  }
+  return !!rgb && 0.299 * rgb[0]! + 0.587 * rgb[1]! + 0.114 * rgb[2]! < 128;
+}
+const EXT_PRE = '#F08C00';
+const EXT_POST = '#8B5CF6';
 
 /** Candle geometry in device pixels: wick width and an odd/even-matched body so the wick stays centered. */
 function barGeometry(barSpacing: number, dpr: number): { wick: number; body: number } {
@@ -435,6 +455,14 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   ctx.fillRect(0, 0, f.width, f.height);
   ctx.font = f.font;
 
+  // Pre-market / after-hours bars: a faint band behind them, through every pane.
+  if (f.sessionShade.length) {
+    ctx.save();
+    ctx.fillStyle = isDarkColor(pal.background) ? 'rgba(255, 255, 255, 0.045)' : 'rgba(0, 0, 0, 0.05)';
+    for (const [x0, x1] of f.sessionShade) ctx.fillRect(x0, 0, x1 - x0, f.panesHeight);
+    ctx.restore();
+  }
+
   // Grid
   const gridH = f.settings.gridHorizontal;
   for (const price of gridH ? f.priceTicks : []) {
@@ -542,6 +570,16 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   const lastY = last ? main.scale.priceToY(last.close) : NaN;
   if (last && lastY >= 0 && lastY <= main.height) p.hLine(lastY, 0, f.plotWidth, lastColor, DOT);
 
+  // Pre-market (orange) / after-hours (purple) price: a dotted line, its word at the right end.
+  const ext = f.extendedPrice;
+  const extColor = ext?.session === 'pre' ? EXT_PRE : EXT_POST;
+  const extY = ext ? main.scale.priceToY(ext.price) : NaN;
+  const extShown = !!ext && extY >= 0 && extY <= main.height;
+  if (extShown) {
+    p.hLine(extY, 0, f.plotWidth, extColor, DOT);
+    p.text(ext!.label, f.plotWidth - 6, extY - 9, extColor, 'right');
+  }
+
   // Frame lines
   for (const pane of f.panes) if (pane.kind !== 'main') p.hLine(pane.top, 0, f.plotWidth, pal.border);
   p.vLine(f.plotWidth, 0, f.panesHeight, pal.border);
@@ -571,6 +609,13 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     const y = Math.min(main.height - BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, badge.y));
     p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, badge.bg);
     p.text(badge.text, labelX, y, badge.fg);
+  }
+
+  // Pre-market / after-hours badge (under the last price's if they meet)
+  if (extShown) {
+    const y = Math.min(main.height - BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, extY));
+    p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, extColor);
+    p.text(main.format(ext!.price), labelX, y, '#FFFFFF');
   }
 
   // Last price badge (on top: the most important number on the axis)
