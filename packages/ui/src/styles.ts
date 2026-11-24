@@ -645,6 +645,20 @@ const CSS = /* css */ `
 @media (hover: none) {
   .fnc-nav { display: none; }
 }
+/* The + on the price axis at the crosshair price, and its menu (mouse only). */
+.fnc-axis-plus { position: absolute; z-index: 25; }
+.fnc-axis-plus-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: var(--fnc-bg); color: var(--fnc-text-2); box-shadow: 0 0 0 1px var(--fnc-border); }
+.fnc-axis-plus-btn:hover, .fnc-axis-plus-btn[aria-expanded="true"] { color: var(--fnc-text); background: var(--fnc-surface); }
+.fnc-axis-plus-menu { position: absolute; top: 26px; left: auto; right: 0; min-width: 200px; white-space: nowrap; }
+@media (hover: none) {
+  .fnc-axis-plus { display: none; }
+}
+.fnc-selbar-action.is-text { width: auto; padding: 0 8px; font-size: 12px; font-weight: 600; }
+.fnc-selbar-action.is-on { color: var(--fnc-accent); }
+.fnc-selbar-action.is-on svg path:first-child { fill: currentColor; }
+.fnc-axis-plus-menu .fnc-menu-item, .fnc-ctx-menu .fnc-menu-item:has(svg) { color: var(--fnc-text); font-weight: 600; }
+.fnc-axis-plus-menu .fnc-menu-item svg, .fnc-ctx-menu .fnc-menu-item svg { flex: none; color: var(--fnc-text-2); }
+
 /* 기간 · 날짜로 이동: a row under the chart. */
 .fnc-rangebar-host { flex: none; border-top: 1px solid var(--fnc-border); }
 .fnc-rangebar-host:empty { display: none; }

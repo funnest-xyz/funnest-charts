@@ -137,6 +137,8 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
     attribution = true,
     colorScheme = 'system',
     contextMenuItems,
+    priceAxisActions,
+    drawingActions,
     toolsMenuItems,
     legendValues,
     onIndicatorsClick,
@@ -221,6 +223,8 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
       // One badge for the whole widget, not one per pane.
       attribution: attribution && index === 0,
       contextMenuItems,
+      priceAxisActions,
+      drawingActions,
       toolsMenuItems,
       legendValues,
       onIndicatorsClick,

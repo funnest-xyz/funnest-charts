@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
 import { stringsOf } from '../i18n.js';
 import {
+  BellIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -416,6 +417,8 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   };
   const locked = !!style.locked;
   const dash = style.dash ?? 'solid';
+  // The app's own buttons for this drawing (알림 on a line…).
+  const actions = ctx.drawingActions?.(d, ctx.chart) ?? [];
 
   const startMove = (e: PointerEvent) => {
     e.preventDefault();
@@ -568,6 +571,22 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
           )}
         </div>
       )}
+      {actions.length > 0 && <div class="fnc-sep" />}
+      {actions.map((a) => (
+        <button
+          class={`fnc-btn fnc-selbar-action${a.icon ? '' : ' is-text'}${a.pressed ? ' is-on' : ''}`}
+          data-tip={a.label}
+          aria-label={a.label}
+          aria-pressed={a.pressed}
+          onClick={() => {
+            a.onSelect();
+            // Done with it: the bar closes (and shows the new state when the drawing is picked again).
+            ctx.chart.selectDrawing(null);
+          }}
+        >
+          {a.icon === 'alert' ? <BellIcon /> : a.label}
+        </button>
+      ))}
       <div class="fnc-sep" />
       <button class="fnc-btn" data-tip={locked ? t.unlock : t.lock} aria-label={locked ? t.unlock : t.lock} aria-pressed={locked} onClick={() => setStyle({ locked: !locked })}>
         <LockIcon open={!locked} />

@@ -28,6 +28,7 @@ import {
 import { useStore } from '../store.js';
 import { ContextMenu } from './context-menu.js';
 import { SelectionBar } from './drawing-toolbar.js';
+import { PriceAxisPlus } from './price-axis-plus.js';
 import { SymbolAvatar } from './symbol-avatar.js';
 
 const ZOOM_STEP = 1.25;
@@ -580,6 +581,7 @@ export function Overlay({ ctx }: { ctx: WidgetContext }) {
       <Attribution ctx={ctx} />
       <Legend ctx={ctx} />
       <NavControls ctx={ctx} />
+      <PriceAxisPlus ctx={ctx} />
       <ReplayBar ctx={ctx} />
       <SelectionBar ctx={ctx} />
       <TextEditor ctx={ctx} />

@@ -3,6 +3,7 @@ import { formatPrice, type ChartContextMenu } from '@funnest/charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ContextMenuItem, WidgetContext } from '../context.js';
 import { stringsOf } from '../i18n.js';
+import { BellIcon } from '../icons.js';
 import { useStore } from '../store.js';
 
 const MARGIN = 8;
@@ -89,6 +90,7 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
               item.onSelect();
             }}
           >
+            {item.icon === 'alert' && <BellIcon />}
             <span>{item.label}</span>
             {item.shortcut && <kbd>{item.shortcut}</kbd>}
           </button>

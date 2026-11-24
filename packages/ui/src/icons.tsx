@@ -57,6 +57,13 @@ export const MinusIcon = () => (
   </Icon>
 );
 
+export const BellIcon = () => (
+  <Icon size={18}>
+    <path d="M5.5 13.5V9a4.5 4.5 0 0 1 9 0v4.5l1.2 1.5H4.3z" />
+    <path d="M8.5 17a1.6 1.6 0 0 0 3 0" />
+  </Icon>
+);
+
 export const PlusIcon = () => (
   <Icon size={18}>
     <path d="M5 10h10M10 5v10" />

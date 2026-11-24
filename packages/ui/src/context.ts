@@ -68,10 +68,28 @@ export interface UiState {
 }
 
 /** A row in the chart's right-click menu, or a divider. */
-export type ContextMenuItem = { label: string; shortcut?: string; disabled?: boolean; onSelect(): void } | 'separator';
+export type ContextMenuItem = { label: string; shortcut?: string; disabled?: boolean; /** 'alert': a bell before the label. */ icon?: 'alert'; onSelect(): void } | 'separator';
 
 /** Extra right-click items for a click on `chart` (e.g. "create an alert at this price"). */
 export type ContextMenuItems = (target: ChartContextMenu & { chart: Chart }) => ContextMenuItem[];
+
+/**
+ * Rows of the + menu on the price axis, at the crosshair's price (mouse only) — e.g. "이 가격에
+ * 알림 만들기". A horizontal line at that price is always offered after them.
+ */
+export type PriceAxisActions = (target: { price: number; chart: Chart }) => ContextMenuItem[];
+
+/** A button an app adds to the bar of a selected drawing. `icon` 'alert' shows a bell (the label is its tooltip); without one, the label. */
+export interface DrawingAction {
+  label: string;
+  icon?: 'alert';
+  /** On (e.g. the drawing already has an alert): drawn filled, and aria-pressed. */
+  pressed?: boolean;
+  onSelect(): void;
+}
+
+/** The app's buttons for the selected drawing (e.g. 알림 on a trend line), or none. */
+export type DrawingActions = (drawing: Drawing, chart: Chart) => DrawingAction[];
 
 /**
  * A row an app adds to the 도구 (tools) menu, above 차트 설정 — e.g. its own display settings.
@@ -137,6 +155,8 @@ export interface WidgetContext {
   /** Show the Funnest logo badge on the chart. */
   attribution: boolean;
   contextMenuItems: ContextMenuItems | undefined;
+  priceAxisActions: PriceAxisActions | undefined;
+  drawingActions: DrawingActions | undefined;
   toolsMenuItems: ToolsMenuItems | undefined;
   legendValues: LegendValues;
   /** The app's own indicator browser for the 지표 button (instead of the built-in picker). */

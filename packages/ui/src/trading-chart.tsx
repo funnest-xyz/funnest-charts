@@ -16,7 +16,7 @@ import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar.js';
 import { RangeBar } from './components/range-bar.js';
 import { Toolbar } from './components/toolbar.js';
-import type { ContextMenuItems, IntervalGroup, LegendValues, SearchCategory, SearchExchange, ToolsMenuItems } from './context.js';
+import type { ContextMenuItems, DrawingActions, IntervalGroup, LegendValues, PriceAxisActions, SearchCategory, SearchExchange, ToolsMenuItems } from './context.js';
 import type { Strings } from './i18n.js';
 import { createPane } from './pane.js';
 import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell.js';
@@ -93,6 +93,10 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
    * e.g. "이 가격에 알림 만들기". Called on every right-click with the price and time under the pointer.
    */
   contextMenuItems?: ContextMenuItems;
+  /** Rows of the price axis's + menu at the crosshair price (e.g. "이 가격에 알림 만들기"); without it there's no +. */
+  priceAxisActions?: PriceAxisActions;
+  /** Buttons on the bar of a selected drawing (e.g. 알림 on a trend line) — how phones reach drawing actions. */
+  drawingActions?: DrawingActions;
   /**
    * Extra rows for the 도구 (tools) menu, above 차트 설정 — e.g. the app's own display settings.
    * Called each time the menu opens, with the pane's chart.
@@ -170,6 +174,8 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     attribution = true,
     colorScheme = 'system',
     contextMenuItems,
+    priceAxisActions,
+    drawingActions,
     toolsMenuItems,
     legendValues,
     onIndicatorsClick,
@@ -204,6 +210,8 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     drawingToolbar,
     attribution,
     contextMenuItems,
+    priceAxisActions,
+    drawingActions,
     toolsMenuItems,
     legendValues,
     onIndicatorsClick,

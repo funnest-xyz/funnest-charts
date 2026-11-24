@@ -2,7 +2,7 @@
 import { browserLocale, createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay.js';
-import type { ContextMenuItems, IntervalGroup, LegendValues, MultiControls, SearchCategory, SearchExchange, ToolsMenuItems, UiState, WidgetContext } from './context.js';
+import type { ContextMenuItems, DrawingActions, IntervalGroup, LegendValues, MultiControls, PriceAxisActions, SearchCategory, SearchExchange, ToolsMenuItems, UiState, WidgetContext } from './context.js';
 import { div, type Shell } from './shell.js';
 import type { Strings } from './i18n.js';
 import { Store } from './store.js';
@@ -23,6 +23,8 @@ export interface PaneConfig {
   /** Ctrl/⌘+K opens this widget's symbol search (its footer shows the hint only then). */
   searchHotkey: boolean;
   contextMenuItems?: ContextMenuItems | undefined;
+  priceAxisActions?: PriceAxisActions | undefined;
+  drawingActions?: DrawingActions | undefined;
   toolsMenuItems?: ToolsMenuItems | undefined;
   legendValues?: LegendValues | undefined;
   onIndicatorsClick?: ((chart: Chart) => void) | undefined;
@@ -159,6 +161,8 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     drawingToolbar: config.drawingToolbar,
     attribution: config.attribution,
     contextMenuItems: config.contextMenuItems,
+    priceAxisActions: config.priceAxisActions,
+    drawingActions: config.drawingActions,
     toolsMenuItems: config.toolsMenuItems,
     legendValues: config.legendValues ?? 'always',
     onIndicatorsClick: config.onIndicatorsClick,
