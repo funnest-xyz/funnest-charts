@@ -651,7 +651,8 @@ const CSS = /* css */ `
 /* 날짜로 이동: a date typed or picked on a month calendar. */
 .fnc-goto-dialog { width: min(320px, calc(100% - 32px)); }
 .fnc-goto-body { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 16px; }
-.fnc-goto-input { height: 38px; font-size: 15px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+/* flex: none — the base .fnc-input grows (flex: 1), which in this column squeezed it to its text height. */
+.fnc-goto-dialog .fnc-goto-input { flex: none; height: 42px; padding: 0 12px; font-size: 16px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .fnc-goto-input[aria-invalid="true"] { box-shadow: 0 0 0 1px var(--fnc-down, #f04452); }
 .fnc-cal-head { display: flex; align-items: center; gap: 2px; }
 .fnc-cal-head b { flex: 1; text-align: center; font-size: 14px; }
