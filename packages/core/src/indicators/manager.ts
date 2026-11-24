@@ -10,6 +10,12 @@ export interface IndicatorConfig {
   visible?: boolean;
   /** Per-series color/width/visibility, keyed by series key (MA rows: 'l0', 'l1', …). */
   styles?: Record<string, SeriesStyle>;
+  /**
+   * 지표 위에 지표: computed from another indicator's series (`key`) instead of the candles, and
+   * drawn where that one is (an MA over RSI sits in the RSI pane). Only types whose definition
+   * says `onIndicator`; never on another such child. Removing the parent removes it too.
+   */
+  on?: { id: string; key: string };
 }
 
 export type IndicatorPatch = Partial<Pick<IndicatorConfig, 'params' | 'visible' | 'styles'>>;
@@ -44,7 +50,14 @@ export class IndicatorManager {
       params.lines = maLines({ periods: c.params.periods });
     }
     delete params.periods;
-    return { id: c.id || newId(c.type), type: c.type, params, visible: c.visible ?? true, styles: c.styles ?? {} };
+    return {
+      id: c.id || newId(c.type),
+      type: c.type,
+      params,
+      visible: c.visible ?? true,
+      styles: c.styles ?? {},
+      ...(c.on ? { on: { id: String(c.on.id), key: String(c.on.key) } } : {}),
+    };
   }
 
   add(type: IndicatorType, params?: IndicatorParams): string {
@@ -53,20 +66,68 @@ export class IndicatorManager {
     return config.id;
   }
 
+  /**
+   * Adds an indicator over another one's series (see IndicatorConfig.on). Returns its id, or null
+   * when it can't go there (a type that doesn't read a single series, no such indicator or
+   * series, or that one is itself on an indicator).
+   */
+  addOn(type: IndicatorType, params: IndicatorParams | undefined, on: { id: string; key?: string }): string | null {
+    const host = this.list.find((c) => c.id === on.id);
+    if (!this.def(type).onIndicator || !host || host.on) return null;
+    const key = on.key ?? this.firstSeriesKey(host);
+    if (!key) return null;
+    const config = this.normalize({ id: newId(type), type, params: params ?? {}, on: { id: host.id, key } });
+    this.list.push(config);
+    return config.id;
+  }
+
+  /** The series an indicator put on this one reads by default: its first line (MACD: the MACD line). */
+  firstSeriesKey(host: IndicatorConfig): string | null {
+    try {
+      const out = this.def(host.type).compute([], host.params);
+      return (out.series.find((x) => x.kind === 'line') ?? out.series[0])?.key ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Removes it, and whatever sits on it. */
   remove(id: string): boolean {
     const before = this.list.length;
-    this.list = this.list.filter((c) => c.id !== id);
-    this.cache.delete(id);
+    const gone = new Set([id, ...this.list.filter((c) => c.on?.id === id).map((c) => c.id)]);
+    this.list = this.list.filter((c) => !gone.has(c.id));
+    for (const g of gone) this.cache.delete(g);
     return this.list.length !== before;
+  }
+
+  /** The indicator this one sits on, if any. */
+  parentOf(cfg: IndicatorConfig): IndicatorConfig | undefined {
+    return cfg.on ? this.list.find((c) => c.id === cfg.on!.id) : undefined;
+  }
+
+  /** Indicators sitting on this one (drawn with it). */
+  childrenOf(id: string): IndicatorConfig[] {
+    return this.list.filter((c) => c.on?.id === id);
+  }
+
+  /** Over the candles: an overlay type on its own, or anything on an overlay. */
+  isOverlay(cfg: IndicatorConfig): boolean {
+    const parent = this.parentOf(cfg);
+    return parent ? !!this.def(parent.type).overlay : !!this.def(cfg.type).overlay;
   }
 
   /** The neighbour of the same kind (overlay or pane) `by` places away, as an index into the list. */
   private neighbour(id: string, by: -1 | 1): [number, number] | null {
     const i = this.list.findIndex((c) => c.id === id);
     if (i < 0) return null;
-    const overlay = !!this.def(this.list[i]!.type).overlay;
+    const me = this.list[i]!;
+    // Those drawn inside a pane (on an indicator there) don't move on their own.
+    if (me.on && !this.isOverlay(me)) return null;
+    const overlay = this.isOverlay(me);
     for (let j = i + by; j >= 0 && j < this.list.length; j += by) {
-      if (!!this.def(this.list[j]!.type).overlay === overlay) return [i, j];
+      const other = this.list[j]!;
+      if (other.on && !this.isOverlay(other)) continue;
+      if (this.isOverlay(other) === overlay) return [i, j];
     }
     return null;
   }
@@ -96,9 +157,11 @@ export class IndicatorManager {
     return true;
   }
 
-  /** Unknown types (e.g. a plugin this chart wasn't given) are dropped. */
+  /** Unknown types (e.g. a plugin this chart wasn't given) are dropped, and what sat on them. */
   set(configs: readonly IndicatorConfig[]): void {
-    this.list = configs.filter((c) => this.registry.has(c.type)).map((c) => this.normalize(clone(c)));
+    const known = configs.filter((c) => this.registry.has(c.type)).map((c) => this.normalize(clone(c)));
+    const top = new Set(known.filter((c) => !c.on).map((c) => c.id));
+    this.list = known.filter((c) => !c.on || (top.has(c.on.id) && !!this.def(c.type).onIndicator));
     this.cache.clear();
   }
 
@@ -106,20 +169,23 @@ export class IndicatorManager {
     return this.list.map(clone);
   }
 
+  /** Drawn over the candles (overlay types, and what sits on them). */
   get overlays(): IndicatorConfig[] {
-    return this.list.filter((c) => this.def(c.type).overlay);
+    return this.list.filter((c) => this.isOverlay(c));
   }
 
+  /** Each gets a pane (what sits on one is drawn in it: `childrenOf`). */
   get panes(): IndicatorConfig[] {
-    return this.list.filter((c) => !this.def(c.type).overlay);
+    return this.list.filter((c) => !c.on && !this.def(c.type).overlay);
   }
 
   /** Computed series with user styles applied; recomputed only when data or settings change. */
   output(cfg: IndicatorConfig, bars: readonly Bar[], dataVersion: number): IndicatorOutput {
-    const key = `${dataVersion}|${JSON.stringify(cfg.params)}|${JSON.stringify(cfg.styles)}`;
+    const parent = this.parentOf(cfg);
+    const key = `${dataVersion}|${JSON.stringify(cfg.params)}|${JSON.stringify(cfg.styles)}|${parent ? `${cfg.on!.key}:${JSON.stringify(parent.params)}` : ''}`;
     const hit = this.cache.get(cfg.id);
     if (hit?.key === key) return hit.output;
-    const raw = this.def(cfg.type).compute(bars, cfg.params);
+    const raw = parent ? this.computeOn(cfg, parent, bars, dataVersion) : this.def(cfg.type).compute(bars, cfg.params);
     const output: IndicatorOutput = {
       ...raw,
       series: raw.series.map((s) => {
@@ -134,5 +200,38 @@ export class IndicatorManager {
     };
     this.cache.set(cfg.id, { key, output });
     return output;
+  }
+
+  /**
+   * An indicator over another's series: that series stands in for every price of each bar, and
+   * the bars before its first value are left out (an RSI has none for its first 14) — then the
+   * answer is lined up with the chart's bars again.
+   */
+  private computeOn(cfg: IndicatorConfig, parent: IndicatorConfig, bars: readonly Bar[], dataVersion: number): IndicatorOutput {
+    const def = this.def(cfg.type);
+    const source = this.output(parent, bars, dataVersion).series.find((x) => x.key === cfg.on!.key);
+    const values = source?.values ?? new Float64Array(bars.length).fill(Number.NaN);
+    let first = 0;
+    while (first < values.length && !Number.isFinite(values[first]!)) first++;
+    const own: Bar[] = [];
+    for (let i = first; i < bars.length; i++) {
+      const v = values[i]!;
+      // A gap inside (rare) carries the last value on, so averages don't break.
+      const x = Number.isFinite(v) ? v : (own[own.length - 1]?.close ?? Number.NaN);
+      own.push({ time: bars[i]!.time, open: x, high: x, low: x, close: x, volume: 0 });
+    }
+    const out = def.compute(own, cfg.params);
+    const pad = (a: Float64Array) => {
+      const full = new Float64Array(bars.length).fill(Number.NaN);
+      full.set(a.subarray(0, bars.length - first), first);
+      return full;
+    };
+    // Only its lines and bands: candle colors, marks and a fixed range belong to the candles' pane.
+    return {
+      series: out.series.map((x) => ({ ...x, values: pad(x.values) })),
+      ...(out.fill ? { fill: out.fill } : {}),
+      ...(out.fills ? { fills: out.fills } : {}),
+      precision: out.precision,
+    };
   }
 }

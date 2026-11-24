@@ -205,6 +205,49 @@ export const AreaChartIcon = () => (
   </Icon>
 );
 
+export const VolumeCandlesIcon = () => (
+  <Icon>
+    <path d="M4.5 4v12M10 3v14M15.5 6v9" />
+    <rect x="3.6" y="7" width="1.8" height="5" rx="0.5" fill="currentColor" />
+    <rect x="7" y="6" width="6" height="7" rx="0.8" fill="currentColor" />
+    <rect x="14" y="8" width="3" height="4" rx="0.6" />
+  </Icon>
+);
+
+export const RenkoIcon = () => (
+  <Icon>
+    <rect x="2.5" y="11" width="4" height="4" rx="0.5" fill="currentColor" />
+    <rect x="7.5" y="7" width="4" height="4" rx="0.5" fill="currentColor" />
+    <rect x="12.5" y="3" width="4" height="4" rx="0.5" fill="currentColor" />
+    <rect x="12.5" y="7.5" width="4" height="4" rx="0.5" />
+  </Icon>
+);
+
+export const KagiIcon = () => (
+  <Icon>
+    <path d="M3 15V8h4v5h4V4h5v8" />
+    <path d="M11 4v5" stroke-width="2.8" />
+  </Icon>
+);
+
+export const LineBreakIcon = () => (
+  <Icon>
+    <rect x="2.5" y="11" width="3.5" height="5" rx="0.5" fill="currentColor" />
+    <rect x="6.5" y="6" width="3.5" height="5" rx="0.5" fill="currentColor" />
+    <rect x="10.5" y="3" width="3.5" height="3" rx="0.5" fill="currentColor" />
+    <rect x="14.5" y="3" width="3.5" height="9" rx="0.5" />
+  </Icon>
+);
+
+export const PointFigureIcon = () => (
+  <Icon>
+    <path d="M3 12l3 3M6 12l-3 3M3 8l3 3M6 8l-3 3M3 4l3 3M6 4l-3 3" stroke-width="1.3" />
+    <circle cx="11" cy="7.5" r="1.6" />
+    <circle cx="11" cy="11.5" r="1.6" />
+    <path d="M14 10l3 3M17 10l-3 3M14 6l3 3M17 6l-3 3" stroke-width="1.3" />
+  </Icon>
+);
+
 export const IndicatorIcon = () => (
   <Icon>
     <path d="M3 15.5l4-5 3 2.5 3.5-5L17 11" />
@@ -216,6 +259,12 @@ export const GearIcon = () => (
   <Icon size={14}>
     <circle cx="10" cy="10" r="2.4" />
     <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.4 1.4M13.6 13.6L15 15M5 15l1.4-1.4M13.6 6.4L15 5" />
+  </Icon>
+);
+
+export const SmallPlusIcon = () => (
+  <Icon size={14}>
+    <path d="M5 10h10M10 5v10" />
   </Icon>
 );
 

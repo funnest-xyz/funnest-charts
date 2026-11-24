@@ -1007,9 +1007,9 @@ const CSS = /* css */ `
 .fnc-tools-menu { width: 300px; padding: 8px; gap: 2px; max-height: 72vh; overflow-y: auto; }
 .fnc-tools-section { padding: 8px 6px 6px; font-size: 12px; font-weight: 700; color: var(--fnc-text-2); }
 .fnc-tools-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 0 2px 4px; }
-.fnc-tools-seg[data-count="5"], .fnc-tools-seg[data-count="8"] { display: grid; grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); gap: 2px; }
-.fnc-tools-seg[data-count="8"] { grid-template-columns: repeat(4, 1fr); }
-.fnc-tools-seg[data-count="5"] button, .fnc-tools-seg[data-count="8"] button { flex-direction: column; gap: 2px; height: auto; min-height: 40px; padding: 5px 4px; font-size: 12px; white-space: normal; word-break: keep-all; text-align: center; line-height: 1.25; }
+.fnc-tools-seg[data-count="5"], .fnc-tools-seg[data-count="8"], .fnc-tools-seg[data-count="13"] { display: grid; grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.fnc-tools-seg[data-count="8"], .fnc-tools-seg[data-count="13"] { grid-template-columns: repeat(4, 1fr); }
+.fnc-tools-seg[data-count="5"] button, .fnc-tools-seg[data-count="8"] button, .fnc-tools-seg[data-count="13"] button { flex-direction: column; gap: 2px; height: auto; min-height: 40px; padding: 5px 4px; font-size: 12px; white-space: normal; word-break: keep-all; text-align: center; line-height: 1.25; }
 .fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-tools-layouts { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }

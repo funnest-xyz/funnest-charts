@@ -97,6 +97,44 @@ describe('IndicatorManager', () => {
     expect(m.list[0]!.visible).toBe(false);
   });
 
+  it('지표 위에 지표: an MA over RSI reads the RSI, lives in its pane, goes with it', () => {
+    const m = new IndicatorManager();
+    const long = Array.from({ length: 80 }, (_, i) => ({ time: i * 60_000, open: 100, high: 101, low: 99, close: 100 + Math.sin(i / 3) * 5, volume: 1 }));
+    const r = m.add('rsi');
+    const ma = m.addOn('ma', { lines: [{ period: 5, source: 'close' }] }, { id: r })!;
+    expect(ma).toBeTruthy();
+    expect(m.list.find((c) => c.id === ma)!.on).toEqual({ id: r, key: 'rsi' });
+    // Not an overlay, not a pane of its own: drawn in the RSI pane.
+    expect([m.overlays.length, m.panes.map((c) => c.id), m.childrenOf(r).map((c) => c.id)]).toEqual([0, [r], [ma]]);
+    const rsiValues = m.output(m.list[0]!, long, 1).series[0]!.values;
+    const maValues = m.output(m.list[1]!, long, 1).series[0]!.values;
+    // RSI 14 starts at bar 14; its MA 5 four bars later, and equals the mean of the last five RSI values.
+    expect([Number.isNaN(maValues[17]!), Number.isNaN(maValues[18]!)]).toEqual([true, false]);
+    const mean = (rsiValues[75]! + rsiValues[76]! + rsiValues[77]! + rsiValues[78]! + rsiValues[79]!) / 5;
+    expect(maValues[79]).toBeCloseTo(mean, 9);
+
+    // Only types that read one series; never on something that is itself on an indicator.
+    expect(m.addOn('rsi', undefined, { id: r })).toBeNull();
+    expect(m.addOn('ema', undefined, { id: ma })).toBeNull();
+    expect(m.addOn('ema', undefined, { id: 'nope' })).toBeNull();
+    // On an overlay: it's an overlay too.
+    const bb = m.add('bb');
+    const onBb = m.addOn('ema', { lines: [{ period: 3, source: 'close' }] }, { id: bb, key: 'middle' })!;
+    expect(m.overlays.map((c) => c.id)).toEqual([bb, onBb]);
+
+    // Saved and restored with it; restored without its parent, it's dropped.
+    const saved = m.snapshot();
+    const back = new IndicatorManager();
+    back.set(saved);
+    expect(back.list.map((c) => c.on?.id ?? null)).toEqual([null, r, null, bb]);
+    back.set(saved.filter((c) => c.id !== r));
+    expect(back.list.map((c) => c.id)).toEqual([bb, onBb]);
+
+    // Removing the RSI removes the MA on it.
+    m.remove(r);
+    expect(m.list.map((c) => c.id)).toEqual([bb, onBb]);
+  });
+
   it('migrates the legacy periods shape', () => {
     const m = new IndicatorManager();
     m.set([{ id: 'x', type: 'ma', params: { periods: [7, 14] as unknown as never } }]);

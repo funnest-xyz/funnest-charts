@@ -19,6 +19,11 @@ import {
   ReplayIcon,
   SettingsIcon,
   ToolsIcon,
+  VolumeCandlesIcon,
+  RenkoIcon,
+  KagiIcon,
+  LineBreakIcon,
+  PointFigureIcon,
 } from '../icons.js';
 import { LAYOUT_GROUPS, LAYOUTS, paneCount } from '../layouts.js';
 import { useStore } from '../store.js';
@@ -34,6 +39,11 @@ const TYPES: { type: ChartType; label: keyof Strings; icon: () => JSX.Element }[
   { type: 'step', label: 'stepLine', icon: StepLineIcon },
   { type: 'baseline', label: 'baseline', icon: BaselineIcon },
   { type: 'area', label: 'area', icon: AreaChartIcon },
+  { type: 'volumeCandles', label: 'volumeCandles', icon: VolumeCandlesIcon },
+  { type: 'renko', label: 'renko', icon: RenkoIcon },
+  { type: 'kagi', label: 'kagi', icon: KagiIcon },
+  { type: 'lineBreak', label: 'lineBreak', icon: LineBreakIcon },
+  { type: 'pnf', label: 'pointFigure', icon: PointFigureIcon },
 ];
 
 const SCALES: { mode: PriceScaleMode; label: keyof Strings }[] = [

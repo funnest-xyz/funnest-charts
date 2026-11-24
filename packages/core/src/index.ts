@@ -84,3 +84,4 @@ export type { ReconnectingWebSocketOptions, SocketStatus } from './datafeed/sock
 export { monitorLatency } from './datafeed/latency.js';
 export { combineDatafeeds } from './datafeed/combine.js';
 export { derivedBase, groupBars, withDerivedResolutions } from './datafeed/derived.js';
+export { atrBox, kagi, lineBreak, niceStep, pnf, priceBars, renko, PRICE_BAR_KINDS, PriceBarStore, type PriceBarKind, type PriceBars } from './model/price-bars.js';

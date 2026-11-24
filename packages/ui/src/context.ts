@@ -44,7 +44,7 @@ export interface UiState {
   magnet: boolean;
   indicators: IndicatorConfig[];
   /** Open dialog: indicator picker, or settings for one indicator id. */
-  dialog: { kind: 'indicators' } | { kind: 'indicatorSettings'; id: string } | { kind: 'chartSettings' } | { kind: 'goToDate' } | null;
+  dialog: { kind: 'indicators'; on?: string } | { kind: 'indicatorSettings'; id: string } | { kind: 'chartSettings' } | { kind: 'goToDate' } | null;
   /** Intervals pinned as toolbar chips (★ in the interval menu). */
   favoriteIntervals: Resolution[];
   /** Intervals the user added (2시간, 3분…): listed in the interval menu, made from ones the feed sends. */

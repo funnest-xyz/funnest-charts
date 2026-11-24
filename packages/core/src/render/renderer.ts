@@ -21,7 +21,11 @@ import { barColorOf, drawIndicator, drawIndicatorBackgrounds, drawIndicatorTable
  * close as a line, filled up-colored above the first visible close and down-colored below.
  * 'step': the close held flat until the next one (a staircase).
  */
-export type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'step' | 'baseline' | 'area';
+/**
+ * 'volumeCandles': candles as wide as their volume (the busiest on screen the widest).
+ * 'renko' · 'kagi' · 'lineBreak' · 'pnf': drawn from price moves, not time (model/price-bars.ts).
+ */
+export type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'step' | 'baseline' | 'area' | 'volumeCandles' | 'renko' | 'kagi' | 'lineBreak' | 'pnf';
 
 /** 'main', 'volume', or an indicator id for indicator panes. */
 export type PaneId = string;
@@ -114,6 +118,10 @@ export interface RenderModel {
   /** Where the mouse is, unsnapped (the dot and demo cursors follow it). */
   pointer?: { x: number; y: number } | null;
   bars: readonly Bar[];
+  /** Price-move charts: their box, and kagi's thick / thin lines. */
+  priceBars?: { box: number; yang?: Uint8Array; cross?: Float64Array } | null;
+  /** The bar the last-price line reads, when it isn't the last one drawn (price-move charts: the price now). */
+  lastBar?: Bar | null;
   timeScale: TimeScale;
   formatPrice(price: number): string;
   formatVolume(volume: number): string;
@@ -166,12 +174,24 @@ function barGeometry(barSpacing: number, dpr: number): { wick: number; body: num
   return { wick, body };
 }
 
-function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame, bars: readonly Bar[] = m.bars): void {
+function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame, bars: readonly Bar[] = m.bars, byVolume = false, boxes = false): void {
   const { timeScale, frame } = m;
   const { from, to } = frame.range;
-  const { wick, body } = barGeometry(timeScale.barSpacing, dpr);
+  const geometry = barGeometry(timeScale.barSpacing, dpr);
+  const { wick } = geometry;
+  // Bricks and lines fill their slot but for a hairline between them.
+  const full = Math.max(wick, Math.floor(timeScale.barSpacing * dpr) - Math.max(1, Math.round(dpr)));
+  const body = boxes ? full - ((full - wick) % 2) : geometry.body;
   const half = wick >> 1;
   const inset = (body - wick) / 2;
+  // 거래량 캔들: a body as wide as its volume against the busiest one on screen (a quarter at least).
+  let most = 0;
+  if (byVolume) for (let i = from; i <= to; i++) most = Math.max(most, bars[i]?.volume ?? 0);
+  const widthOf = (i: number) => {
+    if (!byVolume || !(most > 0)) return body;
+    const w = Math.round(body * (0.25 + 0.75 * Math.min(1, (bars[i]!.volume ?? 0) / most)));
+    return Math.max(wick, w - ((w - wick) % 2));
+  };
   const s = pane.scale;
   const y = (price: number) => Math.round((pane.top + s.priceToY(price)) * dpr);
 
@@ -192,11 +212,12 @@ function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel,
       const yHigh = y(bar.high);
       const yLow = y(bar.low);
       ctx.rect(left, yHigh, wick, Math.max(1, yLow - yHigh));
-      if (body > wick) {
+      const w = widthOf(i);
+      if (w > wick) {
         const yOpen = y(bar.open);
         const yClose = y(bar.close);
         const top = Math.min(yOpen, yClose);
-        ctx.rect(left - inset, top, body, Math.max(1, Math.max(yOpen, yClose) - top));
+        ctx.rect(left - (w - wick) / 2, top, w, Math.max(1, Math.max(yOpen, yClose) - top));
       }
     }
   };
@@ -214,6 +235,92 @@ function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel,
     paint(indices);
     ctx.fillStyle = m.color(color);
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * Kagi: each line straight up or down from where the last one turned, joined by a short level
+ * step; thick in the up color once it has risen past the last shoulder (양), thin in the down
+ * color once it has fallen past the last waist (음) — a line that crosses one changes there.
+ */
+function drawKagi(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame): void {
+  const { bars, timeScale, frame } = m;
+  const { from, to } = frame.range;
+  const yang = m.priceBars?.yang;
+  const cross = m.priceBars?.cross;
+  const y = (price: number) => (pane.top + pane.scale.priceToY(price)) * dpr;
+  const x = (i: number) => timeScale.indexToX(i) * dpr;
+  const thickW = Math.max(2, Math.round(2.5 * dpr));
+  const thinW = Math.max(1, Math.round(dpr));
+  const seg = (x1: number, y1: number, x2: number, y2: number, thick: boolean) => {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineWidth = thick ? thickW : thinW;
+    ctx.strokeStyle = thick ? frame.palette.up : frame.palette.down;
+    ctx.stroke();
+  };
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.lineCap = 'square';
+  for (let i = Math.max(0, from - 1); i <= to; i++) {
+    const b = bars[i];
+    if (!b) continue;
+    const end = yang ? yang[i] === 1 : b.close >= b.open;
+    const turn = cross?.[i];
+    const before = Number.isFinite(turn) ? !end : end;
+    // The step over from the last line's end, at its level, in that line's state.
+    if (i > 0) seg(x(i - 1), y(b.open), x(i), y(b.open), yang ? yang[i - 1] === 1 : bars[i - 1]!.close >= bars[i - 1]!.open);
+    if (Number.isFinite(turn)) {
+      seg(x(i), y(b.open), x(i), y(turn!), before);
+      seg(x(i), y(turn!), x(i), y(b.close), end);
+    } else seg(x(i), y(b.open), x(i), y(b.close), end);
+  }
+  ctx.restore();
+}
+
+/** P&F: a column of X boxes (rising, up color) or O boxes (falling, down color) per bar. */
+function drawPointFigure(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame): void {
+  const { bars, timeScale, frame } = m;
+  const { from, to } = frame.range;
+  const box = m.priceBars?.box ?? 0;
+  if (!(box > 0)) return;
+  const y = (price: number) => (pane.top + pane.scale.priceToY(price)) * dpr;
+  const boxPx = Math.abs(y(0) - y(box));
+  const size = Math.max(2, Math.min(timeScale.barSpacing * dpr * 0.8, boxPx * 0.85));
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.lineWidth = Math.max(1, Math.round(dpr * (size > 10 * dpr ? 1.5 : 1)));
+  for (const up of [true, false]) {
+    ctx.beginPath();
+    for (let i = from; i <= to; i++) {
+      const b = bars[i];
+      if (!b || b.close > b.open !== up) continue;
+      const cx = timeScale.indexToX(i) * dpr;
+      const n = Math.round((b.high - b.low) / box);
+      // Too many to tell apart: one bar for the column.
+      if (boxPx < 3) {
+        ctx.moveTo(cx, y(b.low));
+        ctx.lineTo(cx, y(b.high));
+        continue;
+      }
+      for (let k = 0; k < n; k++) {
+        const cy = y(b.low + (k + 0.5) * box);
+        const r = size / 2;
+        if (up) {
+          ctx.moveTo(cx - r, cy - r);
+          ctx.lineTo(cx + r, cy + r);
+          ctx.moveTo(cx + r, cy - r);
+          ctx.lineTo(cx - r, cy + r);
+        } else {
+          ctx.moveTo(cx + r, cy);
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        }
+      }
+    }
+    ctx.strokeStyle = up ? frame.palette.up : frame.palette.down;
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -515,6 +622,10 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     ctx.clip();
     for (const overlay of f.overlays) drawIndicatorBackgrounds(ctx, p, m, main, overlay);
     if (m.chartType === 'candles') drawCandles(ctx, layer.dpr, m, main);
+    else if (m.chartType === 'renko' || m.chartType === 'lineBreak') drawCandles(ctx, layer.dpr, m, main, m.bars, false, true);
+    else if (m.chartType === 'volumeCandles') drawCandles(ctx, layer.dpr, m, main, m.bars, true);
+    else if (m.chartType === 'kagi') drawKagi(ctx, layer.dpr, m, main);
+    else if (m.chartType === 'pnf') drawPointFigure(ctx, layer.dpr, m, main);
     else if (m.chartType === 'heikin') drawCandles(ctx, layer.dpr, m, main, heikinAshi(m.bars));
     else if (m.chartType === 'hollow') drawHollowCandles(ctx, layer.dpr, m, main);
     else if (m.chartType === 'bars') drawOhlcBars(ctx, layer.dpr, m, main);
@@ -565,7 +676,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   ctx.restore();
 
   // Last price line
-  const last = f.settings.lastPriceLine ? m.bars[m.bars.length - 1] : undefined;
+  const last = f.settings.lastPriceLine ? (m.lastBar ?? m.bars[m.bars.length - 1]) : undefined;
   const lastColor = last && last.close >= last.open ? pal.up : pal.down;
   const lastY = last ? main.scale.priceToY(last.close) : NaN;
   if (last && lastY >= 0 && lastY <= main.height) p.hLine(lastY, 0, f.plotWidth, lastColor, DOT);

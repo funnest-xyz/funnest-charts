@@ -209,6 +209,11 @@ export interface IndicatorDefinition {
    */
   lookback?(params: IndicatorParams): number;
   /**
+   * Can sit on another indicator (지표 위에 지표: an MA over RSI), reading that one's series as
+   * its price — for types that read one price per bar (moving averages, bands).
+   */
+  onIndicator?: boolean;
+  /**
    * Left out of the indicator picker: added only from code (e.g. an app's user scripts, whose
    * params say which script). Charts that already have it show and save it as usual.
    */
@@ -296,6 +301,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     },
     title: (p) => `MA ${maLines(p).map((l) => l.period).join('·')}`,
     compute: (bars, p) => movingAverages(bars, p, 'MA', sma, SERIES_COLORS),
+    onIndicator: true,
     lookback: (p) => Math.max(0, ...maLines(p).map((l) => l.period)),
   },
   ema: {
@@ -307,6 +313,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     defaults: { lines: [12, 26].map((period) => ({ period, source: 'close' as const })) },
     title: (p) => `EMA ${maLines(p).map((l) => l.period).join('·')}`,
     compute: (bars, p) => movingAverages(bars, p, 'EMA', ema, ['#3182F6', '#F06595', '#15AABF', '#FF9F0A']),
+    onIndicator: true,
     lookback: (p) => Math.max(0, ...maLines(p).map((l) => emaLookback(l.period))),
   },
   bb: {
@@ -322,6 +329,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     defaults: { period: 20, mult: 2, source: 'close' },
     title: (p) => `BB ${num(p, 'period')} ${num(p, 'mult')}`,
     lookback: (p) => num(p, 'period'),
+    onIndicator: true,
     compute: (bars, p) => {
       const { middle, upper, lower } = bollinger(priceSource(bars, src(p)), num(p, 'period'), num(p, 'mult'));
       const color = '#3182F6';

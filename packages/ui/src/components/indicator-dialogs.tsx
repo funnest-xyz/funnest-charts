@@ -49,6 +49,46 @@ function Dialog({ title, onClose, children, wide }: { title: string; onClose: ()
 /** A search box appears once there are more than this many indicators (custom ones added). */
 const SEARCH_THRESHOLD = 8;
 
+/**
+ * What goes on another indicator first (지표 위에 지표): one line, not the price chart's set —
+ * an MA 14 over RSI like TradingView's, an EMA 9; bands as they come.
+ */
+function paramsOnIndicator(def: IndicatorDefinition): IndicatorParams | undefined {
+  if (!Array.isArray(def.defaults.lines)) return undefined;
+  return { lines: [{ period: def.type === 'ema' ? 9 : 14, source: 'close' }] };
+}
+
+/** 지표 위에 지표: the types that can go on indicator `on`. */
+function IndicatorOnPicker({ ctx, on }: { ctx: WidgetContext; on: string }) {
+  const { locale } = useStore(ctx.store);
+  const t = stringsOf(ctx.store.get());
+  const close = () => ctx.store.set({ dialog: null });
+  const host = ctx.chart.indicatorLegend().find((i) => i.id === on);
+  if (!host) return null;
+  const defs = ctx.chart.indicatorsOnIndicator();
+  return (
+    <Dialog title={t.addIndicatorOn} onClose={close}>
+      <div class="fnc-sr-list fnc-scroll">
+        <div class="fnc-sr-section">{t.onIndicatorSection.replace('{name}', host.title)}</div>
+        {defs.map((def) => (
+          <button
+            class="fnc-sr-row"
+            onClick={() => {
+              ctx.chart.addIndicatorOn(on, def.type, paramsOnIndicator(def));
+              close();
+            }}
+          >
+            <span class="fnc-sr-main">
+              <span class="fnc-sr-name">{def.name[locale]}</span>
+              <span class="fnc-sr-meta">{def.description[locale]}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </Dialog>
+  );
+}
+
 function IndicatorPicker({ ctx }: { ctx: WidgetContext }) {
   const { locale } = useStore(ctx.store);
   const t = stringsOf(ctx.store.get());
@@ -195,6 +235,8 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
   const config = indicators.find((c) => c.id === id);
   const def = config ? (ctx.chart.indicatorDefinition(config.type) ?? null) : null;
   const hasLines = !!def?.params.some((p) => p.kind === 'lines');
+  // On another indicator, every price of a bar is that indicator's value: no 가격 기준 to pick.
+  const onIndicator = !!config?.on;
 
   const [lines, setLines] = useState<LineRow[]>(() => {
     if (!config || !def || !hasLines) return [];
@@ -274,7 +316,7 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
                   {i + 1}
                 </span>
                 <StyleControls t={t} row={l} onChange={(p) => updateLine(i, p)} />
-                <SourceSelect value={l.source} locale={locale} label={t.source} onChange={(source) => updateLine(i, { source })} />
+                {!onIndicator && <SourceSelect value={l.source} locale={locale} label={t.source} onChange={(source) => updateLine(i, { source })} />}
                 <input
                   class="fnc-input fnc-input-period"
                   inputMode="numeric"
@@ -294,7 +336,7 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
         ) : (
           <>
             <div class="fnc-section">{t.inputs}</div>
-            {def.params.map((spec) => (
+            {def.params.filter((spec) => !(onIndicator && spec.kind === 'source')).map((spec) => (
               <div class="fnc-row">
                 <span class="fnc-row-label fnc-row-label-wide">{spec.label[locale]}</span>
                 {spec.kind === 'source' ? (
@@ -349,7 +391,7 @@ function IndicatorSettings({ ctx, id }: { ctx: WidgetContext; id: string }) {
 
 export function Dialogs({ ctx }: { ctx: WidgetContext }) {
   const { dialog } = useStore(ctx.store);
-  if (dialog?.kind === 'indicators') return <IndicatorPicker ctx={ctx} />;
+  if (dialog?.kind === 'indicators') return dialog.on ? <IndicatorOnPicker ctx={ctx} on={dialog.on} /> : <IndicatorPicker ctx={ctx} />;
   if (dialog?.kind === 'indicatorSettings') return <IndicatorSettings ctx={ctx} id={dialog.id} />;
   if (dialog?.kind === 'chartSettings') return <SettingsDialog ctx={ctx} />;
   if (dialog?.kind === 'goToDate') return <GoToDateDialog ctx={ctx} />;

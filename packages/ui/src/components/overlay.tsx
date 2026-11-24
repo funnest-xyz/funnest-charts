@@ -18,6 +18,7 @@ import {
   PauseIcon,
   PlayIcon,
   PlusIcon,
+  SmallPlusIcon,
   ReplayIcon,
   ResetIcon,
   RestoreIcon,
@@ -84,6 +85,19 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
               ctx.chart.moveIndicator(item.id, 1);
             }}>
             <ChevronDownIcon />
+          </button>
+        )}
+        {item.hostable && ctx.chart.indicatorsOnIndicator().length > 0 && (
+          <button
+            class="fnc-ind-btn"
+            data-tip={t.addIndicatorOn}
+            aria-label={`${item.title} ${t.addIndicatorOn}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              ctx.store.set({ dialog: { kind: 'indicators', on: item.id } });
+            }}
+          >
+            <SmallPlusIcon />
           </button>
         )}
         <button
@@ -255,7 +269,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   const overlayItems = items.filter((i) => i.overlay);
   const paneLegends = s.layout.panes
     .filter((p) => p.kind === 'indicator')
-    .map((pane) => ({ pane, item: items.find((i) => i.id === pane.id) }));
+    .map((pane) => ({ pane, item: items.find((i) => i.id === pane.id), kids: items.filter((i) => i.parent === pane.id) }));
   const volumePane = s.layout.panes.find((p) => p.kind === 'volume');
 
   return (
@@ -307,10 +321,13 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
         </div>
       )}
       {paneLegends.map(
-        ({ pane, item }) =>
+        ({ pane, item, kids }) =>
           item && (
             <div class="fnc-legend fnc-pane-legend" style={{ top: `${pane.top + 4}px` }}>
               <IndicatorItem ctx={ctx} item={item} />
+              {kids.map((kid) => (
+                <IndicatorItem ctx={ctx} item={kid} />
+              ))}
             </div>
           ),
       )}

@@ -3,6 +3,7 @@ import { Emitter } from './events.js';
 import { timeZoneOffset } from './realtime.js';
 import { Interaction, type HitRegion, type InteractionHost } from './interaction.js';
 import { BarStore } from './model/bar-store.js';
+import { PRICE_BAR_KINDS, PriceBarStore, type PriceBarKind } from './model/price-bars.js';
 import { logTicks, niceTicks, PriceScale, type PriceScaleMode } from './model/price-scale.js';
 import { computeTimeTicks, defaultTimeZone, TimeFormatter, type Locale, browserLocale } from './model/time-format.js';
 import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleOptions } from './model/time-scale.js';
@@ -231,6 +232,10 @@ export interface IndicatorLegendItem {
   type: IndicatorType;
   title: string;
   overlay: boolean;
+  /** On another indicator (지표 위에 지표): that one's id — its legend shows this right under it. */
+  parent?: string;
+  /** More can go on this one (it isn't on another itself). */
+  hostable: boolean;
   visible: boolean;
   /** Visible series only. */
   values: { key: string; label: string; value: string; color: string }[];
@@ -345,7 +350,8 @@ export class Chart {
   private readonly win: Window & typeof globalThis;
   private readonly mainLayer: CanvasLayer;
   private readonly overlayLayer: CanvasLayer;
-  private readonly store = new BarStore();
+  /** The bars shown: the feed's own, or (renko · kagi · line break · P&F) made from them (PriceBarStore). */
+  private store: BarStore = new BarStore();
   private readonly mainScale = new PriceScale({ top: 0.08, bottom: 0.08 });
   private readonly volumeScale = new PriceScale({ top: 0.2, bottom: 0 });
   private readonly indicators: IndicatorManager;
@@ -980,6 +986,17 @@ export class Chart {
   setChartType(type: ChartType): void {
     if (type === this.chartType) return;
     this.chartType = type;
+    // Price-move charts show their own bars, made from the time bars underneath; back to a time
+    // chart, the time bars again. Either way there are other bars now: the view starts over.
+    const raw = this.store instanceof PriceBarStore ? this.store.raw : this.store;
+    const kind = PRICE_BAR_KINDS.includes(type as PriceBarKind) ? (type as PriceBarKind) : null;
+    const next = kind ? new PriceBarStore(raw, kind) : raw;
+    if (next !== this.store) {
+      this.store = next;
+      this.timeScale.barCount = this.store.length;
+      this.dataVersion++;
+      this.resetView();
+    }
     this.invalidate();
     this.emitter.emit('chartTypeChange', type);
     this.stateChanged();
@@ -1202,6 +1219,22 @@ export class Chart {
     return id;
   }
 
+  /**
+   * 지표 위에 지표: adds `type` (one whose definition says `onIndicator`: MA, EMA, BB…) over
+   * indicator `parent`'s series `key` (default: its first line). Drawn where the parent is.
+   * Returns its id, or null when it can't go there.
+   */
+  addIndicatorOn(parent: string, type: IndicatorType, params?: IndicatorParams, key?: string): string | null {
+    const id = this.indicators.addOn(type, params, { id: parent, ...(key ? { key } : {}) });
+    if (id) this.indicatorsChanged();
+    return id;
+  }
+
+  /** Types that can go on another indicator (for an "add on this" menu). */
+  indicatorsOnIndicator(): IndicatorDefinition[] {
+    return [...this.indicators.registry.values()].filter((d) => d.onIndicator && !d.hidden);
+  }
+
   removeIndicator(id: string): void {
     if (!this.indicators.remove(id)) return;
     this.indicatorScales.delete(id);
@@ -1277,12 +1310,17 @@ export class Chart {
     return this.indicators.list.map((cfg) => {
       const def = this.indicators.def(cfg.type);
       const output = this.indicators.output(cfg, this.store.bars, this.dataVersion);
-      const precision = output.precision ?? this.pricePrecision;
+      const parent = this.indicators.parentOf(cfg);
+      // An overlay's own precision; on an indicator, the parent's (an MA over RSI reads like RSI).
+      const precision = output.precision ?? (parent ? this.indicators.output(parent, this.store.bars, this.dataVersion).precision : null) ?? this.pricePrecision;
+      const parentTitle = parent ? this.indicators.def(parent.type).title(parent.params) : '';
       return {
         id: cfg.id,
         type: cfg.type,
-        title: def.title(cfg.params),
-        overlay: def.overlay,
+        title: parent ? `${def.title(cfg.params)} (${parentTitle.split(' ')[0]})` : def.title(cfg.params),
+        overlay: this.indicators.isOverlay(cfg),
+        ...(parent ? { parent: parent.id } : {}),
+        hostable: !cfg.on,
         visible: cfg.visible !== false,
         values: output.series.filter((series) => series.visible).map((series) => {
           const v = series.values[index - (series.shift ?? 0)];
@@ -1316,7 +1354,10 @@ export class Chart {
     let most = 0;
     for (const cfg of this.indicators.list) {
       if (cfg.visible === false) continue;
-      const n = this.indicators.registry.get(cfg.type)?.lookback?.(cfg.params) ?? 0;
+      const own = this.indicators.registry.get(cfg.type)?.lookback?.(cfg.params) ?? 0;
+      // On an indicator: what that one needs, then this one's own on top.
+      const parent = this.indicators.parentOf(cfg);
+      const n = own + (parent ? (this.indicators.registry.get(parent.type)?.lookback?.(parent.params) ?? 0) : 0);
       if (Number.isFinite(n) && n > most) most = n;
     }
     return Math.min(MAX_INDICATOR_LOOKBACK, most);
@@ -2016,10 +2057,17 @@ export class Chart {
     this.emitCrosshair(crosshair);
   }
 
+  /** The feed's own time bars (under a price-move chart's bars): the price now, the bar now forming. */
+  private get timeBars(): BarStore {
+    return this.store instanceof PriceBarStore ? this.store.raw : this.store;
+  }
+
   private renderModel(frame: Frame): RenderModel {
     return {
       frame,
       bars: this.store.bars,
+      priceBars: this.store instanceof PriceBarStore ? this.store.meta : null,
+      lastBar: this.store instanceof PriceBarStore ? (this.store.raw.last() ?? null) : null,
       timeScale: this.timeScale,
       formatPrice: (p) => formatPrice(p, this.pricePrecision),
       formatVolume: (v) => formatCompact(v, this.locale),
@@ -2117,10 +2165,25 @@ export class Chart {
     }
     let compareOverlays: IndicatorOutput[] = [];
     this.countdownLabel = this.countdownText();
+    // A pane indicator with what sits on it (지표 위에 지표): their lines and bands join its own.
+    const withChildren = (config: IndicatorConfig): IndicatorOutput => {
+      const out = drawable(config);
+      const kids = this.indicators.childrenOf(config.id);
+      if (kids.length === 0) return out;
+      const series = [...out.series];
+      const fills = [...(out.fills ?? [])];
+      for (const kid of kids) {
+        const o = drawable(kid);
+        const key = (k: string) => `${kid.id}:${k}`;
+        series.push(...o.series.map((x) => ({ ...x, key: key(x.key) })));
+        for (const f of [o.fill, ...(o.fills ?? [])]) if (f) fills.push({ ...f, upper: key(f.upper), lower: key(f.lower) });
+      }
+      return { ...out, series, ...(fills.length ? { fills } : {}) };
+    };
     const subPanes = indicatorPanes.map((config) => {
       const scale = this.indicatorScale(config.id);
       scale.height = heightOf.get(config.id)!;
-      return { config, scale, output: drawable(config) };
+      return { config, scale, output: withChildren(config) };
     });
     const indicatorFormat = (output: IndicatorOutput) => {
       const precision = output.precision ?? this.pricePrecision;
@@ -2164,7 +2227,7 @@ export class Chart {
 
       let labelWidth = 0;
       const measure = (text: string) => (labelWidth = Math.max(labelWidth, ctx.measureText(text).width));
-      const last = this.store.last();
+      const last = this.timeBars.last();
       const tickLabel = this.mainTickFormat(priceTicks);
       for (const v of priceTicks) measure(tickLabel(v));
       if (last) measure(this.mainValueFormat()(last.close));
@@ -2315,7 +2378,7 @@ export class Chart {
   /** Time left in the last bar, when it's still forming (null otherwise). */
   private countdownText(now = Date.now()): string | null {
     const s = this.settingsValue;
-    const last = this.store.last();
+    const last = this.timeBars.last();
     const info = this.symbol;
     if (!s.countdown || !s.lastPriceLine || this.replayState || !this.resolution || !info || !last) return null;
     let end: number | null = null;
