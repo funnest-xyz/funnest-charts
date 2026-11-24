@@ -262,6 +262,14 @@ export const GearIcon = () => (
   </Icon>
 );
 
+/** 순서 (layers): two stacked sheets, the top one filled. */
+export const LayersIcon = () => (
+  <Icon>
+    <path d="M10 4 3 7.5 10 11l7-3.5z" fill="currentColor" fill-opacity="0.25" />
+    <path d="M3 11l7 3.5 7-3.5" />
+  </Icon>
+);
+
 /** 레벨 설정: lines at different heights with a value tick. */
 export const LevelsIcon = () => (
   <Icon>

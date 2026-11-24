@@ -11,7 +11,7 @@ import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } 
 import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorSeries, IndicatorType } from './indicators/definitions.js';
 import { graphicsRange, resolveIndicatorColor } from './render/indicator-draw.js';
 import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager.js';
-import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingType } from './objects/drawings.js';
+import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingOrder, type DrawingType } from './objects/drawings.js';
 import {
   TradingLayer,
   type AlertLineOptions,
@@ -1176,6 +1176,16 @@ export class Chart {
 
   removeDrawing(id: string): void {
     this.drawings.remove(id);
+  }
+
+  /** 순서: brings a drawing to the front, one place forward / backward, or to the back. False when it can't go further. */
+  moveDrawing(id: string, where: DrawingOrder): boolean {
+    return this.drawings.reorder(id, where);
+  }
+
+  /** Whether `moveDrawing(id, where)` would move it (for enabling the menu's items). */
+  canMoveDrawing(id: string, where: DrawingOrder): boolean {
+    return this.drawings.canReorder(id, where);
   }
 
   clearDrawings(): void {

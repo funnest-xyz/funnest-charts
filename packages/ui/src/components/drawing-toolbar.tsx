@@ -23,6 +23,7 @@ import {
   SmallCloseIcon,
   TemplateIcon,
   LevelsIcon,
+  LayersIcon,
   SettingsIcon,
   PaletteIcon,
   FibonacciIcon,
@@ -419,7 +420,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels' | 'options'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels' | 'options' | 'order'>(null);
   const [templates, setTemplates] = useState<Record<string, DrawingTemplate[]>>(() => readJson(TEMPLATES_KEY, {}));
   const [naming, setNaming] = useState<string | null>(null);
   const colorInput = useRef<HTMLInputElement>(null);
@@ -857,6 +858,27 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
         </button>
       ))}
       <div class="fnc-sep" />
+      <div class="fnc-selbar-menu">
+        <button class="fnc-btn" data-tip={t.drawingOrder} aria-label={t.drawingOrder} aria-expanded={menu === 'order'} onClick={() => setMenu(menu === 'order' ? null : 'order')}>
+          <LayersIcon />
+        </button>
+        {menu === 'order' && (
+          <div class="fnc-menu fnc-selbar-pop" role="menu">
+            {(
+              [
+                ['front', t.bringToFront],
+                ['forward', t.bringForward],
+                ['backward', t.sendBackward],
+                ['back', t.sendToBack],
+              ] as const
+            ).map(([where, label]) => (
+              <button class="fnc-menu-item" role="menuitem" disabled={!ctx.chart.canMoveDrawing(d.id, where)} onClick={() => ctx.chart.moveDrawing(d.id, where)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <button class="fnc-btn" data-tip={locked ? t.unlock : t.lock} aria-label={locked ? t.unlock : t.lock} aria-pressed={locked} onClick={() => setStyle({ locked: !locked })}>
         <LockIcon open={!locked} />
       </button>

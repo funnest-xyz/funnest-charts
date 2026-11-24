@@ -450,6 +450,9 @@ export function drawingRegistry(extra: readonly DrawingDefinition[] = []): Map<s
   return registry;
 }
 
+/** Where a drawing goes among the others (see `DrawingManager.reorder`). */
+export type DrawingOrder = 'front' | 'forward' | 'backward' | 'back';
+
 export type DrawingsChange = 'preview' | 'commit' | 'tool' | 'selection' | 'defaults' | 'hidden' | 'text';
 
 /** The last color and line / text style used per tool type: new drawings of that type start with it. */
@@ -530,6 +533,32 @@ export class DrawingManager {
       this.onChange('defaults');
     }
     this.onChange('commit');
+  }
+
+  /**
+   * 순서: where a drawing sits among the others — later ones are drawn over earlier ones (and are
+   * picked first). 'front' / 'back': to the top / bottom; 'forward' / 'backward': one place.
+   * Returns false when it can't go further.
+   */
+  reorder(id: string, where: DrawingOrder): boolean {
+    const i = this.drawings.findIndex((d) => d.id === id);
+    if (i < 0) return false;
+    const last = this.drawings.length - 1;
+    const to = where === 'front' ? last : where === 'back' ? 0 : where === 'forward' ? Math.min(last, i + 1) : Math.max(0, i - 1);
+    if (to === i) return false;
+    const list = [...this.drawings];
+    const [d] = list.splice(i, 1);
+    list.splice(to, 0, d!);
+    this.drawings = list;
+    this.onChange('commit');
+    return true;
+  }
+
+  /** Whether `reorder(id, where)` would move it. */
+  canReorder(id: string, where: DrawingOrder): boolean {
+    const i = this.drawings.findIndex((d) => d.id === id);
+    if (i < 0) return false;
+    return where === 'front' || where === 'forward' ? i < this.drawings.length - 1 : i > 0;
   }
 
   remove(id: string): void {

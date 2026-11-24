@@ -35,6 +35,25 @@ describe('DrawingManager', () => {
     expect(changes).toContain('commit');
   });
 
+  it('순서: front / forward / backward / back, and the top one is picked first', () => {
+    const m = new DrawingManager(() => {});
+    const line = (id: string) => ({ id, type: 'horizontal', points: [{ time: 10_000, price: 500 }] });
+    m.set([line('a'), line('b'), line('c')]);
+    const order = () => m.drawings.map((d) => d.id).join('');
+    expect(m.canReorder('c', 'front')).toBe(false);
+    expect(m.reorder('a', 'front')).toBe(true);
+    expect(order()).toBe('bca');
+    // All three sit on one price: the one drawn last (on top) is the one a click picks.
+    expect(m.hitTest(coords, 100, 500, 4)?.id).toBe('a');
+    m.reorder('a', 'backward');
+    expect(order()).toBe('bac');
+    m.reorder('c', 'back');
+    expect(order()).toBe('cba');
+    expect(m.reorder('c', 'backward')).toBe(false);
+    m.reorder('b', 'forward');
+    expect(order()).toBe('cab');
+  });
+
   it('creates with drag-to-draw and a single click for horizontal lines', () => {
     const m = new DrawingManager(() => {});
     m.setTool('fibonacci');

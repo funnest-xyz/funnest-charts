@@ -40,6 +40,7 @@ export type {
   DrawingLevel,
   DrawingLevelSpec,
   DrawingOption,
+  DrawingOrder,
   DrawingOptionValue,
   DrawingType,
 } from './objects/drawings.js';
