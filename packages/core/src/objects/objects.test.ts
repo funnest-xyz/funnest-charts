@@ -44,7 +44,7 @@ describe('DrawingManager', () => {
     expect(m.reorder('a', 'front')).toBe(true);
     expect(order()).toBe('bca');
     // All three sit on one price: the one drawn last (on top) is the one a click picks.
-    expect(m.hitTest(coords, 100, 500, 4)?.id).toBe('a');
+    expect((m.hitTest(coords, 100, 500, 4) as { id?: string } | null)?.id).toBe('a');
     m.reorder('a', 'backward');
     expect(order()).toBe('bac');
     m.reorder('c', 'back');
