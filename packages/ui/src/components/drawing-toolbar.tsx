@@ -20,6 +20,8 @@ import {
   KeepDrawingIcon,
   StarIcon,
   LockIcon,
+  SmallCloseIcon,
+  TemplateIcon,
   PaletteIcon,
   FibonacciIcon,
   HorizontalLineIcon,
@@ -357,6 +359,21 @@ const FONT_SIZES = [10, 12, 14, 16, 20, 24, 32];
 const DASH_ORDER: NonNullable<DrawingStyle['dash']>[] = ['solid', 'dashed', 'dotted'];
 const RECENT_KEY = 'fnc-drawing-colors';
 const POS_KEY = 'fnc-selbar-pos';
+/**
+ * 그리기 템플릿: looks saved by name, per tool (color, width, line style, part colors, font size —
+ * not the text, the lock or whether it's hidden). Kept in this browser.
+ */
+const TEMPLATES_KEY = 'fnc-drawing-templates';
+const TEMPLATES_MAX = 20;
+interface DrawingTemplate {
+  name: string;
+  color?: string;
+  style: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize' | 'colors'>;
+}
+const lookOf = (style: DrawingStyle): DrawingTemplate['style'] => {
+  const { width, dash, fontSize, colors } = style;
+  return { ...(width ? { width } : {}), ...(dash ? { dash } : {}), ...(fontSize ? { fontSize } : {}), ...(colors ? { colors: { ...colors } } : {}) };
+};
 const readJson = <T,>(key: string, fallback: T): T => {
   try {
     const raw = localStorage.getItem(key);
@@ -393,7 +410,9 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template'>(null);
+  const [templates, setTemplates] = useState<Record<string, DrawingTemplate[]>>(() => readJson(TEMPLATES_KEY, {}));
+  const [naming, setNaming] = useState<string | null>(null);
   const colorInput = useRef<HTMLInputElement>(null);
   if (!d || s.layout.plotWidth <= 0) return null;
 
@@ -417,6 +436,30 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   };
   const locked = !!style.locked;
   const dash = style.dash ?? 'solid';
+  const mine = templates[d.type] ?? [];
+  const keepTemplates = (next: DrawingTemplate[]) => {
+    const all = { ...templates, [d.type]: next };
+    if (!next.length) delete all[d.type];
+    setTemplates(all);
+    writeJson(TEMPLATES_KEY, all);
+  };
+  const saveTemplate = () => {
+    const name = (naming ?? '').trim().slice(0, 30);
+    if (!name) return setNaming(null);
+    // The same name again replaces it.
+    keepTemplates([{ name, ...(d.color ? { color: d.color } : {}), style: lookOf(style) }, ...mine.filter((x) => x.name !== name)].slice(0, TEMPLATES_MAX));
+    setNaming(null);
+    setMenu(null);
+  };
+  const applyTemplate = (tpl: DrawingTemplate) => {
+    // The look only: what it says, its lock and visibility stay.
+    const { text, locked: lock, hidden } = style;
+    ctx.chart.updateDrawing(d.id, {
+      ...(tpl.color ? { color: tpl.color } : {}),
+      style: { ...tpl.style, ...(text !== undefined ? { text } : {}), ...(lock ? { locked: lock } : {}), ...(hidden ? { hidden } : {}) },
+    });
+    setMenu(null);
+  };
   // The app's own buttons for this drawing (알림 on a line…).
   const actions = ctx.drawingActions?.(d, ctx.chart) ?? [];
 
@@ -571,6 +614,71 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
           )}
         </div>
       )}
+      <div class="fnc-selbar-menu">
+        <button
+          class="fnc-btn"
+          data-tip={t.templates}
+          aria-label={t.templates}
+          aria-expanded={menu === 'template'}
+          onClick={() => {
+            setNaming(null);
+            setMenu(menu === 'template' ? null : 'template');
+          }}
+        >
+          <TemplateIcon />
+        </button>
+        {menu === 'template' && (
+          <div class="fnc-menu fnc-selbar-pop fnc-template-menu" role="menu">
+            {mine.length === 0 && <div class="fnc-menu-note">{t.noTemplates}</div>}
+            {mine.map((tpl) => (
+              <div class="fnc-template-row">
+                <button class="fnc-menu-item" role="menuitem" onClick={() => applyTemplate(tpl)}>
+                  <span class="fnc-swatch" style={{ background: tpl.color ?? current }} />
+                  <svg width="28" height="12" viewBox="0 0 28 12" aria-hidden="true">
+                    <path
+                      d="M2 6h24"
+                      stroke={tpl.color ?? current}
+                      stroke-width={tpl.style.width ?? 2}
+                      stroke-linecap="round"
+                      stroke-dasharray={tpl.style.dash === 'dashed' ? '4 3' : tpl.style.dash === 'dotted' ? '1 3' : undefined}
+                    />
+                  </svg>
+                  <span>{tpl.name}</span>
+                </button>
+                <button
+                  class="fnc-ind-btn"
+                  data-tip={t.deleteTemplate}
+                  aria-label={`${tpl.name} ${t.deleteTemplate}`}
+                  onClick={() => keepTemplates(mine.filter((x) => x !== tpl))}
+                >
+                  <SmallCloseIcon />
+                </button>
+              </div>
+            ))}
+            <div class="fnc-menu-sep" />
+            {naming === null ? (
+              <button class="fnc-menu-item" role="menuitem" onClick={() => setNaming('')}>
+                {t.saveTemplate}
+              </button>
+            ) : (
+              <input
+                class="fnc-selbar-text fnc-template-name"
+                value={naming}
+                placeholder={t.templateName}
+                aria-label={t.templateName}
+                maxLength={30}
+                autoFocus
+                onInput={(e) => setNaming((e.target as HTMLInputElement).value)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === 'Enter') saveTemplate();
+                  if (e.key === 'Escape') setNaming(null);
+                }}
+              />
+            )}
+          </div>
+        )}
+      </div>
       {actions.length > 0 && <div class="fnc-sep" />}
       {actions.map((a) => (
         <button

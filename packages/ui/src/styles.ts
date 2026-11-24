@@ -1012,6 +1012,13 @@ const CSS = /* css */ `
 .fnc-tools-seg[data-count="5"] button, .fnc-tools-seg[data-count="8"] button, .fnc-tools-seg[data-count="13"] button { flex-direction: column; gap: 2px; height: auto; min-height: 40px; padding: 5px 4px; font-size: 12px; white-space: normal; word-break: keep-all; text-align: center; line-height: 1.25; }
 .fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
+.fnc-template-menu { min-width: 220px; }
+.fnc-template-row { display: flex; align-items: center; }
+.fnc-template-row .fnc-menu-item { flex: 1; min-width: 0; gap: 8px; }
+.fnc-template-row .fnc-menu-item span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fnc-template-name { width: calc(100% - 8px); margin: 4px; }
+.fnc-menu-note { padding: 8px 10px; color: var(--fnc-text-2); font-size: 12px; }
+.fnc-menu-sep { height: 1px; margin: 4px 6px; background: var(--fnc-border); }
 .fnc-tools-layouts { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
 .fnc-tools-sep { height: 1px; margin: 6px 4px; background: var(--fnc-border); }
 .fnc-tools-icon { display: inline-flex; width: 20px; height: 20px; flex: none; }

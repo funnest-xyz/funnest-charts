@@ -262,6 +262,14 @@ export const GearIcon = () => (
   </Icon>
 );
 
+/** 그리기 템플릿: stacked cards. */
+export const TemplateIcon = () => (
+  <Icon>
+    <rect x="3" y="7" width="10" height="10" rx="2" />
+    <path d="M7 4h8a2 2 0 0 1 2 2v8" />
+  </Icon>
+);
+
 export const SmallPlusIcon = () => (
   <Icon size={14}>
     <path d="M5 10h10M10 5v10" />
