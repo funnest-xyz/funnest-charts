@@ -16,7 +16,12 @@ import { barColorOf, drawIndicator, drawIndicatorBackgrounds, drawIndicatorTable
  * candles · hollow (속 빈 캔들: hollow when it closed above its open, colored by the close against
  * the previous close) · heikin (하이킨아시, render/heikin-ashi.ts) · line · area.
  */
-export type ChartType = 'candles' | 'hollow' | 'heikin' | 'line' | 'area';
+/**
+ * 'bars': OHLC bars (a high–low line, the open's tick left, the close's right). 'baseline': the
+ * close as a line, filled up-colored above the first visible close and down-colored below.
+ * 'step': the close held flat until the next one (a staircase).
+ */
+export type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'step' | 'baseline' | 'area';
 
 /** 'main', 'volume', or an indicator id for indicator panes. */
 export type PaneId = string;
@@ -253,7 +258,85 @@ function drawHollowCandles(ctx: CanvasRenderingContext2D, dpr: number, m: Render
 }
 
 /** Close-price line, optionally with a gradient area fill underneath. */
-function drawLineSeries(ctx: CanvasRenderingContext2D, m: RenderModel, pane: PaneFrame, area: boolean): void {
+/** OHLC bars: a high–low line with the open's tick on the left and the close's on the right. */
+function drawOhlcBars(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, pane: PaneFrame): void {
+  const { bars, timeScale, frame } = m;
+  const { from, to } = frame.range;
+  const { wick, body } = barGeometry(timeScale.barSpacing, dpr);
+  const half = wick >> 1;
+  // Ticks reach half the body's width each side (at least a pixel or two when zoomed out).
+  const tick = Math.max(wick, Math.floor(body / 2));
+  const y = (price: number) => Math.round((pane.top + pane.scale.priceToY(price)) * dpr);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (const up of [true, false]) {
+    ctx.beginPath();
+    for (let i = from; i <= to; i++) {
+      const bar = bars[i]!;
+      if (bar.close >= bar.open !== up) continue;
+      const left = Math.round(timeScale.indexToX(i) * dpr) - half;
+      const yHigh = y(bar.high);
+      ctx.rect(left, yHigh, wick, Math.max(1, y(bar.low) - yHigh));
+      if (body <= wick) continue;
+      ctx.rect(left - tick, y(bar.open) - half, tick, wick);
+      ctx.rect(left + wick, y(bar.close) - half, tick, wick);
+    }
+    ctx.fillStyle = up ? frame.palette.up : frame.palette.down;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** The close as a line over a baseline (the first visible close): up-colored above, down-colored below. */
+function drawBaseline(ctx: CanvasRenderingContext2D, m: RenderModel, pane: PaneFrame): void {
+  const { bars, timeScale, frame } = m;
+  const from = Math.max(0, frame.range.from - 1);
+  const to = Math.min(bars.length - 1, frame.range.to + 1);
+  if (to < from) return;
+  const base = bars[Math.max(0, frame.range.from)]!.close;
+  const yBase = pane.top + pane.scale.priceToY(base);
+  const points: [number, number][] = [];
+  for (let i = from; i <= to; i++) points.push([timeScale.indexToX(i), pane.top + pane.scale.priceToY(bars[i]!.close)]);
+  const path = () => {
+    ctx.beginPath();
+    points.forEach(([x, py], k) => (k === 0 ? ctx.moveTo(x, py) : ctx.lineTo(x, py)));
+  };
+  ctx.save();
+  for (const up of [true, false]) {
+    const color = up ? frame.palette.up : frame.palette.down;
+    ctx.save();
+    // Above the baseline for the up color, below it for the down color.
+    ctx.beginPath();
+    if (up) ctx.rect(0, pane.top, timeScale.indexToX(to) + 2, yBase - pane.top);
+    else ctx.rect(0, yBase, timeScale.indexToX(to) + 2, pane.top + pane.height - yBase);
+    ctx.clip();
+    path();
+    ctx.lineTo(points.at(-1)![0], yBase);
+    ctx.lineTo(points[0]![0], yBase);
+    ctx.closePath();
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    path();
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    ctx.restore();
+  }
+  // The baseline itself, dotted.
+  ctx.beginPath();
+  ctx.setLineDash([3, 3]);
+  ctx.moveTo(0, Math.round(yBase) + 0.5);
+  ctx.lineTo(timeScale.indexToX(to), Math.round(yBase) + 0.5);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = frame.palette.grid;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawLineSeries(ctx: CanvasRenderingContext2D, m: RenderModel, pane: PaneFrame, area: boolean, step = false): void {
   const { bars, timeScale, frame } = m;
   // Include one bar beyond each edge so the line runs off-screen instead of stopping short.
   const from = Math.max(0, frame.range.from - 1);
@@ -266,7 +349,11 @@ function drawLineSeries(ctx: CanvasRenderingContext2D, m: RenderModel, pane: Pan
     const x = timeScale.indexToX(i);
     const y = pane.top + pane.scale.priceToY(bars[i]!.close);
     if (i === from) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    else {
+      // A staircase: across at the last close, then up or down to this one.
+      if (step) ctx.lineTo(x, pane.top + pane.scale.priceToY(bars[i - 1]!.close));
+      ctx.lineTo(x, y);
+    }
   }
   ctx.lineJoin = 'round';
   ctx.lineWidth = 2;
@@ -402,7 +489,9 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     if (m.chartType === 'candles') drawCandles(ctx, layer.dpr, m, main);
     else if (m.chartType === 'heikin') drawCandles(ctx, layer.dpr, m, main, heikinAshi(m.bars));
     else if (m.chartType === 'hollow') drawHollowCandles(ctx, layer.dpr, m, main);
-    else drawLineSeries(ctx, m, main, m.chartType === 'area');
+    else if (m.chartType === 'bars') drawOhlcBars(ctx, layer.dpr, m, main);
+    else if (m.chartType === 'baseline') drawBaseline(ctx, m, main);
+    else drawLineSeries(ctx, m, main, m.chartType === 'area', m.chartType === 'step');
     for (const overlay of f.overlays) drawIndicator(ctx, p, m, main, overlay);
     if (f.settings.highLowMarkers) drawHighLow(p, m, main);
     for (const overlay of f.overlays) drawIndicatorTables(ctx, p, m, main, overlay);

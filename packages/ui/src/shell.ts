@@ -87,13 +87,15 @@ export interface Shell {
   readonly toolbarHost: HTMLElement;
   readonly body: HTMLElement;
   readonly drawbarHost: HTMLElement | null;
-  /** Column right of the drawing bar: put the chart stage (or pane grid) here, before `slots.bottom`. */
+  /** Column right of the drawing bar: put the chart stage (or pane grid) here, before `rangeHost`. */
   readonly main: HTMLElement;
+  /** Under the chart: the 기간 / 날짜로 이동 bar (the active pane's). */
+  readonly rangeHost: HTMLElement;
   readonly slots: TradingChartSlots;
   readonly storage: WidgetStorage;
   theme(): ThemeTokens;
   /** Initial UI-state fields owned by the shell (same for every pane). */
-  sharedState(): Pick<UiState, 'fullscreen' | 'favoriteIntervals' | 'drawbarCollapsed' | 'favoriteTools' | 'keepDrawing' | 'cursorMode'>;
+  sharedState(): Pick<UiState, 'fullscreen' | 'favoriteIntervals' | 'customIntervals' | 'drawbarCollapsed' | 'favoriteTools' | 'keepDrawing' | 'cursorMode'>;
   setCursorMode(mode: CursorMode): void;
   /** Each tool's last color / style (saved; every pane starts with it). */
   drawingDefaults(): DrawingDefaults;
@@ -108,6 +110,8 @@ export interface Shell {
   toggleFullscreen(): void;
   setDrawbarCollapsed(collapsed: boolean): void;
   toggleFavoriteInterval(resolution: Resolution): void;
+  addCustomInterval(resolution: Resolution): void;
+  removeCustomInterval(resolution: Resolution): void;
   destroy(): void;
 }
 
@@ -223,6 +227,7 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
   const body = div('fnc-body', root);
   const drawbarHost = options.drawingToolbar ? div('fnc-drawbar-host', body) : null;
   const main = div('fnc-main', body);
+  const rangeHost = div('fnc-rangebar-host', main);
   main.appendChild(slots.bottom);
   root.appendChild(slots.footer);
 
@@ -235,6 +240,7 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
   darkQuery?.addEventListener?.('change', onSchemeChange);
 
   let favoriteIntervals = storage.get<Resolution[]>('favorite-intervals', [...options.favoriteIntervals]);
+  let customIntervals = storage.get<Resolution[]>('custom-intervals', []);
   let drawbarCollapsed = storage.get('drawbar-collapsed', false);
   let favoriteTools = storage.get<DrawingType[]>('favorite-tools', []);
   let keepDrawing = storage.get('keep-drawing', false);
@@ -260,10 +266,11 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
     body,
     drawbarHost,
     main,
+    rangeHost,
     slots,
     storage,
     theme: () => theme,
-    sharedState: () => ({ fullscreen: isFullscreen(), favoriteIntervals, drawbarCollapsed, favoriteTools, keepDrawing, cursorMode }),
+    sharedState: () => ({ fullscreen: isFullscreen(), favoriteIntervals, customIntervals, drawbarCollapsed, favoriteTools, keepDrawing, cursorMode }),
     setCursorMode: (mode) => {
       cursorMode = mode;
       storage.set('cursor-mode', mode);
@@ -312,6 +319,22 @@ export function createShell(container: HTMLElement, options: ShellOptions): Shel
       drawbarCollapsed = collapsed;
       storage.set('drawbar-collapsed', collapsed);
       broadcast({ drawbarCollapsed });
+    },
+    addCustomInterval: (res) => {
+      if (customIntervals.includes(res)) return;
+      customIntervals = [...customIntervals, res];
+      storage.set('custom-intervals', customIntervals);
+      broadcast({ customIntervals });
+    },
+    removeCustomInterval: (res) => {
+      customIntervals = customIntervals.filter((r) => r !== res);
+      storage.set('custom-intervals', customIntervals);
+      // Not pinned any more either.
+      if (favoriteIntervals.includes(res)) {
+        favoriteIntervals = favoriteIntervals.filter((r) => r !== res);
+        storage.set('favorite-intervals', favoriteIntervals);
+      }
+      broadcast({ customIntervals, favoriteIntervals });
     },
     toggleFavoriteInterval: (res) => {
       favoriteIntervals = favoriteIntervals.includes(res) ? favoriteIntervals.filter((r) => r !== res) : [...favoriteIntervals, res];

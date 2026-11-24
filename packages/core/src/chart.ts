@@ -1,3 +1,4 @@
+import { derivedBase, withDerivedResolutions } from './datafeed/derived.js';
 import { Emitter } from './events.js';
 import { Interaction, type HitRegion, type InteractionHost } from './interaction.js';
 import { BarStore } from './model/bar-store.js';
@@ -251,6 +252,8 @@ const MIN_PANE_HEIGHT = 32;
 /** Pointer distance (px) from a pane border that grabs it. */
 const PANE_BORDER_GRAB = 4;
 const HISTORY_TRIGGER_BARS = 20;
+/** The most bars one go-to-date / range request asks for (loadHistoryUntil). */
+const MAX_HISTORY_REQUEST = 20_000;
 const TIME_LABEL_MIN_GAP = 72;
 const PRICE_TICK_SPACING = 48;
 
@@ -317,6 +320,8 @@ const TOOLTIP_LABELS: Record<Locale, { buy: string; sell: string; liquidation: s
  */
 export function fallbackResolution(requested: Resolution, supported: readonly Resolution[] | undefined): Resolution {
   if (!supported?.length || supported.includes(requested)) return requested;
+  // One made from a supported interval (2시간 from 1시간…; datafeed/derived.ts) works as asked.
+  if (derivedBase(requested, supported)) return requested;
   const target = resolutionToMs(requested);
   const sorted = [...supported].sort((a, b) => resolutionToMs(a) - resolutionToMs(b));
   return [...sorted].reverse().find((r) => resolutionToMs(r) <= target) ?? sorted[0]!;
@@ -445,7 +450,8 @@ export class Chart {
     this.tickSize = options.tickSize ?? 0;
     this.settingsValue = { ...DEFAULT_CHART_SETTINGS, ...options.settings };
     if (options.volume !== undefined) this.settingsValue.volume = options.volume;
-    this.datafeed = options.datafeed;
+    // Intervals the feed doesn't send come from ones it does (2시간 from 1시간…).
+    this.datafeed = options.datafeed && withDerivedResolutions(options.datafeed);
     this.historyBatchSize = options.historyBatchSize ?? 300;
     this.displayTimezone = options.displayTimezone;
     if (options.displayTimezone) this.formatter = new TimeFormatter(options.displayTimezone, this.locale);
@@ -754,6 +760,59 @@ export class Chart {
     ts.rightOffset = to - 0.5 - (this.store.length - 1);
     ts.clamp();
     this.invalidate();
+  }
+
+  /**
+   * Loads older history until the first bar is at or before `time` (or there is none older). Each
+   * request asks for the whole gap at once (up to MAX_HISTORY_REQUEST bars; a feed may send fewer),
+   * at most `maxPages` requests. Resolves when done.
+   */
+  async loadHistoryUntil(time: number, maxPages = 40): Promise<void> {
+    for (let page = 0; page < maxPages; page++) {
+      const first = this.store.first();
+      if (!first || first.time <= time || this.noMoreHistory) return;
+      // A page already on its way: wait for it, then look again.
+      if (this.loadingHistory) {
+        await new Promise((r) => setTimeout(r, 50));
+        continue;
+      }
+      this.historyRequestedFor = Number.NaN;
+      const step = this.resolution ? resolutionToMs(this.resolution) : 0;
+      const gap = Number.isFinite(time) && step > 0 ? Math.ceil((first.time - time) / step) : MAX_HISTORY_REQUEST;
+      const loading = this.requestHistory(Math.min(MAX_HISTORY_REQUEST, Math.max(this.historyBatchSize, gap + this.historyBatchSize)));
+      if (!loading) return;
+      await loading;
+    }
+  }
+
+  /** Shows `from`…`to` (UTC ms; `to` defaults to the latest bar), loading older history first if needed. */
+  async showRange(from: number, to?: number): Promise<void> {
+    await this.loadHistoryUntil(from);
+    const last = this.store.last();
+    if (!last) return;
+    const end = to ?? last.time + this.barInterval();
+    const start = Math.max(from, this.store.first()!.time);
+    if (end > start) this.setVisibleTimeRange({ from: start, to: end });
+  }
+
+  /** The whole history (as far back as the feed goes, at most `maxPages` pages more), all on screen. */
+  async showAll(maxPages = 40): Promise<void> {
+    await this.loadHistoryUntil(-Infinity, maxPages);
+    this.fitContent();
+  }
+
+  /**
+   * Centers the view on `time` (UTC ms) at the current zoom, loading older history first when it's
+   * before the oldest bar loaded (날짜로 이동).
+   */
+  async goToTime(time: number): Promise<void> {
+    const view = this.getVisibleTimeRange();
+    const span = view ? view.to - view.from : this.barInterval() * 100;
+    await this.loadHistoryUntil(time - span / 2);
+    const last = this.store.last();
+    if (!last) return;
+    const to = Math.min(time + span / 2, last.time + this.barInterval() * 5);
+    this.setVisibleTimeRange({ from: to - span, to });
   }
 
   /** Fractional bar index → time, interpolating between bars and extrapolating past either end. */
@@ -2337,28 +2396,28 @@ export class Chart {
     if (this.store.length > 0 && this.timeScale.xToIndexFloat(0) < HISTORY_TRIGGER_BARS) this.requestHistory();
   }
 
-  private requestHistory(): void {
+  private requestHistory(countBack = this.historyBatchSize): Promise<void> | null {
     const oldest = this.store.first();
-    if (!oldest || this.loadingHistory || this.noMoreHistory || oldest.time === this.historyRequestedFor) return;
+    if (!oldest || this.loadingHistory || this.noMoreHistory || oldest.time === this.historyRequestedFor) return null;
     // Mid-load (setSymbol awaiting the next symbol's bars): the bars on screen are on their way out.
-    if (this.symbolLoading) return;
+    if (this.symbolLoading) return null;
     this.historyRequestedFor = oldest.time;
 
     const feed = this.datafeed;
     if (!feed || !this.symbol || !this.resolution) {
       this.emitter.emit('needHistory', { oldestTime: oldest.time });
-      return;
+      return null;
     }
     const token = this.loadToken;
     const request = ++this.historyRequest;
     const current = () => token === this.loadToken && request === this.historyRequest;
     this.loadingHistory = true;
     const to = oldest.time - 1;
-    feed
+    return feed
       .getBars(this.symbol, this.resolution, {
-        from: to - resolutionToMs(this.resolution) * this.historyBatchSize,
+        from: to - resolutionToMs(this.resolution) * countBack,
         to,
-        countBack: this.historyBatchSize,
+        countBack,
       })
       .then((result) => {
         if (!current()) return;

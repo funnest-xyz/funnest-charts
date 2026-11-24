@@ -171,6 +171,8 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
       if (current) void load(current.symbol, res);
     },
     toggleFavoriteInterval: shell.toggleFavoriteInterval,
+    addCustomInterval: shell.addCustomInterval,
+    removeCustomInterval: shell.removeCustomInterval,
     toggleFavoriteTool: shell.toggleFavoriteTool,
     setKeepDrawing: shell.setKeepDrawing,
     setCursorMode: shell.setCursorMode,

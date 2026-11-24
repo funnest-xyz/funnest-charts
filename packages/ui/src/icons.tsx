@@ -166,6 +166,25 @@ export const LineChartIcon = () => (
   </Icon>
 );
 
+export const OhlcBarsIcon = () => (
+  <Icon>
+    <path d="M6 4v12M3.5 7H6M6 13h2.5M14 3v13M11.5 12H14M14 6h2.5" />
+  </Icon>
+);
+
+export const StepLineIcon = () => (
+  <Icon>
+    <path d="M3 14h4V9h4v3h3V5h3" />
+  </Icon>
+);
+
+export const BaselineIcon = () => (
+  <Icon>
+    <path d="M3 10h14" stroke-dasharray="2 2" />
+    <path d="M3 12l3.5-5 3.5 3 3-6 4 9" />
+  </Icon>
+);
+
 export const AreaChartIcon = () => (
   <Icon>
     <path d="M3 14l4.5-5 3.5 3 6-7" />
@@ -225,6 +244,13 @@ export const StarIcon = ({ filled = false }: { filled?: boolean }) => (
       d="M10 3.2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L10 14l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"
       fill={filled ? 'currentColor' : 'none'}
     />
+  </Icon>
+);
+
+export const CalendarIcon = () => (
+  <Icon size={16}>
+    <rect x="3.5" y="4.5" width="13" height="12" rx="2" />
+    <path d="M3.5 8.5h13M7 3v3M13 3v3" />
   </Icon>
 );
 

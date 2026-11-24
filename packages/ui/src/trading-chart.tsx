@@ -14,6 +14,7 @@ import {
 } from '@funnest/charts';
 import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar.js';
+import { RangeBar } from './components/range-bar.js';
 import { Toolbar } from './components/toolbar.js';
 import type { ContextMenuItems, IntervalGroup, LegendValues, SearchCategory, SearchExchange, ToolsMenuItems } from './context.js';
 import type { Strings } from './i18n.js';
@@ -208,11 +209,12 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     onIndicatorsClick,
     strings,
   });
-  shell.main.insertBefore(pane.stage, shell.slots.bottom);
+  shell.main.insertBefore(pane.stage, shell.rangeHost);
   shell.setPanes(() => [pane]);
   const unbindKeys = bindWidgetKeys(shell, () => pane, searchHotkey);
 
   render(<Toolbar ctx={pane.ctx} />, shell.toolbarHost);
+  render(<RangeBar ctx={pane.ctx} />, shell.rangeHost);
   if (shell.drawbarHost) render(<DrawingToolbar ctx={pane.ctx} />, shell.drawbarHost);
 
   void pane.load(symbol, resolution);

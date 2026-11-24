@@ -6,6 +6,9 @@ import type { LayoutSync, MultiControls, WidgetContext } from '../context.js';
 import { stringsOf, type Strings } from '../i18n.js';
 import {
   AreaChartIcon,
+  BaselineIcon,
+  OhlcBarsIcon,
+  StepLineIcon,
   CameraIcon,
   CandlesIcon,
   HeikinAshiIcon,
@@ -26,7 +29,10 @@ const TYPES: { type: ChartType; label: keyof Strings; icon: () => JSX.Element }[
   { type: 'candles', label: 'candles', icon: CandlesIcon },
   { type: 'hollow', label: 'hollowCandles', icon: HollowCandlesIcon },
   { type: 'heikin', label: 'heikinAshi', icon: HeikinAshiIcon },
+  { type: 'bars', label: 'ohlcBars', icon: OhlcBarsIcon },
   { type: 'line', label: 'line', icon: LineChartIcon },
+  { type: 'step', label: 'stepLine', icon: StepLineIcon },
+  { type: 'baseline', label: 'baseline', icon: BaselineIcon },
   { type: 'area', label: 'area', icon: AreaChartIcon },
 ];
 

@@ -47,6 +47,8 @@ export interface UiState {
   dialog: { kind: 'indicators' } | { kind: 'indicatorSettings'; id: string } | { kind: 'chartSettings' } | null;
   /** Intervals pinned as toolbar chips (★ in the interval menu). */
   favoriteIntervals: Resolution[];
+  /** Intervals the user added (2시간, 3분…): listed in the interval menu, made from ones the feed sends. */
+  customIntervals: Resolution[];
   /** Desktop: the left drawing bar folded away (a small tab brings it back). */
   drawbarCollapsed: boolean;
   /** Tools pinned at the top of the drawing bar (★ in a tool list). */
@@ -144,6 +146,8 @@ export interface WidgetContext {
   selectSymbol(symbol: string): void;
   selectResolution(resolution: Resolution): void;
   toggleFavoriteInterval(resolution: Resolution): void;
+  addCustomInterval(resolution: Resolution): void;
+  removeCustomInterval(resolution: Resolution): void;
   toggleFavoriteTool(tool: DrawingType): void;
   setKeepDrawing(on: boolean): void;
   setCursorMode(mode: CursorMode): void;

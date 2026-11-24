@@ -2,6 +2,7 @@
 import { browserLocale, parseChartState, type Chart, type ChartState, type Locale, type Resolution, type ThemeTokens } from '@funnest/charts';
 import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar.js';
+import { RangeBar } from './components/range-bar.js';
 import { Toolbar } from './components/toolbar.js';
 import type { LayoutSync, MultiControls, MultiState } from './context.js';
 import { resolutionLabel, stringsOf } from './i18n.js';
@@ -161,7 +162,7 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
   const tabsHost = div('fnc-pane-tabs-host');
   shell.root.insertBefore(tabsHost, shell.body);
   const grid = div('fnc-grid');
-  shell.main.insertBefore(grid, shell.slots.bottom);
+  shell.main.insertBefore(grid, shell.rangeHost);
   const parking = div('fnc-parking', shell.root); // hidden panes stay alive here
 
   const listeners = new Map<keyof MultiChartEvents, Set<(payload: never) => void>>();
@@ -358,6 +359,7 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
     const pane = panes[store.get().active]!;
     // Keyed by pane: the toolbar and drawing bar remount on the new pane's state.
     render(<Toolbar key={store.get().active} ctx={pane.ctx} />, shell.toolbarHost);
+    render(<RangeBar key={store.get().active} ctx={pane.ctx} />, shell.rangeHost);
     if (shell.drawbarHost) render(<DrawingToolbar key={store.get().active} ctx={pane.ctx} />, shell.drawbarHost);
   }
 

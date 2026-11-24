@@ -83,3 +83,4 @@ export { ReconnectingWebSocket, toConnectionStatus } from './datafeed/socket.js'
 export type { ReconnectingWebSocketOptions, SocketStatus } from './datafeed/socket.js';
 export { monitorLatency } from './datafeed/latency.js';
 export { combineDatafeeds } from './datafeed/combine.js';
+export { derivedBase, groupBars, withDerivedResolutions } from './datafeed/derived.js';

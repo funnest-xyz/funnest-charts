@@ -338,6 +338,18 @@ const CSS = /* css */ `
 .fnc-menu-row.is-favorite .fnc-star { opacity: 1; color: #FF9F0A; }
 @media (hover: none) { .fnc-star { opacity: 0.5; } }
 
+/* 직접 추가: the interval menu's last part — a number, its unit, 추가. */
+.fnc-interval-remove:hover { color: var(--fnc-down, #f04452); }
+.fnc-menu-row.is-favorite .fnc-interval-remove { color: var(--fnc-text-2); }
+.fnc-interval-add { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding: 2px 6px 6px; border-top: 1px solid var(--fnc-border); }
+.fnc-interval-add .fnc-menu-title { padding: 6px 4px 0; }
+.fnc-interval-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.fnc-interval-add .fnc-input { flex: 0 0 64px; height: 32px; padding: 0 8px; font-size: 13px; }
+.fnc-interval-add-go { flex: 1; height: 32px; border-radius: var(--fnc-radius); background: var(--fnc-accent); color: #fff; font-size: 13px; font-weight: 700; }
+.fnc-interval-units { order: 3; display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 4px; }
+.fnc-interval-units button { height: 28px; padding: 0 9px; border: 1px solid var(--fnc-border); border-radius: 7px; background: transparent; color: var(--fnc-text-2); font-size: 12px; cursor: pointer; }
+.fnc-interval-units button.is-on { border-color: var(--fnc-text); color: var(--fnc-text); font-weight: 700; }
+
 /* Interval buttons keep their width; host content in the toolbar slot shrinks first. */
 .fnc-interval-picker { flex: none; }
 
@@ -633,6 +645,36 @@ const CSS = /* css */ `
 @media (hover: none) {
   .fnc-nav { display: none; }
 }
+/* 기간 · 날짜로 이동: a row under the chart. */
+.fnc-rangebar-host { flex: none; border-top: 1px solid var(--fnc-border); }
+.fnc-rangebar-host:empty { display: none; }
+.fnc-ranges { position: relative; display: flex; align-items: center; gap: 2px; height: 32px; padding: 0 6px; }
+.fnc-ranges-scroll { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.fnc-ranges-scroll::-webkit-scrollbar { display: none; }
+.fnc-range-sep { flex: none; width: 1px; height: 16px; margin: 0 4px; background: var(--fnc-border); }
+.fnc-range { flex: none; height: 26px; padding: 0 8px; border-radius: var(--fnc-radius); color: var(--fnc-text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.fnc-range:hover:not(:disabled) { background: var(--fnc-surface); color: var(--fnc-text); }
+.fnc-range:disabled { opacity: 0.35; cursor: default; }
+.fnc-range-date { display: flex; align-items: center; padding: 0 6px; }
+.fnc-goto {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 6px);
+  left: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: calc(var(--fnc-radius) + 4px);
+  background: var(--fnc-bg);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2), 0 0 0 1px var(--fnc-border);
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--fnc-text-2);
+}
+.fnc-goto .fnc-input { height: 32px; font-size: 13px; color-scheme: light dark; }
+.fnc-goto-go { height: 32px; padding: 0 12px; border-radius: var(--fnc-radius); background: var(--fnc-accent); color: #fff; font-weight: 700; }
+
 
 /* ── Symbol search ───────────────────────────────────── */
 .fnc-backdrop {
@@ -925,8 +967,9 @@ const CSS = /* css */ `
 .fnc-tools-menu { width: 300px; padding: 8px; gap: 2px; max-height: 72vh; overflow-y: auto; }
 .fnc-tools-section { padding: 8px 6px 6px; font-size: 12px; font-weight: 700; color: var(--fnc-text-2); }
 .fnc-tools-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 0 2px 4px; }
-.fnc-tools-seg[data-count="5"] { display: grid; grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); gap: 2px; }
-.fnc-tools-seg[data-count="5"] button { flex-direction: column; gap: 2px; height: auto; min-height: 40px; padding: 5px 4px; font-size: 12px; white-space: normal; word-break: keep-all; text-align: center; line-height: 1.25; }
+.fnc-tools-seg[data-count="5"], .fnc-tools-seg[data-count="8"] { display: grid; grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.fnc-tools-seg[data-count="8"] { grid-template-columns: repeat(4, 1fr); }
+.fnc-tools-seg[data-count="5"] button, .fnc-tools-seg[data-count="8"] button { flex-direction: column; gap: 2px; height: auto; min-height: 40px; padding: 5px 4px; font-size: 12px; white-space: normal; word-break: keep-all; text-align: center; line-height: 1.25; }
 .fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-tools-layouts { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }

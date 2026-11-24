@@ -15,12 +15,16 @@ describe('resolution', () => {
 });
 
 describe('fallbackResolution', () => {
-  it('keeps supported resolutions and steps down to the nearest shorter one', async () => {
+  it('keeps supported (or derivable) resolutions and steps down to the nearest shorter one', async () => {
     const { fallbackResolution } = await import('./chart.js');
     const binance = ['1', '5', '15', '60', '240', '1D', '1W', '1M'];
     expect(fallbackResolution('5', binance)).toBe('5');
-    expect(fallbackResolution('3M', binance)).toBe('1M');
-    expect(fallbackResolution('30', binance)).toBe('15');
+    // Made from 1M / 15 (datafeed/derived.ts): kept.
+    expect(fallbackResolution('3M', binance)).toBe('3M');
+    expect(fallbackResolution('30', binance)).toBe('30');
+    // Nothing to make them from: the nearest shorter.
+    expect(fallbackResolution('7', ['5', '15'])).toBe('5');
+    expect(fallbackResolution('3M', ['1D', '1W'])).toBe('1W');
     expect(fallbackResolution('5', undefined)).toBe('5');
     expect(fallbackResolution('1', ['1D', '1W'])).toBe('1D');
   });
