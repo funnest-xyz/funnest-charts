@@ -2122,6 +2122,7 @@ export class Chart {
       snapPrice: (p) => roundToTick(p, this.tickSize),
       // Drawing and order badges follow the axis (a % axis labels them in %).
       formatPrice: this.mainScale.mode === 'percent' ? this.mainValueFormat() : (p) => formatPrice(p, this.pricePrecision),
+      locale: this.locale,
     };
   }
 

@@ -1014,6 +1014,14 @@ const CSS = /* css */ `
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-template-menu { min-width: 220px; }
 .fnc-levels-menu { min-width: 230px; }
+.fnc-options-menu { min-width: 250px; }
+.fnc-option-row { display: flex; align-items: center; gap: 8px; }
+.fnc-option-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--fnc-accent, #3182f6); }
+.fnc-option-field { justify-content: space-between; padding: 4px 10px; font-size: 13px; color: var(--fnc-text); }
+.fnc-option-field > span:first-child { flex: 1; }
+.fnc-option-number { flex: none; width: 90px; height: 28px; padding: 0 8px; font-size: 13px; }
+.fnc-option-unit { color: var(--fnc-text-2); font-size: 12px; }
+.fnc-option-field .fnc-select { height: 28px; font-size: 13px; }
 .fnc-levels-list { max-height: 300px; overflow-y: auto; padding: 2px 0; }
 .fnc-level-row { display: flex; align-items: center; gap: 8px; padding: 3px 8px; }
 .fnc-level-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--fnc-accent, #3182f6); }

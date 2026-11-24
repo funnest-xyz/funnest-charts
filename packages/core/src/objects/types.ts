@@ -14,6 +14,8 @@ export interface PaneCoords {
   yToPrice(y: number): number;
   snapPrice(price: number): number;
   formatPrice(price: number): string;
+  /** The chart's language, for words a tool writes (봉 / bars). */
+  locale?: 'ko' | 'en';
 }
 
 export interface ObjectRenderContext {

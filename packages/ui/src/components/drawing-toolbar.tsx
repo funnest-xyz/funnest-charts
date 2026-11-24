@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { drawingLevels, type CursorMode, type DrawingDefinition, type DrawingLevel, type DrawingStyle, type DrawingType, type Locale } from '@funnest/charts';
+import { drawingLevels, drawingOption, type CursorMode, type DrawingDefinition, type DrawingLevel, type DrawingStyle, type DrawingType, type Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
@@ -23,6 +23,7 @@ import {
   SmallCloseIcon,
   TemplateIcon,
   LevelsIcon,
+  GearIcon,
   PaletteIcon,
   FibonacciIcon,
   HorizontalLineIcon,
@@ -369,16 +370,17 @@ const TEMPLATES_MAX = 20;
 interface DrawingTemplate {
   name: string;
   color?: string;
-  style: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize' | 'colors' | 'levels'>;
+  style: Pick<DrawingStyle, 'width' | 'dash' | 'fontSize' | 'colors' | 'levels' | 'options'>;
 }
 const lookOf = (style: DrawingStyle): DrawingTemplate['style'] => {
-  const { width, dash, fontSize, colors, levels } = style;
+  const { width, dash, fontSize, colors, levels, options } = style;
   return {
     ...(width ? { width } : {}),
     ...(dash ? { dash } : {}),
     ...(fontSize ? { fontSize } : {}),
     ...(colors ? { colors: { ...colors } } : {}),
     ...(levels ? { levels: levels.map((l) => ({ ...l })) } : {}),
+    ...(options ? { options: { ...options } } : {}),
   };
 };
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -417,7 +419,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels' | 'options'>(null);
   const [templates, setTemplates] = useState<Record<string, DrawingTemplate[]>>(() => readJson(TEMPLATES_KEY, {}));
   const [naming, setNaming] = useState<string | null>(null);
   const colorInput = useRef<HTMLInputElement>(null);
@@ -558,6 +560,68 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
                 }}
               >
                 {t.resetColors}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {def?.options && def.options.length > 0 && (
+        <div class="fnc-selbar-menu">
+          <button class="fnc-btn" data-tip={t.drawingOptions} aria-label={t.drawingOptions} aria-expanded={menu === 'options'} onClick={() => setMenu(menu === 'options' ? null : 'options')}>
+            <GearIcon />
+          </button>
+          {menu === 'options' && (
+            <div class="fnc-menu fnc-selbar-pop fnc-options-menu" role="menu" onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+              {def.options.map((o) => {
+                const value = drawingOption(def, d, o.key);
+                const set = (v: number | boolean | string) => setStyle({ options: { ...style.options, [o.key]: v } });
+                if (o.kind === 'toggle')
+                  return (
+                    <label class="fnc-menu-item fnc-option-row">
+                      <input type="checkbox" checked={value === true} onChange={(e) => set((e.target as HTMLInputElement).checked)} />
+                      <span>{o.label[s.locale]}</span>
+                    </label>
+                  );
+                if (o.kind === 'choice')
+                  return (
+                    <label class="fnc-option-row fnc-option-field">
+                      <span>{o.label[s.locale]}</span>
+                      <select class="fnc-select" value={String(value)} onChange={(e) => set((e.target as HTMLSelectElement).value)}>
+                        {o.choices?.map((c) => (
+                          <option value={c.value}>{c.label[s.locale]}</option>
+                        ))}
+                      </select>
+                    </label>
+                  );
+                return (
+                  <label class="fnc-option-row fnc-option-field" key={`${o.key}:${String(value)}`}>
+                    <span>{o.label[s.locale]}</span>
+                    <input
+                      class="fnc-input fnc-option-number"
+                      type="number"
+                      step={o.step ?? 'any'}
+                      min={o.min}
+                      max={o.max}
+                      defaultValue={String(value)}
+                      onChange={(e) => {
+                        const v = Number((e.target as HTMLInputElement).value);
+                        if (Number.isFinite(v)) set(v);
+                      }}
+                    />
+                    {o.unit && <span class="fnc-option-unit">{o.unit}</span>}
+                  </label>
+                );
+              })}
+              <div class="fnc-menu-sep" />
+              <button
+                class="fnc-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  const { options: _drop, ...rest } = style;
+                  setStyleRaw(rest);
+                }}
+              >
+                {t.resetOptions}
               </button>
             </div>
           )}
