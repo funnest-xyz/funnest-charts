@@ -81,11 +81,15 @@ export interface DrawingLevel {
   on?: boolean;
   /** Its own color; absent: the drawing's color, else the tool's default for that place. */
   color?: string;
+  /** Words shown on its line (the tool says where). */
+  text?: string;
 }
 
 /** A tool's levels: the defaults, their colors, and the key each one's color had under `style.colors`. */
 export interface DrawingLevelSpec {
   values: number[];
+  /** More levels the tool offers, off until turned on (트레이딩뷰's 1.272 … 4.764), after `values`. */
+  off?: number[];
   /** Default colors, by place (repeating). */
   colors?: string[];
   /** The `style.colors` key of default level i (colors set before levels could be edited). Default: `l${i}`. */
@@ -94,15 +98,21 @@ export interface DrawingLevelSpec {
 
 /**
  * Every level of a drawing as it stands (off ones too), each with its color resolved: the
- * drawing's own list, else the tool's defaults with any part colors set on them.
+ * drawing's own list, else the tool's defaults with any part colors set on them. The drawing's
+ * main color isn't used (level tools have no one color: the widget offers none for them).
  */
 export function drawingLevels(def: Pick<DrawingDefinition, 'levels'>, drawing: Pick<Drawing, 'color' | 'style'>, fallback = '#8B95A1'): Required<DrawingLevel>[] {
   const spec = def.levels;
   if (!spec) return [];
   const own = drawing.style?.levels;
   const base = (i: number) => spec.colors?.length ? spec.colors[i % spec.colors.length]! : fallback;
-  if (own) return own.map((l, i) => ({ value: l.value, on: l.on !== false, color: l.color ?? drawing.color ?? base(i) }));
-  return spec.values.map((value, i) => ({ value, on: true, color: drawing.style?.colors?.[spec.key?.(i) ?? `l${i}`] ?? drawing.color ?? base(i) }));
+  // Each level keeps its own color: the drawing's one color (from before levels had their own) doesn't paint them all.
+  if (own) return own.map((l, i) => ({ value: l.value, on: l.on !== false, color: l.color ?? base(i), text: l.text ?? '' }));
+  const offered = spec.off ?? [];
+  return [
+    ...spec.values.map((value, i) => ({ value, on: true, color: drawing.style?.colors?.[spec.key?.(i) ?? `l${i}`] ?? base(i), text: '' })),
+    ...offered.map((value, j) => ({ value, on: false, color: base(spec.values.length + j), text: '' })),
+  ];
 }
 
 /**
@@ -145,7 +155,7 @@ export interface DrawingRenderContext extends DrawingGeometry {
   /** The main line width: the drawing's style, else the tool's default. */
   width(fallback: number): number;
   /** The levels to draw (shown ones, in order), for tools with `DrawingDefinition.levels`. */
-  levels(): { value: number; color: string }[];
+  levels(): { value: number; color: string; text: string }[];
   /** A setting (`DrawingDefinition.options`): the drawing's own, else the default. */
   option<T extends DrawingOptionValue = DrawingOptionValue>(key: string): T;
   /** The main line dash pattern for canvas: the drawing's style, else the tool's default. */
@@ -237,13 +247,63 @@ const TRENDLINE_OPTIONS: DrawingOption[] = [
   { key: 'stats', label: L('가격 변화 · 봉 수 표시', 'Show price change and bars'), kind: 'toggle', default: false },
 ];
 const TRENDLINE = { options: TRENDLINE_OPTIONS };
+const H_CHOICES = [
+  { value: 'left', label: L('왼쪽', 'Left') },
+  { value: 'center', label: L('가운데', 'Center') },
+  { value: 'right', label: L('오른쪽', 'Right') },
+];
+const V_CHOICES = [
+  { value: 'top', label: L('위', 'Top') },
+  { value: 'middle', label: L('가운데', 'Middle') },
+  { value: 'bottom', label: L('아래', 'Bottom') },
+];
 const FIB_OPTIONS: DrawingOption[] = [
+  { key: 'trendline', label: L('추세선 (두 점 잇기)', 'Trend line'), kind: 'toggle', default: true },
   { key: 'extendLeft', label: L('왼쪽으로 연장', 'Extend left'), kind: 'toggle', default: false },
   { key: 'extendRight', label: L('오른쪽으로 연장', 'Extend right'), kind: 'toggle', default: false },
+  { key: 'background', label: L('배경', 'Background'), kind: 'toggle', default: true },
+  { key: 'opacity', label: L('배경 투명도', 'Background opacity'), kind: 'number', default: 7, min: 0, max: 100, step: 1, unit: '%' },
   { key: 'reverse', label: L('뒤집기 (0과 1 바꾸기)', 'Reverse (swap 0 and 1)'), kind: 'toggle', default: false },
   { key: 'prices', label: L('가격 표시', 'Show prices'), kind: 'toggle', default: true },
-  { key: 'background', label: L('배경', 'Background'), kind: 'toggle', default: true },
+  {
+    key: 'levelFormat',
+    label: L('레벨 표시', 'Levels as'),
+    kind: 'choice',
+    default: 'value',
+    choices: [
+      { value: 'value', label: L('값 (0.618)', 'Values (0.618)') },
+      { value: 'percent', label: L('퍼센트 (61.8%)', 'Percent (61.8%)') },
+      { value: 'none', label: L('숨기기', 'Hidden') },
+    ],
+  },
+  { key: 'labelH', label: L('라벨 가로 위치', 'Label: across'), kind: 'choice', default: 'left', choices: H_CHOICES },
+  { key: 'labelV', label: L('라벨 세로 위치', 'Label: up / down'), kind: 'choice', default: 'top', choices: V_CHOICES },
+  { key: 'textH', label: L('레벨 문자 가로 위치', 'Level text: across'), kind: 'choice', default: 'center', choices: H_CHOICES },
+  { key: 'textV', label: L('레벨 문자 세로 위치', 'Level text: up / down'), kind: 'choice', default: 'top', choices: V_CHOICES },
+  { key: 'fontSize', label: L('폰트 크기', 'Font size'), kind: 'number', default: 12, min: 8, max: 32, step: 1, unit: 'px' },
+  { key: 'log', label: L('로그 스케일 레벨', 'Levels on a log scale'), kind: 'toggle', default: false },
 ];
+/** More retracement levels TradingView offers, off until turned on. */
+const FIB_MORE_LEVELS = [1.272, 1.414, 1.618, 2, 2.272, 2.414, 2.618, 3, 3.272, 3.414, 3.618, 4, 4.236, 4.272, 4.414, 4.618, 4.764];
+const FIB_MORE_COLORS = ['#795548', '#F06595', '#3182F6', '#15AABF', '#795548', '#12B886', '#F04452', '#15AABF', '#8B95A1', '#3182F6', '#7048E8', '#F06595', '#E64980', '#795548', '#7048E8', '#FF9F0A', '#12B886'];
+
+/** A retracement level's price: straight between the two, or (log) on the log of the prices. */
+function fibPrice(a: number, b: number, v: number, log: boolean): number {
+  if (log && a > 0 && b > 0) return Math.exp(Math.log(b) + (Math.log(a) - Math.log(b)) * v);
+  return b + (a - b) * v;
+}
+
+/** x of a label along [left, right] and its canvas alignment. */
+function along(where: string, left: number, right: number): [number, CanvasTextAlign] {
+  if (where === 'center') return [(left + right) / 2, 'center'];
+  if (where === 'right') return [right - 4, 'right'];
+  return [left + 4, 'left'];
+}
+/** y of a label at a line's y: above it, on it, or under it. */
+function beside(where: string, y: number, size: number): number {
+  if (where === 'middle') return y;
+  return where === 'bottom' ? y + size * 0.6 + 3 : y - size * 0.6 - 2;
+}
 const FIB = { options: FIB_OPTIONS, levels: { values: [] as number[] } };
 
 /** a–b, carried on past either end (far enough that the canvas clips it). */
@@ -313,7 +373,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     group: 'fib',
     section: { ko: '피보나치', en: 'Fibonacci' },
     clicks: 2,
-    levels: { values: FIB_LEVELS, colors: FIB_COLORS, key: (i) => String(FIB_LEVELS[i]) },
+    levels: { values: FIB_LEVELS, colors: [...FIB_COLORS, ...FIB_MORE_COLORS], key: (i) => String(FIB_LEVELS[i]), off: FIB_MORE_LEVELS },
     options: FIB_OPTIONS,
     distance: (g, x, y, d) => {
       // Nearest level line within its horizontal span (or past it, extended), or the diagonal.
@@ -322,13 +382,11 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
       let best = distToSegment(x, y, x1, y1, x2, y2);
       const left = d && drawingOption<boolean>(FIB, d, 'extendLeft') ? -Infinity : Math.min(x1, x2);
       const right = d && drawingOption<boolean>(FIB, d, 'extendRight') ? Infinity : Math.max(x1, x2);
-      if (x >= left && x <= right) {
-        const reverse = d ? drawingOption<boolean>(FIB, d, 'reverse') : false;
-        const levels = d ? drawingLevels(BUILTIN_DRAWINGS.find((t) => t.type === 'fibonacci')!, d).filter((l) => l.on) : FIB_LEVELS.map((value) => ({ value }));
-        for (const { value } of levels) {
-          const v = reverse ? 1 - value : value;
-          best = Math.min(best, Math.abs(y - (y2 + (y1 - y2) * v)));
-        }
+      if (x >= left && x <= right && d) {
+        const [a, b] = drawingOption<boolean>(FIB, d, 'reverse') ? [d.points[1]!.price, d.points[0]!.price] : [d.points[0]!.price, d.points[1]!.price];
+        const log = drawingOption<boolean>(FIB, d, 'log');
+        const levels = drawingLevels(BUILTIN_DRAWINGS.find((t) => t.type === 'fibonacci')!, d).filter((l) => l.on);
+        for (const { value } of levels) best = Math.min(best, Math.abs(y - g.coords.priceToY(fibPrice(a ?? 0, b ?? 0, value, log))));
       }
       return best;
     },
@@ -342,30 +400,45 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
       // Reversed: 0 at the first point, 1 at the second.
       const [a, b] = rc.option<boolean>('reverse') ? [d.points[1]!.price, d.points[0]!.price] : [d.points[0]!.price, d.points[1]!.price];
       const showPrices = rc.option<boolean>('prices');
+      const log = rc.option<boolean>('log');
+      const priceOf = (v: number) => fibPrice(a!, b!, v, log);
       const { ctx } = p;
       const levels = rc.levels();
       const width = rc.width(1);
       const dash = rc.dash();
       // Shaded between neighbouring levels (by value, whatever order they were set in).
       const sorted = [...levels].sort((u, v) => u.value - v.value);
-      sorted.forEach((lv, i) => {
-        if (i === 0 || !rc.option<boolean>('background')) return;
-        const y = c.priceToY(b + (a - b) * lv.value);
-        const prevY = c.priceToY(b + (a - b) * sorted[i - 1]!.value);
-        ctx.save();
-        ctx.globalAlpha = 0.07;
-        ctx.fillStyle = lv.color;
-        ctx.fillRect(left, Math.min(y, prevY), right - left, Math.abs(y - prevY));
-        ctx.restore();
-      });
+      const alpha = rc.option<number>('opacity') / 100;
+      if (rc.option<boolean>('background') && alpha > 0)
+        sorted.forEach((lv, i) => {
+          if (i === 0) return;
+          const y = c.priceToY(priceOf(lv.value));
+          const prevY = c.priceToY(priceOf(sorted[i - 1]!.value));
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = lv.color;
+          ctx.fillRect(left, Math.min(y, prevY), right - left, Math.abs(y - prevY));
+          ctx.restore();
+        });
+      const size = rc.option<number>('fontSize');
+      const format = rc.option<string>('levelFormat');
+      const [labelX, labelAlign] = along(rc.option<string>('labelH'), left, right);
+      const [textX, textAlign] = along(rc.option<string>('textH'), left, right);
+      ctx.save();
+      ctx.font = ctx.font.replace(/\d+(\.\d+)?px/, `${size}px`);
       for (const lv of levels) {
-        const price = b + (a - b) * lv.value;
+        const price = priceOf(lv.value);
         const y = c.priceToY(price);
         if (width === 1 && !dash.length) p.hLine(y, left, right, lv.color);
         else p.line(left, y, right, y, lv.color, width, dash);
-        p.text(showPrices ? `${Number(lv.value.toFixed(4))} (${c.formatPrice(price)})` : String(Number(lv.value.toFixed(4))), left + 4, y - 7, lv.color, 'left', 'middle');
+        const level = format === 'percent' ? `${Number((lv.value * 100).toFixed(2))}%` : format === 'none' ? '' : String(Number(lv.value.toFixed(4)));
+        const label = [level, showPrices ? `(${c.formatPrice(price)})` : ''].filter(Boolean).join(' ');
+        if (label) p.text(label, labelX, beside(rc.option<string>('labelV'), y, size), lv.color, labelAlign, 'middle');
+        // The level's own words, where the settings put them (the middle of the line by default).
+        if (lv.text) p.text(lv.text, textX, beside(rc.option<string>('textV'), y, size), lv.color, textAlign, 'middle');
       }
-      p.line(x1, y1, x2, y2, palette.textSecondary, 1, [4, 4]);
+      ctx.restore();
+      if (rc.option<boolean>('trendline')) p.line(x1, y1, x2, y2, palette.textSecondary, 1, [4, 4]);
     },
   },
 ];
@@ -677,7 +750,7 @@ export class DrawingManager {
           colorOf: (key) => style.colors?.[key] ?? d.color ?? def.colors?.find((c) => c.key === key)?.color ?? color,
           width: (fallback) => Math.min(8, Math.max(0.5, style.width ?? fallback)),
           dash: (fallback = []) => (style.dash ? DASHES[style.dash] : [...fallback]),
-          levels: () => drawingLevels(def, d, color).filter((l) => l.on).map(({ value, color: c }) => ({ value, color: c })),
+          levels: () => drawingLevels(def, d, color).filter((l) => l.on).map(({ value, color: c, text }) => ({ value, color: c, text })),
           option: <T extends DrawingOptionValue>(key: string) => drawingOption<T>(def, d, key),
           bars,
           barIndexAt,

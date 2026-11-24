@@ -26,7 +26,7 @@ const id = await page.evaluate(() => {
 await page.waitForTimeout(300);
 const levels = () => page.evaluate((id) => window.chart.getDrawings().find((x) => x.id === id).style?.levels ?? null, id);
 await page.click('.fnc-selbar [aria-label="레벨 설정"]');
-check((await page.locator('.fnc-level-row').count()) === 7, 'seven default levels listed');
+check((await page.locator('.fnc-level-row').count()) === 24, 'seven default levels on, seventeen more offered');
 check((await page.locator('.fnc-selbar [aria-label="부분 색상"]').count()) === 0, 'no separate part-color button');
 // 0.786 → 0.65
 const value = page.locator('.fnc-level-value').nth(5);
@@ -40,7 +40,7 @@ check((await levels())?.[1]?.on === false, 'a level hides');
 // Add one: past 1.
 await page.click('.fnc-levels-menu >> text=레벨 추가');
 const l = await levels();
-check(l.length === 8 && l[7].value > 1, `a level adds (${l.at(-1).value})`);
+check(l.length === 25 && l[24].value > 1, `a level adds (${l.at(-1).value})`);
 await page.screenshot({ path: `${out}/levels-menu.png` });
 await page.keyboard.press('Escape');
 // Width and line style reach the levels.

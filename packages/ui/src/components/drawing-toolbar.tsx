@@ -23,7 +23,7 @@ import {
   SmallCloseIcon,
   TemplateIcon,
   LevelsIcon,
-  GearIcon,
+  SettingsIcon,
   PaletteIcon,
   FibonacciIcon,
   HorizontalLineIcon,
@@ -515,11 +515,16 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
       >
         <GripIcon />
       </button>
-      {[...SWATCHES, ...recent.filter((c) => !SWATCHES.includes(c))].map((color) => (
-        <button class="fnc-swatch" style={{ background: color }} data-tip={t.color} aria-label={`${t.color} ${color}`} aria-pressed={current === color} onClick={() => pickColor(color)} />
-      ))}
+      {/* Tools with levels (피보나치…) are colored level by level in 레벨 설정: no one color for all of them. */}
+      {!def?.levels &&
+        [...SWATCHES, ...recent.filter((c) => !SWATCHES.includes(c))].map((color) => (
+          <button class="fnc-swatch" style={{ background: color }} data-tip={t.color} aria-label={`${t.color} ${color}`} aria-pressed={current === color} onClick={() => pickColor(color)} />
+        ))}
+      {!def?.levels && (
       <label class="fnc-swatch fnc-swatch-add" data-tip={t.customColor} aria-label={t.customColor}>
-        +
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
         <input
           ref={colorInput}
           type="color"
@@ -528,6 +533,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
           onChange={(e) => addRecent((e.target as HTMLInputElement).value)}
         />
       </label>
+      )}
       {slots.length > 0 && (
         <div class="fnc-selbar-menu">
           <button class="fnc-btn" data-tip={t.partColors} aria-label={t.partColors} aria-expanded={menu === 'colors'} onClick={() => setMenu(menu === 'colors' ? null : 'colors')}>
@@ -568,7 +574,7 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
       {def?.options && def.options.length > 0 && (
         <div class="fnc-selbar-menu">
           <button class="fnc-btn" data-tip={t.drawingOptions} aria-label={t.drawingOptions} aria-expanded={menu === 'options'} onClick={() => setMenu(menu === 'options' ? null : 'options')}>
-            <GearIcon />
+            <SettingsIcon />
           </button>
           {menu === 'options' && (
             <div class="fnc-menu fnc-selbar-pop fnc-options-menu" role="menu" onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
@@ -662,6 +668,15 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
                         onInput={(e) => setLevels(levelRows.map((x, j) => (j === i ? { ...x, color: (e.target as HTMLInputElement).value } : x)))}
                       />
                     </label>
+                    <input
+                      class="fnc-input fnc-level-text"
+                      type="text"
+                      maxLength={40}
+                      defaultValue={l.text ?? ''}
+                      placeholder={t.levelText}
+                      aria-label={`${l.value} ${t.levelText}`}
+                      onChange={(e) => setLevels(levelRows.map((x, j) => (j === i ? { ...x, text: (e.target as HTMLInputElement).value.trim() } : x)))}
+                    />
                     <button class="fnc-ind-btn" data-tip={t.removeLevel} aria-label={`${l.value} ${t.removeLevel}`} onClick={() => setLevels(levelRows.filter((_, j) => j !== i))}>
                       <SmallCloseIcon />
                     </button>

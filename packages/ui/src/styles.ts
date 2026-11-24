@@ -195,7 +195,8 @@ const CSS = /* css */ `
 .fnc-selbar { padding-left: 4px; }
 .fnc-selbar-grip { cursor: grab; touch-action: none; }
 .fnc-selbar-grip:active { cursor: grabbing; }
-.fnc-swatch-add { position: relative; display: grid; place-items: center; overflow: hidden; border: 1px dashed var(--fnc-text-2); color: var(--fnc-text-2); font-size: 13px; line-height: 1; cursor: pointer; }
+.fnc-swatch-add { position: relative; display: grid; place-items: center; box-sizing: border-box; overflow: hidden; border: 1px dashed var(--fnc-text-2); color: var(--fnc-text-2); cursor: pointer; }
+.fnc-swatch-add svg { display: block; }
 .fnc-swatch-add input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .fnc-selbar-menu { position: relative; }
 .fnc-selbar-pop { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); min-width: 110px; }
@@ -1013,8 +1014,9 @@ const CSS = /* css */ `
 .fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-template-menu { min-width: 220px; }
-.fnc-levels-menu { min-width: 230px; }
-.fnc-options-menu { min-width: 250px; }
+.fnc-levels-menu { min-width: 340px; }
+.fnc-level-text { flex: 1; min-width: 0; width: 110px; height: 28px; padding: 0 8px; font-size: 13px; }
+.fnc-options-menu { min-width: 280px; max-height: min(70vh, 560px); overflow-y: auto; }
 .fnc-option-row { display: flex; align-items: center; gap: 8px; }
 .fnc-option-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--fnc-accent, #3182f6); }
 .fnc-option-field { justify-content: space-between; padding: 4px 10px; font-size: 13px; color: var(--fnc-text); }
@@ -1022,7 +1024,7 @@ const CSS = /* css */ `
 .fnc-option-number { flex: none; width: 90px; height: 28px; padding: 0 8px; font-size: 13px; }
 .fnc-option-unit { color: var(--fnc-text-2); font-size: 12px; }
 .fnc-option-field .fnc-select { height: 28px; font-size: 13px; }
-.fnc-levels-list { max-height: 300px; overflow-y: auto; padding: 2px 0; }
+.fnc-levels-list { max-height: min(55vh, 420px); overflow-y: auto; padding: 2px 0; }
 .fnc-level-row { display: flex; align-items: center; gap: 8px; padding: 3px 8px; }
 .fnc-level-row input[type='checkbox'] { width: 15px; height: 15px; margin: 0; accent-color: var(--fnc-accent, #3182f6); }
 .fnc-level-value { flex: none; width: 84px; height: 28px; padding: 0 8px; font-size: 13px; }

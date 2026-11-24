@@ -40,7 +40,7 @@ await page.waitForTimeout(200);
 if (!(await page.locator('.fnc-options-menu').isVisible())) await page.click('.fnc-selbar [aria-label="도구 설정"]');
 await page.locator('.fnc-options-menu label', { hasText: '오른쪽으로 연장' }).locator('input').check();
 await page.locator('.fnc-options-menu label', { hasText: '뒤집기' }).locator('input').check();
-await page.locator('.fnc-options-menu label', { hasText: '배경' }).locator('input').uncheck();
+await page.locator('.fnc-options-menu').getByRole('checkbox', { name: '배경', exact: true }).uncheck();
 await page.screenshot({ path: `${out}/options-menu.png` });
 const f = await opts(fib);
 check(f.extendRight && f.reverse && f.background === false, `retracement options saved (${JSON.stringify(f)})`);
