@@ -113,6 +113,18 @@ export interface ToolsMenuItem {
   onSelect(chart: Chart): void;
 }
 
+/** A switch an app adds to 차트 설정 (e.g. extended hours for a stock), under its own heading. */
+export interface SettingsToggle {
+  label: string;
+  /** A line under the label. */
+  hint?: string;
+  checked: boolean;
+  onChange(checked: boolean): void;
+}
+
+/** The app's switches for 차트 설정, asked when it opens (for the pane's chart); none: no section. */
+export type SettingsToggles = (chart: Chart) => SettingsToggle[];
+
 /** The app's rows for the 도구 menu, asked each time it opens (for the pane's chart). */
 export type ToolsMenuItems = (chart: Chart) => ToolsMenuItem[];
 
@@ -169,6 +181,7 @@ export interface WidgetContext {
   priceAxisActions: PriceAxisActions | undefined;
   drawingActions: DrawingActions | undefined;
   toolsMenuItems: ToolsMenuItems | undefined;
+  settingsToggles: SettingsToggles | undefined;
   legendValues: LegendValues;
   /** The app's own indicator browser for the 지표 button (instead of the built-in picker). */
   onIndicatorsClick: ((chart: Chart) => void) | undefined;

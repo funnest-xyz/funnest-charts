@@ -2,7 +2,7 @@
 import { browserLocale, createChart, type Chart, type ChartOptions, type ChartSettings, type ChartType, type Datafeed, type Resolution } from '@funnest/charts';
 import { render } from 'preact';
 import { Overlay } from './components/overlay.js';
-import type { ContextMenuItems, DrawingActions, IntervalGroup, LegendValues, MultiControls, PriceAxisActions, SearchCategory, SearchExchange, ToolsMenuItems, UiState, WidgetContext } from './context.js';
+import type { ContextMenuItems, DrawingActions, IntervalGroup, LegendValues, MultiControls, PriceAxisActions, SearchCategory, SearchExchange, SettingsToggles, ToolsMenuItems, UiState, WidgetContext } from './context.js';
 import { div, type Shell } from './shell.js';
 import type { Strings } from './i18n.js';
 import { Store } from './store.js';
@@ -26,6 +26,7 @@ export interface PaneConfig {
   priceAxisActions?: PriceAxisActions | undefined;
   drawingActions?: DrawingActions | undefined;
   toolsMenuItems?: ToolsMenuItems | undefined;
+  settingsToggles?: SettingsToggles | undefined;
   legendValues?: LegendValues | undefined;
   onIndicatorsClick?: ((chart: Chart) => void) | undefined;
   multi?: MultiControls | undefined;
@@ -164,6 +165,7 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     priceAxisActions: config.priceAxisActions,
     drawingActions: config.drawingActions,
     toolsMenuItems: config.toolsMenuItems,
+    settingsToggles: config.settingsToggles,
     legendValues: config.legendValues ?? 'always',
     onIndicatorsClick: config.onIndicatorsClick,
     slots: shell.slots,

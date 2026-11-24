@@ -54,8 +54,31 @@ export class Painter {
     const { ctx } = this;
     ctx.fillStyle = color;
     ctx.textAlign = align;
+    if (baseline === 'middle') {
+      // 'middle' centers the font's em box: digits (no descenders) then sit about a pixel high in a
+      // badge. Centered on the digits' own height instead.
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(str, x, y + this.digitMiddle());
+      return;
+    }
     ctx.textBaseline = baseline;
     ctx.fillText(str, x, y);
+  }
+
+  private static readonly digitMiddles = new Map<string, number>();
+
+  /** From the middle of the digits' height down to the alphabetic baseline, for the current font. */
+  private digitMiddle(): number {
+    const { ctx } = this;
+    const cached = Painter.digitMiddles.get(ctx.font);
+    if (cached !== undefined) return cached;
+    const m = ctx.measureText('0123456789');
+    const up = m.actualBoundingBoxAscent;
+    const down = m.actualBoundingBoxDescent;
+    // Without glyph metrics (old engines): about a third of the font size.
+    const value = Number.isFinite(up) && up > 0 ? (up - (Number.isFinite(down) ? down : 0)) / 2 : (parseFloat(/(\d+(?:\.\d+)?)px/.exec(ctx.font)?.[1] ?? '12') * 0.35);
+    Painter.digitMiddles.set(ctx.font, value);
+    return value;
   }
 
   roundRect(x: number, y: number, w: number, h: number, r: number, color: string): void {

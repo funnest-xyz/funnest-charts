@@ -53,6 +53,9 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
   const { locale } = useStore(ctx.store);
   const t = stringsOf(ctx.store.get());
   const [settings, setSettings] = useState(ctx.chart.settings);
+  // The app's switches (asked again after each change, so they show what they did).
+  const [, bump] = useState(0);
+  const appToggles = ctx.settingsToggles?.(ctx.chart) ?? [];
   useEffect(() => ctx.chart.on('settingsChange', setSettings), [ctx.chart]);
 
   const close = () => ctx.store.set({ dialog: null });
@@ -149,6 +152,25 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
                 </label>
               ))}
             </>
+          ))}
+          {appToggles.length > 0 && <div class="fnc-section">{t.settingsSymbol}</div>}
+          {appToggles.map((item) => (
+            <label class="fnc-row fnc-toggle-row">
+              <span>
+                {item.label}
+                {item.hint && <small class="fnc-toggle-hint">{item.hint}</small>}
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                class="fnc-switch"
+                checked={item.checked}
+                onChange={(e) => {
+                  item.onChange(e.currentTarget.checked);
+                  bump((n) => n + 1);
+                }}
+              />
+            </label>
           ))}
           <div class="fnc-form-actions">
             <button type="button" class="fnc-action fnc-action-danger" onClick={() => ctx.chart.setSettings(DEFAULT_CHART_SETTINGS)}>

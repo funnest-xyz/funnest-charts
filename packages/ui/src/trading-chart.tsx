@@ -16,7 +16,7 @@ import { render } from 'preact';
 import { DrawingToolbar } from './components/drawing-toolbar.js';
 import { RangeBar } from './components/range-bar.js';
 import { Toolbar } from './components/toolbar.js';
-import type { ContextMenuItems, DrawingActions, IntervalGroup, LegendValues, PriceAxisActions, SearchCategory, SearchExchange, ToolsMenuItems } from './context.js';
+import type { ContextMenuItems, DrawingActions, IntervalGroup, LegendValues, PriceAxisActions, SearchCategory, SearchExchange, SettingsToggles, ToolsMenuItems } from './context.js';
 import type { Strings } from './i18n.js';
 import { createPane } from './pane.js';
 import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots } from './shell.js';
@@ -97,6 +97,8 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
   priceAxisActions?: PriceAxisActions;
   /** Buttons on the bar of a selected drawing (e.g. 알림 on a trend line) — how phones reach drawing actions. */
   drawingActions?: DrawingActions;
+  /** The app's own switches in 차트 설정 (e.g. extended hours for US stocks), asked when it opens. */
+  settingsToggles?: SettingsToggles;
   /**
    * Extra rows for the 도구 (tools) menu, above 차트 설정 — e.g. the app's own display settings.
    * Called each time the menu opens, with the pane's chart.
@@ -176,6 +178,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     contextMenuItems,
     priceAxisActions,
     drawingActions,
+    settingsToggles,
     toolsMenuItems,
     legendValues,
     onIndicatorsClick,
@@ -212,6 +215,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
     contextMenuItems,
     priceAxisActions,
     drawingActions,
+    settingsToggles,
     toolsMenuItems,
     legendValues,
     onIndicatorsClick,

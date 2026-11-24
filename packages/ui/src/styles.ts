@@ -645,6 +645,9 @@ const CSS = /* css */ `
 @media (hover: none) {
   .fnc-nav { display: none; }
 }
+/* 차트 설정: an app switch's line under its label. */
+.fnc-toggle-hint { display: block; margin-top: 2px; font-size: 12px; color: var(--fnc-text-2); }
+
 /* A setting in a menu (부드러운 스크롤·확대): the check at the end. */
 .fnc-menu-check svg { margin-left: auto; color: var(--fnc-accent); }
 

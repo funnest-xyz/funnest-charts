@@ -21,6 +21,8 @@ export type {
   DrawingAction,
   DrawingActions,
   PriceAxisActions,
+  SettingsToggle,
+  SettingsToggles,
   LayoutId,
   LayoutSync,
   LegendValues,

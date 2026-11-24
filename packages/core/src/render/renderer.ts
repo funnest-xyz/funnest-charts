@@ -591,6 +591,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     const y = main.scale.priceToY(price);
     if (y < 8 || y > main.height - 8) continue;
     if (last && y > lastY - BADGE_HEIGHT && y < lastY + (f.countdown ? BADGE_HEIGHT * 2 - 4 : BADGE_HEIGHT)) continue;
+    if (extShown && Math.abs(y - extY) < BADGE_HEIGHT) continue;
     p.text((main.tickFormat ?? m.formatPrice)(price), labelX, y, pal.textSecondary);
   }
 
