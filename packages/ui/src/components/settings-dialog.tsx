@@ -26,6 +26,7 @@ const SECTIONS: { title: keyof Strings; toggles: { key: Toggle; label: keyof Str
       { key: 'countdown', label: 'settingCountdown' },
       { key: 'volume', label: 'settingVolume' },
       { key: 'navigationButtons', label: 'settingNavButtons' },
+      { key: 'smoothScroll', label: 'smoothScroll' },
     ],
   },
   {

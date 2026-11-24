@@ -645,6 +645,28 @@ const CSS = /* css */ `
 @media (hover: none) {
   .fnc-nav { display: none; }
 }
+/* A setting in a menu (부드러운 스크롤·확대): the check at the end. */
+.fnc-menu-check svg { margin-left: auto; color: var(--fnc-accent); }
+
+/* 날짜로 이동: a date typed or picked on a month calendar. */
+.fnc-goto-dialog { width: min(320px, calc(100% - 32px)); }
+.fnc-goto-body { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 16px; }
+.fnc-goto-input { height: 38px; font-size: 15px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.fnc-goto-input[aria-invalid="true"] { box-shadow: 0 0 0 1px var(--fnc-down, #f04452); }
+.fnc-cal-head { display: flex; align-items: center; gap: 2px; }
+.fnc-cal-head b { flex: 1; text-align: center; font-size: 14px; }
+.fnc-cal-head .fnc-btn { width: 30px; height: 30px; font-size: 16px; }
+.fnc-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 4px; }
+.fnc-cal-wd { padding: 4px 0; text-align: center; font-size: 11px; color: var(--fnc-text-2); }
+.fnc-cal-day { height: 34px; border-radius: var(--fnc-radius); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fnc-text); }
+.fnc-cal-day:hover:not(:disabled) { background: var(--fnc-surface); }
+.fnc-cal-day.is-today { box-shadow: inset 0 0 0 1px var(--fnc-border); }
+.fnc-cal-day.is-on { background: var(--fnc-accent); color: #fff; font-weight: 700; }
+.fnc-cal-day:disabled { opacity: 0.3; cursor: default; }
+.fnc-goto-actions { display: flex; gap: 8px; }
+.fnc-goto-dialog .fnc-goto-today { flex: none; width: auto; white-space: nowrap; height: 36px; padding: 0 16px; border-radius: var(--fnc-radius); background: var(--fnc-surface); font-weight: 600; }
+.fnc-goto-dialog .fnc-goto-go { flex: 1; height: 36px; }
+
 /* The + on the price axis at the crosshair price, and its menu (mouse only). */
 .fnc-axis-plus { position: absolute; z-index: 25; }
 .fnc-axis-plus-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: var(--fnc-bg); color: var(--fnc-text-2); box-shadow: 0 0 0 1px var(--fnc-border); }

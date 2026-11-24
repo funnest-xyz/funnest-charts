@@ -20,6 +20,11 @@ export interface ChartSettings {
   priceScale: PriceScaleMode;
   /** Time left until the current bar closes, under the last-price badge. */
   countdown: boolean;
+  /**
+   * 부드러운 스크롤·확대 (mouse and trackpad): wheel zoom and sideways scroll ease toward where they
+   * were sent instead of jumping, and a drag let go glides further. Touch always glides.
+   */
+  smoothScroll: boolean;
   /** Up/down candle colors; null follows the theme. */
   upColor: string | null;
   downColor: string | null;
@@ -96,6 +101,7 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   navigationButtons: true,
   priceScale: 'normal',
   countdown: true,
+  smoothScroll: false,
   upColor: null,
   downColor: null,
   background: null,

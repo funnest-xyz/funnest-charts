@@ -57,6 +57,12 @@ export const MinusIcon = () => (
   </Icon>
 );
 
+export const CheckIcon = () => (
+  <Icon size={16}>
+    <path d="M4.5 10.5l3.5 3.5 7.5-8" />
+  </Icon>
+);
+
 export const BellIcon = () => (
   <Icon size={18}>
     <path d="M5.5 13.5V9a4.5 4.5 0 0 1 9 0v4.5l1.2 1.5H4.3z" />

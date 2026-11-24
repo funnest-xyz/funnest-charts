@@ -3,7 +3,7 @@ import { formatPrice, type ChartContextMenu } from '@funnest/charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ContextMenuItem, WidgetContext } from '../context.js';
 import { stringsOf } from '../i18n.js';
-import { BellIcon } from '../icons.js';
+import { BellIcon, CheckIcon } from '../icons.js';
 import { useStore } from '../store.js';
 
 const MARGIN = 8;
@@ -70,7 +70,11 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
       onSelect: () => ctx.chart.addDrawing({ type: 'horizontal', points: [{ time, price }] }),
     });
   }
+  const smooth = ctx.chart.settings.smoothScroll;
   items.push(
+    { label: t.goToDateMore, onSelect: () => ctx.store.set({ dialog: { kind: 'goToDate' } }) },
+    { label: t.smoothScroll, checked: smooth, onSelect: () => ctx.chart.setSettings({ smoothScroll: !smooth }) },
+    'separator',
     { label: t.resetChart, onSelect: () => ctx.chart.resetView() },
     { label: t.chartSettingsMore, onSelect: () => ctx.store.set({ dialog: { kind: 'chartSettings' } }) },
   );
@@ -82,8 +86,9 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
           <div class="fnc-ctx-sep" role="separator" />
         ) : (
           <button
-            class="fnc-menu-item"
-            role="menuitem"
+            class={`fnc-menu-item${item.checked !== undefined ? ' fnc-menu-check' : ''}`}
+            role={item.checked !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+            aria-checked={item.checked}
             disabled={item.disabled}
             onClick={() => {
               setTarget(null);
@@ -93,6 +98,7 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
             {item.icon === 'alert' && <BellIcon />}
             <span>{item.label}</span>
             {item.shortcut && <kbd>{item.shortcut}</kbd>}
+            {item.checked && <CheckIcon />}
           </button>
         ),
       )}

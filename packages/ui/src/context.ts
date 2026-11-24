@@ -44,7 +44,7 @@ export interface UiState {
   magnet: boolean;
   indicators: IndicatorConfig[];
   /** Open dialog: indicator picker, or settings for one indicator id. */
-  dialog: { kind: 'indicators' } | { kind: 'indicatorSettings'; id: string } | { kind: 'chartSettings' } | null;
+  dialog: { kind: 'indicators' } | { kind: 'indicatorSettings'; id: string } | { kind: 'chartSettings' } | { kind: 'goToDate' } | null;
   /** Intervals pinned as toolbar chips (★ in the interval menu). */
   favoriteIntervals: Resolution[];
   /** Intervals the user added (2시간, 3분…): listed in the interval menu, made from ones the feed sends. */
@@ -68,7 +68,18 @@ export interface UiState {
 }
 
 /** A row in the chart's right-click menu, or a divider. */
-export type ContextMenuItem = { label: string; shortcut?: string; disabled?: boolean; /** 'alert': a bell before the label. */ icon?: 'alert'; onSelect(): void } | 'separator';
+export type ContextMenuItem =
+  | {
+      label: string;
+      shortcut?: string;
+      disabled?: boolean;
+      /** 'alert': a bell before the label. */
+      icon?: 'alert';
+      /** A setting that's on or off: a check mark, and it reads as a checkbox. */
+      checked?: boolean;
+      onSelect(): void;
+    }
+  | 'separator';
 
 /** Extra right-click items for a click on `chart` (e.g. "create an alert at this price"). */
 export type ContextMenuItems = (target: ChartContextMenu & { chart: Chart }) => ContextMenuItem[];

@@ -16,6 +16,8 @@ export interface InteractionHost {
   clearCrosshair(): void;
   panTime(dx: number): void;
   zoomTime(anchorX: number, factor: number): void;
+  /** 부드러운 스크롤·확대 is on (ChartSettings.smoothScroll). */
+  smooth(): boolean;
   /** Pans the price axis only if it is in manual (non-auto) mode. */
   panPrice(pane: PaneId, dy: number): void;
   scalePrice(pane: PaneId, factor: number): void;
@@ -70,6 +72,11 @@ const VELOCITY_WINDOW_MS = 100;
 const KINETIC_MIN_VELOCITY = 0.15; // px/ms
 const KINETIC_STOP_VELOCITY = 0.02;
 const KINETIC_FRICTION = 0.995; // per ms
+/** 부드러운 스크롤·확대: a drag let go glides from a slower flick, and further. */
+const SMOOTH_KINETIC_MIN_VELOCITY = 0.05;
+const SMOOTH_KINETIC_FRICTION = 0.9965;
+/** Wheel zoom / scroll eased in: the share of what's left applied each frame (≈ 120 ms to settle). */
+const SMOOTH_EASE = 0.28;
 const WHEEL_ZOOM_SPEED = 0.0015;
 const PINCH_WHEEL_ZOOM_SPEED = 0.01;
 const AXIS_DRAG_SPEED = 0.004;
@@ -95,6 +102,11 @@ export class Interaction {
   private longPressTimer: ReturnType<typeof setTimeout> | undefined;
   private samples: { t: number; x: number }[] = [];
   private kineticFrame = 0;
+  /** 부드러운 스크롤·확대: wheel zoom (log factor) and scroll (px) still to apply, eased in per frame. */
+  private easeZoom = 0;
+  private easePan = 0;
+  private easeAnchor = 0;
+  private easeFrame = 0;
   private pinchDistance = 0;
   private pinchMid: Point = { x: 0, y: 0 };
   private lastTap = { t: 0, x: 0, y: 0 };
@@ -119,6 +131,7 @@ export class Interaction {
 
   destroy(): void {
     this.stopKinetic();
+    this.stopEase();
     clearTimeout(this.longPressTimer);
     for (const cleanup of this.cleanups) cleanup();
     this.cleanups.length = 0;
@@ -144,6 +157,7 @@ export class Interaction {
   private onPointerDown(e: PointerEvent): void {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     this.stopKinetic();
+    this.stopEase();
     const p = this.local(e);
     this.pointers.set(e.pointerId, p);
     this.el.setPointerCapture?.(e.pointerId);
@@ -390,14 +404,16 @@ export class Interaction {
     const last = this.samples[this.samples.length - 1];
     if (!first || !last || last.t - first.t <= 0 || this.view().performance.now() - last.t > 50) return;
     let velocity = (last.x - first.x) / (last.t - first.t);
-    if (Math.abs(velocity) < KINETIC_MIN_VELOCITY) return;
+    const smooth = !this.touch && this.host.smooth();
+    if (Math.abs(velocity) < (smooth ? SMOOTH_KINETIC_MIN_VELOCITY : KINETIC_MIN_VELOCITY)) return;
+    const friction = smooth ? SMOOTH_KINETIC_FRICTION : KINETIC_FRICTION;
 
     let prev = this.view().performance.now();
     const step = (now: number) => {
       const dt = Math.max(0, Math.min(32, now - prev));
       prev = now;
       this.host.panTime(velocity * dt);
-      velocity *= KINETIC_FRICTION ** dt;
+      velocity *= friction ** dt;
       this.kineticFrame = Math.abs(velocity) > KINETIC_STOP_VELOCITY ? this.view().requestAnimationFrame(step) : 0;
     };
     this.kineticFrame = this.view().requestAnimationFrame(step);
@@ -406,6 +422,32 @@ export class Interaction {
   private stopKinetic(): void {
     if (this.kineticFrame) this.view().cancelAnimationFrame(this.kineticFrame);
     this.kineticFrame = 0;
+  }
+
+  /** Wheel zoom / scroll for 부드러운 스크롤·확대: added to what's still to go, applied over a few frames. */
+  private ease(zoomLog: number, panPx: number, anchorX: number): void {
+    this.easeZoom += zoomLog;
+    this.easePan += panPx;
+    this.easeAnchor = anchorX;
+    if (this.easeFrame) return;
+    const step = () => {
+      const done = Math.abs(this.easeZoom) < 0.0015 && Math.abs(this.easePan) < 0.5;
+      const z = done ? this.easeZoom : this.easeZoom * SMOOTH_EASE;
+      const p = done ? this.easePan : this.easePan * SMOOTH_EASE;
+      if (z) this.host.zoomTime(this.easeAnchor, Math.exp(z));
+      if (p) this.host.panTime(p);
+      this.easeZoom -= z;
+      this.easePan -= p;
+      this.easeFrame = done ? 0 : this.view().requestAnimationFrame(step);
+    };
+    this.easeFrame = this.view().requestAnimationFrame(step);
+  }
+
+  private stopEase(): void {
+    if (this.easeFrame) this.view().cancelAnimationFrame(this.easeFrame);
+    this.easeFrame = 0;
+    this.easeZoom = 0;
+    this.easePan = 0;
   }
 
   // ── Wheel / misc ────────────────────────────────────────────────────
@@ -429,8 +471,11 @@ export class Interaction {
       return;
     }
     if (e.shiftKey && dx === 0) dx = dy;
-    if (Math.abs(dx) > Math.abs(dy) || e.shiftKey) this.host.panTime(-dx);
-    else this.host.zoomTime(Math.min(p.x, this.host.plotWidth()), Math.exp(-dy * WHEEL_ZOOM_SPEED));
+    const sideways = Math.abs(dx) > Math.abs(dy) || e.shiftKey;
+    const anchor = Math.min(p.x, this.host.plotWidth());
+    if (this.host.smooth()) this.ease(sideways ? 0 : -dy * WHEEL_ZOOM_SPEED, sideways ? -dx : 0, anchor);
+    else if (sideways) this.host.panTime(-dx);
+    else this.host.zoomTime(anchor, Math.exp(-dy * WHEEL_ZOOM_SPEED));
   }
 
   private onDoubleClick(e: MouseEvent): void {

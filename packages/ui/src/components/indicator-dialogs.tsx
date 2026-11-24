@@ -16,6 +16,7 @@ import type { WidgetContext } from '../context.js';
 import { stringsOf, type Strings } from '../i18n.js';
 import { CloseIcon, SmallCloseIcon } from '../icons.js';
 import { useStore } from '../store.js';
+import { GoToDateDialog } from './go-to-date.js';
 import { SettingsDialog } from './settings-dialog.js';
 
 function Dialog({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ComponentChildren; wide?: boolean }) {
@@ -351,5 +352,6 @@ export function Dialogs({ ctx }: { ctx: WidgetContext }) {
   if (dialog?.kind === 'indicators') return <IndicatorPicker ctx={ctx} />;
   if (dialog?.kind === 'indicatorSettings') return <IndicatorSettings ctx={ctx} id={dialog.id} />;
   if (dialog?.kind === 'chartSettings') return <SettingsDialog ctx={ctx} />;
+  if (dialog?.kind === 'goToDate') return <GoToDateDialog ctx={ctx} />;
   return null;
 }

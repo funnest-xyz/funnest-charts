@@ -2526,6 +2526,7 @@ export class Chart {
 
   private createInteractionHost(): InteractionHost {
     return {
+      smooth: () => this.settingsValue.smoothScroll,
       hitTest: (x, y): HitRegion => {
         const f = this.frame;
         if (!f) return { area: 'none', pane: null };
