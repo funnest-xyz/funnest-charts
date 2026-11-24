@@ -202,11 +202,26 @@ export interface IndicatorDefinition {
   title(params: IndicatorParams): string;
   compute(bars: readonly Bar[], params: IndicatorParams): IndicatorOutput;
   /**
+   * How many bars before a bar its value depends on (to within 0.1%): the chart keeps at least
+   * this many loaded left of the screen, so what's shown doesn't depend on how far back it
+   * happened to load (an EMA 200 from 300 bars still leans a third on its starting guess — a
+   * small gap in price, but enough to move where two lines cross). Omitted: nothing extra.
+   */
+  lookback?(params: IndicatorParams): number;
+  /**
    * Left out of the indicator picker: added only from code (e.g. an app's user scripts, whose
    * params say which script). Charts that already have it show and save it as usual.
    */
   hidden?: boolean;
 }
+
+/**
+ * Bars an EMA needs behind a value: its SMA seed, then until the seed's weight is under 0.1%
+ * ((1 − 2/(n+1))^k < 0.001 → k ≈ 3.45·(n+1)).
+ */
+export const emaLookback = (period: number) => Math.ceil(period + 3.5 * (period + 1));
+/** Wilder's smoothing (RSI): weight 1/n, so k ≈ 6.9·n after the seed. */
+export const wilderLookback = (period: number) => Math.ceil(period + 7 * period);
 
 /** Distinct line colors that avoid the up/down candle colors. */
 export const SERIES_COLORS = ['#12B886', '#FF9F0A', '#7048E8', '#8B95A1', '#F06595', '#15AABF', '#3182F6', '#795548'];
@@ -281,6 +296,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     },
     title: (p) => `MA ${maLines(p).map((l) => l.period).join('·')}`,
     compute: (bars, p) => movingAverages(bars, p, 'MA', sma, SERIES_COLORS),
+    lookback: (p) => Math.max(0, ...maLines(p).map((l) => l.period)),
   },
   ema: {
     type: 'ema',
@@ -291,6 +307,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     defaults: { lines: [12, 26].map((period) => ({ period, source: 'close' as const })) },
     title: (p) => `EMA ${maLines(p).map((l) => l.period).join('·')}`,
     compute: (bars, p) => movingAverages(bars, p, 'EMA', ema, ['#3182F6', '#F06595', '#15AABF', '#FF9F0A']),
+    lookback: (p) => Math.max(0, ...maLines(p).map((l) => emaLookback(l.period))),
   },
   bb: {
     type: 'bb',
@@ -304,6 +321,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     ],
     defaults: { period: 20, mult: 2, source: 'close' },
     title: (p) => `BB ${num(p, 'period')} ${num(p, 'mult')}`,
+    lookback: (p) => num(p, 'period'),
     compute: (bars, p) => {
       const { middle, upper, lower } = bollinger(priceSource(bars, src(p)), num(p, 'period'), num(p, 'mult'));
       const color = '#3182F6';
@@ -326,6 +344,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     params: [{ key: 'period', label: PARAM('기간', 'Period'), kind: 'number', min: 2, max: 200 }, SOURCE_PARAM],
     defaults: { period: 14, source: 'close' },
     title: (p) => `RSI ${num(p, 'period')}`,
+    lookback: (p) => wilderLookback(num(p, 'period')),
     compute: (bars, p) => ({
       series: [line('rsi', 'RSI', rsi(priceSource(bars, src(p)), num(p, 'period')), '#7048E8')],
       levels: [30, 70],
@@ -346,6 +365,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     ],
     defaults: { fast: 12, slow: 26, signal: 9, source: 'close' },
     title: (p) => `MACD ${num(p, 'fast')} ${num(p, 'slow')} ${num(p, 'signal')}`,
+    lookback: (p) => emaLookback(Math.max(num(p, 'fast'), num(p, 'slow'))) + emaLookback(num(p, 'signal')),
     compute: (bars, p) => {
       const m = macd(priceSource(bars, src(p)), num(p, 'fast'), num(p, 'slow'), num(p, 'signal'));
       return {

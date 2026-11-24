@@ -254,6 +254,8 @@ const PANE_BORDER_GRAB = 4;
 const HISTORY_TRIGGER_BARS = 20;
 /** The most bars one go-to-date / range request asks for (loadHistoryUntil). */
 const MAX_HISTORY_REQUEST = 20_000;
+/** At most this many bars kept loaded left of the screen for indicators (lookback). */
+const MAX_INDICATOR_LOOKBACK = 5_000;
 const TIME_LABEL_MIN_GAP = 72;
 const PRICE_TICK_SPACING = 48;
 
@@ -1300,6 +1302,17 @@ export class Chart {
     this.emitter.emit('indicatorsChange', this.getIndicators());
     this.stateChanged();
     this.recordHistory();
+  }
+
+  /** The most bars any indicator on the chart needs behind a value (IndicatorDefinition.lookback). */
+  private indicatorLookback(): number {
+    let most = 0;
+    for (const cfg of this.indicators.list) {
+      if (cfg.visible === false) continue;
+      const n = this.indicators.registry.get(cfg.type)?.lookback?.(cfg.params) ?? 0;
+      if (Number.isFinite(n) && n > most) most = n;
+    }
+    return Math.min(MAX_INDICATOR_LOOKBACK, most);
   }
 
   /** Built-in and custom indicators this chart can add. */
@@ -2393,7 +2406,12 @@ export class Chart {
       this.lastRangeKey = key;
       this.emitter.emit('visibleRangeChange', range);
     }
-    if (this.store.length > 0 && this.timeScale.xToIndexFloat(0) < HISTORY_TRIGGER_BARS) this.requestHistory();
+    if (this.store.length > 0) {
+      // Older bars before the left edge comes near: the indicators' lookback too (EMA 200 ≈ 900
+      // bars), so the values on screen are the same however far back the chart happened to load.
+      const missing = HISTORY_TRIGGER_BARS + this.indicatorLookback() - this.timeScale.xToIndexFloat(0);
+      if (missing > 0) this.requestHistory(Math.min(MAX_HISTORY_REQUEST, Math.max(this.historyBatchSize, Math.ceil(missing))));
+    }
   }
 
   private requestHistory(countBack = this.historyBatchSize): Promise<void> | null {

@@ -103,3 +103,38 @@ describe('IndicatorManager', () => {
     expect(m.list[0]!.params).toEqual({ lines: [{ period: 7, source: 'close' }, { period: 14, source: 'close' }] });
   });
 });
+
+describe('lookback: bars an indicator needs behind a value', () => {
+  // A long random walk: the "true" value at the end is the one computed from all of it.
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) - 0.5;
+  const closes: number[] = [];
+  for (let i = 0, p = 100; i < 6000; i++) closes.push((p += rand() * 2));
+  const last = (a: Float64Array) => a[a.length - 1]!;
+
+  it('built-ins say how far back they reach', () => {
+    expect(INDICATORS.ma.lookback!({ lines: [{ period: 120, source: 'close' }] })).toBe(120);
+    expect(INDICATORS.ema.lookback!({ lines: [{ period: 200, source: 'close' }] })).toBe(904);
+    expect(INDICATORS.rsi.lookback!({ period: 14, source: 'close' })).toBe(112);
+    expect(INDICATORS.bb.lookback!({ period: 20, mult: 2, source: 'close' })).toBe(20);
+    expect(INDICATORS.macd.lookback!({ fast: 12, slow: 26, signal: 9, source: 'close' })).toBeGreaterThan(26 + 9);
+  });
+
+  it('with that many bars the value matches the one from the whole history (within 0.1%)', () => {
+    for (const n of [20, 50, 200]) {
+      const k = INDICATORS.ema.lookback!({ lines: [{ period: n, source: 'close' }] });
+      const full = last(ema(closes, n));
+      expect(Math.abs(last(ema(closes.slice(-k), n)) - full) / Math.abs(full)).toBeLessThan(0.001);
+    }
+    for (const n of [14, 30]) {
+      const k = INDICATORS.rsi.lookback!({ period: n, source: 'close' });
+      expect(Math.abs(last(rsi(closes.slice(-k), n)) - last(rsi(closes, n)))).toBeLessThan(0.1);
+    }
+    // 300 bars (what a chart first loads) leave an EMA 200 still leaning on its first guess: off
+    // by far more than with its lookback (the gap shows most right where two lines cross).
+    const full = last(ema(closes, 200));
+    const err300 = Math.abs(last(ema(closes.slice(-300), 200)) - full);
+    const errLookback = Math.abs(last(ema(closes.slice(-904), 200)) - full);
+    expect(err300).toBeGreaterThan(10 * errLookback);
+  });
+});

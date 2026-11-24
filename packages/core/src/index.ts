@@ -49,7 +49,7 @@ export type { AlertLineOptions, ExecutionGroup, ExecutionMarker, LineHandle, Ord
 export type { Execution, OrderInfo, PositionInfo, TradingAdapter, TradingCallbacks } from './objects/trading-sync.js';
 export { bucketStart, TickAggregator, timeZoneOffset } from './realtime.js';
 export type { Tick } from './realtime.js';
-export { INDICATORS, SERIES_COLORS } from './indicators/definitions.js';
+export { emaLookback, INDICATORS, SERIES_COLORS, wilderLookback } from './indicators/definitions.js';
 export type {
   BarColors,
   BuiltinIndicatorType,
