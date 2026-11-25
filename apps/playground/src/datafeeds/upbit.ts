@@ -206,7 +206,7 @@ export class UpbitDatafeed implements Datafeed {
     const report = (patch: Partial<ConnectionState>) => {
       Object.assign(state, patch);
       onConnection?.({ ...state });
-      if (patch.status) this.options.onStatus?.(patch.status === 'connected' ? 'open' : patch.status === 'disconnected' ? 'closed' : patch.status);
+      if (patch.status) this.options.onStatus?.(patch.status === 'connected' ? 'open' : patch.status === 'disconnected' || patch.status === 'paused' ? 'closed' : patch.status);
     };
     // Upbit's WS PING answers lazily (seconds), so latency is timed on a tiny REST call instead.
     const stopLatency = onConnection

@@ -84,7 +84,8 @@ export interface Quote {
 }
 
 export interface ConnectionState {
-  status: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+  /** 'paused': the chart let go of the feed itself (the tab hidden for a while, `pauseWhenHidden`); it reloads when shown. */
+  status: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'paused';
   /** Round-trip latency estimate in ms, when the feed can measure it. */
   latency?: number;
 }

@@ -62,6 +62,12 @@ import { lightTheme, type ThemeTokens } from './theme.js';
 import type { Bar, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, TickSize, Unsubscribe } from './types.js';
 
 export interface ChartOptions {
+  /**
+   * A tab hidden this long (ms) lets go of the datafeed (bars, quotes, compares: no messages, no
+   * work in the background); shown again, the chart reloads its bars as on a reconnect and
+   * subscribes again. `false`: never. Default 60 000.
+   */
+  pauseWhenHidden?: number | false;
   /** Merged over the light theme. Values may use CSS variables: `{ background: 'var(--bg)' }`. */
   theme?: Partial<ThemeTokens>;
   locale?: Locale;
@@ -422,6 +428,10 @@ export class Chart {
   private quoteSymbol: string | null = null;
   private quoteToken = 0;
   private connectionState: ConnectionState | null = null;
+  /** The tab was hidden long enough that the feed was let go (see `pauseWhenHidden`). */
+  private paused = false;
+  private hiddenTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly pauseWhenHidden: number | false;
   private readonly displayTimezone: string | undefined;
   private loadingHistory = false;
   /**
@@ -480,6 +490,7 @@ export class Chart {
     // Intervals the feed doesn't send come from ones it does (2시간 from 1시간…).
     this.datafeed = options.datafeed && withDerivedResolutions(options.datafeed);
     this.historyBatchSize = options.historyBatchSize ?? 300;
+    this.pauseWhenHidden = options.pauseWhenHidden ?? 60_000;
     this.displayTimezone = options.displayTimezone;
     if (options.displayTimezone) this.formatter = new TimeFormatter(options.displayTimezone, this.locale);
     this.timeScale = new TimeScale({ ...DEFAULT_TIME_SCALE_OPTIONS, ...options.timeScale });
@@ -541,6 +552,7 @@ export class Chart {
     this.observeThemeVariables();
     this.observeKeyboard();
     this.observeCountdown();
+    this.observeVisibility();
   }
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -610,6 +622,7 @@ export class Chart {
     const feed = this.datafeed;
     if (!feed) throw new Error('funnest-charts: setSymbol() requires the `datafeed` option');
     const token = ++this.loadToken;
+    this.paused = false;
     this.requested = { symbol, resolution };
     this.endReplay(false);
     this.unsubscribeBars?.();
@@ -671,14 +684,26 @@ export class Chart {
     this.setData(result.bars);
     this.noMoreHistory = result.noMoreData;
     void this.tradingSync.load(info, result.bars[0]?.time ?? Date.now());
+    this.subscribeLive(feed, info, resolution, token, keepQuotes);
+    // Now the main symbol: no longer compared with itself.
+    if (this.compares.has(info.symbol)) this.removeCompare(info.symbol);
+    // Compared symbols follow the interval (and get bars covering the new history).
+    for (const entry of this.compares.values()) void this.reloadCompare(entry);
+    this.emitter.emit('symbolChange', info);
+    this.stateChanged();
+  }
+
+  /** Follows the feed's realtime bars (and its quotes, unless `keepQuotes`: still subscribed). */
+  private subscribeLive(feed: Datafeed, info: SymbolInfo, resolution: Resolution, token: number, keepQuotes: boolean): void {
     this.unsubscribeBars = feed.subscribeBars(
       info,
       resolution,
       (bar) => {
         if (token === this.loadToken) this.update(bar);
       },
+      // The feed reconnected (it may have missed bars): reload them all, as on first load.
       () => {
-        if (token === this.loadToken) void this.resync(token);
+        if (token === this.loadToken) void this.reload();
       },
       (state) => {
         if (token !== this.loadToken) return;
@@ -688,7 +713,7 @@ export class Chart {
     );
     if (!keepQuotes) {
       const quoteToken = ++this.quoteToken;
-      this.quoteSymbol = symbol;
+      this.quoteSymbol = info.symbol;
       this.unsubscribeQuotes =
         feed.subscribeQuotes?.(info, (quote) => {
           if (quoteToken !== this.quoteToken) return;
@@ -700,12 +725,99 @@ export class Chart {
           if (before?.price !== after?.price || before?.session !== after?.session) this.invalidate();
         }) ?? null;
     }
-    // Now the main symbol: no longer compared with itself.
-    if (this.compares.has(info.symbol)) this.removeCompare(info.symbol);
-    // Compared symbols follow the interval (and get bars covering the new history).
+  }
+
+  /**
+   * After a reconnect (or the tab coming back from a pause): the bars are thrown away and loaded
+   * again as on first load — not patched — then realtime is followed again. What the view showed
+   * stays: the latest bar at the right edge if it was there, else the same time span (older
+   * history loaded first if needed). Zoom, indicators, drawings and trading marks are kept.
+   */
+  async reload(): Promise<void> {
+    const feed = this.datafeed;
+    const info = this.symbol;
+    const resolution = this.resolution;
+    if (!feed || !info || !resolution || this.replayState || this.destroyed) return;
+    const token = ++this.loadToken;
+    this.unsubscribeBars?.();
+    this.unsubscribeBars = null;
+    const ts = this.timeScale;
+    const atRealtime = this.isAtRealtime();
+    const visible = this.getVisibleTimeRange();
+    const spacing = ts.barSpacing;
+    const rightOffset = ts.rightOffset;
+    let result: Awaited<ReturnType<Datafeed['getBars']>> | null = null;
+    try {
+      const to = Date.now();
+      result = await feed.getBars(info, resolution, { from: to - resolutionToMs(resolution) * this.historyBatchSize, to, countBack: this.historyBatchSize });
+    } catch (error) {
+      this.emitter.emit('error', error);
+    }
+    if (token !== this.loadToken) return;
+    if (result) {
+      this.store.set(result.bars);
+      ts.barCount = this.store.length;
+      this.noMoreHistory = result.noMoreData;
+      this.historyRequestedFor = Number.NaN;
+      this.historyRequest++;
+      this.loadingHistory = false;
+      this.higher.clear();
+      this.higherCache.clear();
+      this.dataVersion++;
+      ts.barSpacing = spacing;
+      ts.rightOffset = atRealtime ? Math.max(0, rightOffset) : rightOffset;
+      ts.clamp();
+      this.invalidate();
+    }
+    // Realtime again right away (a failed reload still follows it; the bars already shown stay).
+    this.subscribeLive(feed, info, resolution, token, this.unsubscribeQuotes !== null && this.quoteSymbol === info.symbol);
     for (const entry of this.compares.values()) void this.reloadCompare(entry);
-    this.emitter.emit('symbolChange', info);
-    this.stateChanged();
+    if (result && !atRealtime && visible) {
+      await this.loadHistoryUntil(visible.from);
+      if (token === this.loadToken) this.setVisibleTimeRange(visible);
+    }
+  }
+
+  /** The tab hidden for `pauseWhenHidden`: lets go of the feed until it shows again. */
+  private pauseLive(): void {
+    this.hiddenTimer = undefined;
+    if (!this.symbol || this.replayState || this.destroyed || this.paused) return;
+    this.paused = true;
+    this.loadToken++;
+    this.unsubscribeBars?.();
+    this.unsubscribeBars = null;
+    this.quoteToken++;
+    this.unsubscribeQuotes?.();
+    this.unsubscribeQuotes = null;
+    for (const entry of this.compares.values()) {
+      entry.unsubscribe?.();
+      entry.unsubscribe = null;
+    }
+    this.connectionState = { status: 'paused' };
+    this.emitter.emit('connectionChange', this.connectionState);
+  }
+
+  private observeVisibility(): void {
+    const doc = this.root.ownerDocument;
+    if (this.pauseWhenHidden === false || !doc) return;
+    const delay = this.pauseWhenHidden;
+    const onChange = () => {
+      if (doc.visibilityState === 'hidden') {
+        if (!this.hiddenTimer && !this.paused) this.hiddenTimer = setTimeout(() => this.pauseLive(), delay);
+        return;
+      }
+      clearTimeout(this.hiddenTimer);
+      this.hiddenTimer = undefined;
+      if (this.paused) {
+        this.paused = false;
+        void this.reload();
+      }
+    };
+    doc.addEventListener('visibilitychange', onChange);
+    this.cleanups.push(() => {
+      doc.removeEventListener('visibilitychange', onChange);
+      clearTimeout(this.hiddenTimer);
+    });
   }
 
   /** Latest market statistics (merged across partial updates), if the datafeed provides them. */
@@ -981,33 +1093,6 @@ export class Chart {
    * via the `onResetCache` callback of subscribeBars after a WebSocket reconnect, so bars
    * missed while disconnected are filled in.
    */
-  private async resync(token: number): Promise<void> {
-    const feed = this.datafeed;
-    if (!feed || !this.symbol || !this.resolution || this.replayState) return;
-    try {
-      const to = Date.now();
-      const result = await feed.getBars(this.symbol, this.resolution, {
-        from: to - resolutionToMs(this.resolution) * this.historyBatchSize,
-        to,
-        countBack: this.historyBatchSize,
-      });
-      if (token !== this.loadToken) return;
-      const lastBefore = this.store.last()?.time ?? -Infinity;
-      const before = this.store.length;
-      this.store.merge(result.bars);
-      // A scrolled-back view stays put when bars are appended at the end (same as realtime appends).
-      if (this.timeScale.rightOffset < 0) {
-        const appended = result.bars.filter((b) => b.time > lastBefore).length;
-        this.timeScale.rightOffset -= Math.min(appended, this.store.length - before);
-      }
-      this.timeScale.barCount = this.store.length;
-      this.dataVersion++;
-      this.invalidate();
-    } catch (error) {
-      this.emitter.emit('error', error);
-    }
-  }
-
   // ── Chart type ─────────────────────────────────────────────────────
 
   get type(): ChartType {
