@@ -38,7 +38,8 @@ const CONTROL_OFFSET = 52; // px above the time axis
 
 const dirClass = (v: number) => (v > 0 ? 'fnc-up' : v < 0 ? 'fnc-down' : 'fnc-flat');
 
-function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegendItem }) {
+/** `values`: show its numbers (legendValues 'crosshair': only while the crosshair is on the chart). */
+function IndicatorItem({ ctx, item, values = true }: { ctx: WidgetContext; item: IndicatorLegendItem; values?: boolean }) {
   const t = stringsOf(ctx.store.get());
   return (
     <div
@@ -65,7 +66,7 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
         {item.visible ? <EyeIcon /> : <EyeOffIcon />}
       </button>
       <span class="fnc-ind-title">{item.title}</span>
-      {item.visible && item.values.map((v) => (
+      {values && item.visible && item.values.map((v) => (
         <b style={{ color: v.color }} data-tip={v.label}>
           {v.value}
         </b>
@@ -211,12 +212,16 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   // Reserve the legend's height at the top of the price pane so it never covers candles
   // (it wraps to more lines on narrow screens).
   const ref = useRef<HTMLDivElement>(null);
+  // 'crosshair' mode: while the crosshair is on, the values (OHLC, indicators) show over the chart.
+  const tracking = useRef(false);
+  tracking.current = ctx.legendValues === 'crosshair' && !!hover;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // In 'crosshair' mode the OHLC row comes and goes over the chart: it doesn't count, so the
-    // candles stay put when it appears.
+    // In 'crosshair' mode the OHLC row and the indicator values come and go over the chart: they
+    // don't count, so the candles stay put when they appear.
     const update = () => {
+      if (tracking.current) return;
       const floating = ctx.legendValues === 'crosshair' ? el.querySelector<HTMLElement>('.fnc-legend-values') : null;
       ctx.chart.setTopInset(el.offsetTop + el.offsetHeight - (floating ? floating.offsetHeight + 2 : 0) + 4);
     };
@@ -265,8 +270,10 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
     );
   }
 
-  // Indicator values follow the crosshair, else the latest bar.
+  // Indicator values follow the crosshair, else the latest bar. 'crosshair' mode (phones): names
+  // only until the chart is held, then the values there (as TradingView's app).
   const items = s.indicators.length ? ctx.chart.indicatorLegend(hover?.index) : [];
+  const showValues = ctx.legendValues === 'always' || !!hover;
   const overlayItems = items.filter((i) => i.overlay);
   const paneLegends = s.layout.panes
     .filter((p) => p.kind === 'indicator')
@@ -275,7 +282,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
 
   return (
     <>
-      <div class="fnc-legend" ref={ref}>
+      <div class={tracking.current ? 'fnc-legend is-tracking' : 'fnc-legend'} ref={ref}>
         <div class="fnc-legend-title">
           {ctx.showLogo && <SymbolAvatar info={s.symbol} size={18} />}
           <b>{s.symbol.name}</b>
@@ -302,7 +309,7 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
               </button>
             </div>
           ))}
-        {!collapsed && overlayItems.map((item) => <IndicatorItem ctx={ctx} item={item} />)}
+        {!collapsed && overlayItems.map((item) => <IndicatorItem ctx={ctx} item={item} values={showValues} />)}
         {!collapsed && s.legendItems.map((item) => <AppItem ctx={ctx} item={item} />)}
         {/* Collapse (an up arrow) at the end of the list; collapsed, a small bar brings it back. */}
         {overlayItems.length + s.legendItems.length > 0 &&
@@ -324,10 +331,10 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
       {paneLegends.map(
         ({ pane, item, kids }) =>
           item && (
-            <div class="fnc-legend fnc-pane-legend" style={{ top: `${pane.top + 4}px` }}>
-              <IndicatorItem ctx={ctx} item={item} />
+            <div class={tracking.current ? 'fnc-legend fnc-pane-legend is-tracking' : 'fnc-legend fnc-pane-legend'} style={{ top: `${pane.top + 4}px` }}>
+              <IndicatorItem ctx={ctx} item={item} values={showValues} />
               {kids.map((kid) => (
-                <IndicatorItem ctx={ctx} item={kid} />
+                <IndicatorItem ctx={ctx} item={kid} values={showValues} />
               ))}
             </div>
           ),

@@ -169,6 +169,22 @@ const CSS = /* css */ `
 .fnc-drawbar[data-fit] .fnc-hsep { margin: 2px 0; }
 .fnc-drawbar[data-fit='scroll'] { overflow-y: auto; scrollbar-width: none; }
 .fnc-drawbar[data-fit='scroll']::-webkit-scrollbar { display: none; }
+/* More tools that way: a strip stuck to the bar's top / bottom edge, fading the tools under it. */
+.fnc-drawbar-more {
+  position: sticky;
+  z-index: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 24px;
+  margin: -4px 0;
+  color: var(--fnc-text-2);
+  background: var(--fnc-bg);
+}
+.fnc-drawbar-more.is-up { top: -4px; box-shadow: 0 6px 8px -4px var(--fnc-bg); }
+.fnc-drawbar-more.is-down { bottom: -4px; box-shadow: 0 -6px 8px -4px var(--fnc-bg); }
+.fnc-drawbar-more:hover { color: var(--fnc-text); }
 
 /* Selected drawing: floating color/delete bar */
 .fnc-selbar {
@@ -232,6 +248,14 @@ const CSS = /* css */ `
 .fnc-legend-values b { font-weight: 600; }
 /* legendValues: 'crosshair' — over the chart while it shows, so it gets a backing. */
 .fnc-legend-values-float {
+  width: fit-content;
+  margin-left: -4px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fnc-bg) 88%, transparent);
+}
+/* …and the indicator rows' values with it: each row gets the same backing while they show. */
+.fnc-legend.is-tracking .fnc-ind {
   width: fit-content;
   margin-left: -4px;
   padding: 0 4px;
@@ -814,8 +838,13 @@ const CSS = /* css */ `
 .fnc-coords { display: flex; flex-direction: column; gap: 8px; }
 .fnc-coord-row { display: flex; align-items: center; gap: 6px; }
 .fnc-coord-name { width: 40px; flex: none; font-size: 12px; color: var(--fnc-text-2); }
-.fnc-coord-price { flex: 0 0 110px; height: 32px; font-size: 13px; }
-.fnc-coord-time { flex: 0 0 180px; height: 32px; font-size: 13px; }
+.fnc-coord-price { flex: 1 1 96px; min-width: 0; height: 32px; font-size: 13px; }
+.fnc-coord-time { flex: 1.6 1 150px; min-width: 0; height: 32px; font-size: 13px; }
+/* Narrow phones: the time goes under the price (a date-time field needs the width). */
+@media (max-width: 400px) {
+  .fnc-coord-row { flex-wrap: wrap; row-gap: 4px; }
+  .fnc-coord-time { flex: 1 1 100%; margin-left: 46px; }
+}
 .fnc-btn-on { color: var(--fnc-accent); }
 /* 차트 고정: the bar shows just the lock, always (not only on hover). */
 .fnc-nav.fnc-nav-locked { opacity: 1; display: flex; }
@@ -1234,7 +1263,53 @@ const CSS = /* css */ `
 .fnc-ind-search { height: 48px; padding: 0 16px; }
 .fnc-ind-search input { font-size: 15px; }
 
+/* Touch: the legend's small buttons and the ×s in lists are hard to hit with a finger — a larger
+   invisible area around each (they look the same); the period chips grow a little. */
+@media (pointer: coarse) {
+  .fnc-ind-btn, .fnc-ind-collapse { position: relative; }
+  .fnc-ind-btn::after, .fnc-ind-collapse::after { content: ''; position: absolute; inset: -6px; }
+  .fnc-ranges { height: 40px; }
+  .fnc-range { height: 32px; }
+}
+
 /* ── Mobile ──────────────────────────────────────────── */
+/* A phone turned sideways (short, touch): the tool bar slides in from the pencil instead of
+   taking the chart's width all the time. */
+@media (max-height: 500px) and (pointer: coarse) {
+  .fnc-btn-drawbar { display: flex; }
+  .fnc-drawbar-tab, .fnc-drawbar-collapse { display: none; }
+  .fnc-drawbar[data-collapsed='true'] { display: flex; }
+  .fnc-drawbar-host { position: absolute; left: 0; top: 0; bottom: 0; z-index: 5; pointer-events: none; }
+  .fnc-drawbar {
+    pointer-events: auto;
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    box-shadow: 4px 0 16px rgb(0 0 0 / 0.08);
+  }
+  .fnc-drawbar[data-open='true'] { transform: none; }
+  .fnc-selbar-menu { position: static; }
+  .fnc-selbar-pop {
+    left: 0;
+    right: 0;
+    transform: none;
+    min-width: 0;
+    /* Ends above the period bar under the chart. */
+    max-height: max(120px, calc(100dvh - 210px));
+    overflow-y: auto;
+    z-index: 30;
+  }
+  .fnc-levels-list { max-height: none; }
+  /* Thin indicator panes: their legend stays on one line (not over the pane below). */
+  .fnc-pane-legend .fnc-ind { flex-wrap: nowrap; white-space: nowrap; }
+  .fnc-backdrop { padding: 0; align-items: stretch; }
+  .fnc-dialog { max-height: none; height: 100%; border-radius: 0; }
+  .fnc-dialog-head { height: 44px; }
+  .fnc-settings-tabs { padding: 4px 16px; }
+  .fnc-form { padding: 12px 16px; gap: 10px; }
+  .fnc-form-actions { bottom: -12px; margin: 4px -16px -12px; padding: 8px 16px; }
+  .fnc-action { height: 40px; }
+}
+
 @media (max-width: 640px) {
   .fnc-toolbar { padding: 0 4px; gap: 2px; }
   .fnc-toolbar .fnc-btn { width: 32px; height: 32px; }
@@ -1260,7 +1335,30 @@ const CSS = /* css */ `
     box-shadow: 4px 0 16px rgb(0 0 0 / 0.08);
   }
   .fnc-drawbar[data-open='true'] { transform: none; }
-  .fnc-selbar { top: auto; bottom: 56px; }
+  /* The selected drawing's bar: the width of the chart, at its bottom, in as many rows as it takes;
+     its menus open upward over the chart, as wide as the bar. */
+  .fnc-selbar {
+    top: auto !important;
+    bottom: 56px;
+    left: 8px !important;
+    right: 8px;
+    transform: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 4px;
+  }
+  .fnc-selbar-grip { display: none; }
+  .fnc-selbar-menu { position: static; }
+  .fnc-selbar-pop {
+    top: auto;
+    bottom: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    transform: none;
+    min-width: 0;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
   .fnc-legend { left: 10px; right: 64px; }
   .fnc-backdrop { padding: 0; align-items: stretch; }
   .fnc-dialog { width: 100%; max-height: none; border-radius: 0; }

@@ -25,6 +25,8 @@ import {
   TemplateIcon,
   LevelsIcon,
   LayersIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   TextIcon,
   ClockIcon,
   SettingsIcon,
@@ -227,6 +229,15 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
   const t = stringsOf(s);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  // Scrolling: whether there are more tools above / below (▲ ▼ show it, and scroll to them).
+  const [more, setMore] = useState({ up: false, down: false });
+  const checkMore = () => {
+    const el = barRef.current;
+    if (!el) return;
+    const scrolls = el.dataset.fit === 'scroll';
+    const next = { up: scrolls && el.scrollTop > 2, down: scrolls && el.scrollTop + el.clientHeight < el.scrollHeight - 2 };
+    setMore((m) => (m.up === next.up && m.down === next.down ? m : next));
+  };
   // A short chart (a phone, a small split pane) can't fit every tool: closer buttons first, then
   // the bar scrolls (tool lists open beside it, so it only scrolls when it must).
   useLayoutEffect(() => {
@@ -234,15 +245,18 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
     if (!el) return;
     const fit = () => {
       el.removeAttribute('data-fit');
-      if (el.scrollHeight <= el.clientHeight) return;
-      el.dataset.fit = 'compact';
-      if (el.scrollHeight > el.clientHeight) el.dataset.fit = 'scroll';
+      if (el.scrollHeight > el.clientHeight) {
+        el.dataset.fit = 'compact';
+        if (el.scrollHeight > el.clientHeight) el.dataset.fit = 'scroll';
+      }
+      checkMore();
     };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  const scrollBar = (by: number) => barRef.current?.scrollBy({ top: by, behavior: 'smooth' });
   // Every pane gets the same definitions, so the active pane's list is the widget's list.
   const defs = ctx.chart.drawingDefinitions();
   const groups = toolGroups(defs);
@@ -274,7 +288,13 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       aria-orientation="vertical"
       data-open={s.drawbarOpen}
       data-collapsed={s.drawbarCollapsed}
+      onScroll={checkMore}
     >
+      {more.up && (
+        <button class="fnc-drawbar-more is-up" aria-label={t.moreToolsUp} onClick={() => scrollBar(-160)}>
+          <ChevronUpIcon />
+        </button>
+      )}
       <CursorGroup ctx={ctx} open={openGroup === '__cursor'} onOpen={(open) => setOpenGroup(open ? '__cursor' : null)} onPick={() => pick(null)} />
       {favorites.length > 0 && (
         <>
@@ -354,6 +374,11 @@ export function DrawingToolbar({ ctx }: { ctx: WidgetContext }) {
       >
         <ChevronLeftIcon />
       </button>
+      {more.down && (
+        <button class="fnc-drawbar-more is-down" aria-label={t.moreToolsDown} onClick={() => scrollBar(160)}>
+          <ChevronDownIcon />
+        </button>
+      )}
     </div>
     </>
   );

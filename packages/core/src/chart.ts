@@ -261,6 +261,13 @@ const MIN_PRICE_AXIS_WIDTH = 56;
 const PANE_WEIGHT = { main: 4, volume: 1, indicator: 1.3 };
 /** No pane can be dragged smaller than this. */
 const MIN_PANE_HEIGHT = 32;
+/**
+ * A short chart (a phone, a phone on its side): the price pane keeps at least this share of the
+ * height however many indicator panes are under it — they share the rest.
+ */
+const SHORT_CHART = 560;
+const MIN_MAIN_SHARE = 0.55;
+const MIN_SHORT_PANE = 20;
 /** Pointer distance (px) from a pane border that grabs it. */
 const PANE_BORDER_GRAB = 4;
 const HISTORY_TRIGGER_BARS = 20;
@@ -2207,6 +2214,15 @@ export class Chart {
     const totalWeight = weights.reduce((sum, [, w]) => sum + w, 0);
     this.paneWeightTotal = totalWeight;
     const heightOf = new Map(weights.map(([id, w]) => [id, Math.max(MIN_PANE_HEIGHT, Math.round((panesHeight * w) / totalWeight))]));
+    if (panesHeight < SHORT_CHART) {
+      const below = [...heightOf].reduce((sum, [id, h]) => (id === 'main' ? sum : sum + h), 0);
+      const room = panesHeight - Math.round(panesHeight * MIN_MAIN_SHARE);
+      if (below > room && below > 0) {
+        const k = Math.max(0, room) / below;
+        // Very short (a phone on its side): indicator panes may get thinner than a dragged one could.
+        for (const [id, h] of heightOf) if (id !== 'main') heightOf.set(id, Math.max(MIN_SHORT_PANE, Math.round(h * k)));
+      }
+    }
     const volumeHeight = heightOf.get('volume') ?? 0;
     const indicatorHeights = indicatorPanes.map((c) => heightOf.get(c.id)!);
     // The price pane absorbs rounding.

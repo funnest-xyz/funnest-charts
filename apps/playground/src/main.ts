@@ -34,6 +34,8 @@ const widget = createTradingChart($('chart'), {
   datafeed,
   symbol: params.get('symbol') ?? 'DEMO:005930',
   resolution: params.get('resolution') ?? '1D',
+  // ?legend=crosshair: values only while the crosshair is on (how phones show them).
+  ...(params.get('legend') === 'crosshair' ? { legendValues: 'crosshair' as const } : {}),
   // A text tool of the page's own: placing it (or clicking it again once selected) types in place.
   drawingDefinitions: [
     {
