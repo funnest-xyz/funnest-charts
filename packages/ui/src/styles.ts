@@ -817,6 +817,8 @@ const CSS = /* css */ `
 .fnc-coord-price { flex: 0 0 110px; height: 32px; font-size: 13px; }
 .fnc-coord-time { flex: 0 0 180px; height: 32px; font-size: 13px; }
 .fnc-btn-on { color: var(--fnc-accent); }
+/* 차트 고정: the bar shows just the lock, always (not only on hover). */
+.fnc-nav.fnc-nav-locked { opacity: 1; display: flex; }
 .fnc-color-field { display: flex; align-items: center; gap: 6px; flex: none; }
 .fnc-opacity { width: 64px; accent-color: var(--fnc-accent); }
 .fnc-level-values { flex-wrap: wrap; row-gap: 6px; }

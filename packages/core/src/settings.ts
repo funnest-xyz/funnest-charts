@@ -27,6 +27,17 @@ export interface ChartSettings {
    * were sent instead of jumping, and a drag let go glides further. Touch always glides.
    */
   smoothScroll: boolean;
+  /**
+   * 차트 고정: dragging, the wheel, pinches, axis drags and the zoom / scroll buttons leave the view
+   * as it is (it still follows new bars at the right edge). The crosshair and drawing still work.
+   */
+  lockView: boolean;
+  /**
+   * 가격 축 비율 고정 (TradingView's "lock price to bar ratio"): how much price a bar's width
+   * stands for stays as it was when turned on, so zooming the time axis zooms the price axis with
+   * it and trend lines keep their angle. The price axis doesn't fit itself to the candles meanwhile.
+   */
+  lockRatio: boolean;
   /** Up/down candle colors; null follows the theme. */
   upColor: string | null;
   downColor: string | null;
@@ -105,6 +116,8 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   countdown: true,
   extendedPriceLine: true,
   smoothScroll: false,
+  lockView: false,
+  lockRatio: false,
   upColor: null,
   downColor: null,
   background: null,

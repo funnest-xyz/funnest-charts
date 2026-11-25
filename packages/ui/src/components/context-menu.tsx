@@ -70,12 +70,14 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
       onSelect: () => ctx.chart.addDrawing({ type: 'horizontal', points: [{ time, price }] }),
     });
   }
-  const smooth = ctx.chart.settings.smoothScroll;
+  const { smoothScroll: smooth, lockView, lockRatio } = ctx.chart.settings;
   items.push(
     { label: t.goToDateMore, onSelect: () => ctx.store.set({ dialog: { kind: 'goToDate' } }) },
     { label: t.smoothScroll, checked: smooth, onSelect: () => ctx.chart.setSettings({ smoothScroll: !smooth }) },
+    { label: t.lockView, checked: lockView, onSelect: () => ctx.chart.setSettings({ lockView: !lockView }) },
+    { label: t.lockRatio, checked: lockRatio, onSelect: () => ctx.chart.setSettings({ lockRatio: !lockRatio }) },
     'separator',
-    { label: t.resetChart, onSelect: () => ctx.chart.resetView() },
+    { label: t.resetChart, disabled: lockView, onSelect: () => ctx.chart.resetView() },
     { label: t.chartSettingsMore, onSelect: () => ctx.store.set({ dialog: { kind: 'chartSettings' } }) },
   );
 

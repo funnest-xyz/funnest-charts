@@ -14,6 +14,7 @@ import {
   FunnestMark,
   GearIcon,
   MaximizeIcon,
+  LockIcon,
   MinusIcon,
   PauseIcon,
   PlayIcon,
@@ -340,7 +341,15 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
   const t = stringsOf(s);
   // Chart settings → "확대·이동 버튼" hides the zoom/scroll group (the jump-to-latest button stays).
   const [showButtons, setShowButtons] = useState(ctx.chart.settings.navigationButtons);
-  useEffect(() => ctx.chart.on('settingsChange', (settings) => setShowButtons(settings.navigationButtons)), [ctx.chart]);
+  const [locked, setLocked] = useState(ctx.chart.settings.lockView);
+  useEffect(
+    () =>
+      ctx.chart.on('settingsChange', (settings) => {
+        setShowButtons(settings.navigationButtons);
+        setLocked(settings.lockView);
+      }),
+    [ctx.chart],
+  );
   const { plotWidth, panesHeight } = s.layout;
   if (plotWidth <= 0) return null;
   const top = panesHeight - CONTROL_OFFSET;
@@ -355,13 +364,23 @@ function NavControls({ ctx }: { ctx: WidgetContext }) {
   const replaying = s.replay.active || s.replay.selecting;
   return (
     <>
-      {showButtons && !replaying && (
-      <div class="fnc-nav" style={{ left: `${plotWidth / 2}px`, top: `${top}px` }}>
-        {button(t.zoomOut, () => ctx.chart.zoom(1 / ZOOM_STEP), <MinusIcon />)}
-        {button(t.zoomIn, () => ctx.chart.zoom(ZOOM_STEP), <PlusIcon />)}
-        {button(t.scrollBack, () => ctx.chart.scrollBars(-page()), <ChevronLeftIcon />)}
-        {button(t.scrollForward, () => ctx.chart.scrollBars(page()), <ChevronRightIcon />)}
-        {button(t.resetView, () => ctx.chart.resetView(), <ResetIcon />)}
+      {(showButtons || locked) && !replaying && (
+      <div class={locked ? 'fnc-nav fnc-nav-locked' : 'fnc-nav'} style={{ left: `${plotWidth / 2}px`, top: `${top}px` }}>
+        {/* 차트 고정: only the lock shows (pressed), to unlock. */}
+        {!locked && button(t.zoomOut, () => ctx.chart.zoom(1 / ZOOM_STEP), <MinusIcon />)}
+        {!locked && button(t.zoomIn, () => ctx.chart.zoom(ZOOM_STEP), <PlusIcon />)}
+        {!locked && button(t.scrollBack, () => ctx.chart.scrollBars(-page()), <ChevronLeftIcon />)}
+        {!locked && button(t.scrollForward, () => ctx.chart.scrollBars(page()), <ChevronRightIcon />)}
+        {!locked && button(t.resetView, () => ctx.chart.resetView(), <ResetIcon />)}
+        <button
+          class={locked ? 'fnc-btn fnc-btn-on' : 'fnc-btn'}
+          data-tip={locked ? t.unlockView : t.lockView}
+          aria-label={locked ? t.unlockView : t.lockView}
+          aria-pressed={locked}
+          onClick={() => ctx.chart.setSettings({ lockView: !locked })}
+        >
+          <LockIcon open={!locked} />
+        </button>
       </div>
       )}
       {!s.atRealtime && (

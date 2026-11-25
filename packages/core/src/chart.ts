@@ -437,6 +437,8 @@ export class Chart {
   /** Undo/redo of drawings + indicators, as JSON snapshots. */
   private readonly history = { undo: [] as string[], redo: [] as string[], current: '', applying: false };
   private readonly compares = new Map<string, CompareEntry>();
+  /** 가격 축 비율 고정: axis units per pixel × bar spacing, as it was when turned on (null: take it now). */
+  private priceBarRatio: number | null = null;
   /** 타임프레임: bars of longer intervals indicators are computed on (fetched once per symbol and interval). */
   private readonly higher = new Map<string, { bars: Bar[]; loading: boolean; failed: boolean; noMore: boolean; version: number }>();
   private readonly higherCache = new Map<string, { key: string; value: { bars: readonly Bar[]; index: Int32Array } }>();
@@ -649,6 +651,9 @@ export class Chart {
     }
     this.symbol = info;
     this.resolution = resolution;
+    // Another symbol or interval: a price per bar of its own (taken once its candles are fitted).
+    this.priceBarRatio = null;
+    if (this.settingsValue.lockRatio) this.mainScale.autoScale = true;
     this.drawings.resolution = resolution;
     // Another symbol or interval: other bars for 타임프레임 too.
     this.higher.clear();
@@ -742,6 +747,7 @@ export class Chart {
 
   /** factor > 1 zooms in. Anchored to the latest bar when it's on screen, otherwise to the center. */
   zoom(factor: number): void {
+    if (this.settingsValue.lockView) return;
     const anchor = this.isAtRealtime() ? this.timeScale.width : this.timeScale.width / 2;
     this.timeScale.zoom(anchor, factor);
     this.invalidate();
@@ -749,6 +755,7 @@ export class Chart {
 
   /** Scrolls by a number of bars; positive moves toward newer bars. */
   scrollBars(bars: number): void {
+    if (this.settingsValue.lockView) return;
     this.timeScale.pan(-bars * this.timeScale.barSpacing);
     this.invalidate();
   }
@@ -1026,6 +1033,8 @@ export class Chart {
   }
 
   setSettings(patch: Partial<ChartSettings>): void {
+    // 가격 축 비율 고정 turned on: the ratio is taken from the view as it is now.
+    if (patch.lockRatio !== undefined && patch.lockRatio !== this.settingsValue.lockRatio) this.priceBarRatio = null;
     this.settingsValue = { ...this.settingsValue, ...patch };
     this.invalidate();
     this.emitter.emit('settingsChange', this.settings);
@@ -2061,6 +2070,7 @@ export class Chart {
   }
 
   resetView(): void {
+    if (this.settingsValue.lockView) return;
     this.timeScale.reset();
     this.mainScale.autoScale = true;
     this.volumeScale.autoScale = true;
@@ -2270,6 +2280,7 @@ export class Chart {
       this.percentBaseIndex = Math.max(0, range.from);
       compareOverlays = this.compareOverlays(this.percentBaseIndex);
       highLow = this.autoScale(range, [...overlays.map((o) => o.output), ...compareOverlays]);
+      if (this.settingsValue.lockRatio) this.keepPriceBarRatio();
       for (const pane of subPanes) this.autoScaleIndicator(pane.scale, pane.output, range);
 
       // Ticks span the pane's whole visible price range (margins and legend inset included),
@@ -2394,6 +2405,22 @@ export class Chart {
       for (const kid of this.indicators.childrenOf(config.id)) add(pane, kid, this.indicators.output(kid, this.store.bars, this.dataVersion), own.precision);
     }
     return out;
+  }
+
+  /**
+   * 가격 축 비율 고정: the price pane shows as much price per pixel as keeps price-per-bar what
+   * it was (taken from the view the first time, after the candles were fitted).
+   */
+  private keepPriceBarRatio(): void {
+    const scale = this.mainScale;
+    const spacing = this.timeScale.barSpacing;
+    if (!(spacing > 0)) return;
+    if (this.priceBarRatio === null) {
+      const now = scale.axisPerPixel * spacing;
+      if (!(now > 0) || !Number.isFinite(now)) return;
+      this.priceBarRatio = now;
+    }
+    scale.setAxisPerPixel(this.priceBarRatio / spacing);
   }
 
   // ── 타임프레임 ─────────────────────────────────────────────────────
@@ -2814,24 +2841,32 @@ export class Chart {
         this.invalidate(false);
       },
       panTime: (dx) => {
+        if (this.settingsValue.lockView) return;
         this.timeScale.pan(dx);
         this.invalidate();
       },
       zoomTime: (anchorX, factor) => {
+        if (this.settingsValue.lockView) return;
         this.timeScale.zoom(anchorX, factor);
         this.invalidate();
       },
       panPrice: (pane, dy) => {
+        if (this.settingsValue.lockView) return;
         const scale = this.paneScale(pane);
         if (scale.autoScale || pane !== 'main') return;
         scale.pan(dy);
         this.invalidate();
       },
       scalePrice: (pane, factor) => {
+        if (this.settingsValue.lockView) return;
         this.paneScale(pane).zoom(factor);
+        // With the ratio kept: stretching the price axis sets a new ratio.
+        if (pane === 'main' && this.settingsValue.lockRatio && this.priceBarRatio !== null) this.priceBarRatio *= factor;
         this.invalidate();
       },
       resetPriceScale: (pane) => {
+        if (this.settingsValue.lockView) return;
+        // With the ratio kept this re-centers on the candles (the ratio stays).
         this.paneScale(pane).autoScale = true;
         this.invalidate();
       },

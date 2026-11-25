@@ -86,6 +86,22 @@ export class PriceScale {
     this.setRange(this.fromAxis(lo), this.fromAxis(hi));
   }
 
+  /** How much of the axis (log prices in log mode) one pixel of the pane stands for. */
+  get axisPerPixel(): number {
+    return (this.toAxis(this.hi) - this.toAxis(this.lo)) / this.innerHeight;
+  }
+
+  /** Shows `perPixel` axis units per pixel around the same center. Disables auto-scale. */
+  setAxisPerPixel(perPixel: number): void {
+    if (!(perPixel > 0) || !Number.isFinite(perPixel)) return;
+    const lo = this.toAxis(this.lo);
+    const hi = this.toAxis(this.hi);
+    const center = (lo + hi) / 2;
+    const half = (perPixel * this.innerHeight) / 2;
+    this.setAxisRange(center - half, center + half);
+    this.autoScale = false;
+  }
+
   /** Scales around the center. factor > 1 shows a wider price range. Disables auto-scale. */
   zoom(factor: number): void {
     const lo = this.toAxis(this.lo);
