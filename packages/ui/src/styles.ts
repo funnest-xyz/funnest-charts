@@ -1139,8 +1139,11 @@ const CSS = /* css */ `
 /* ── Drawing tool groups ─────────────────────────────── */
 .fnc-tool-group { position: relative; display: flex; }
 .fnc-tool-group[data-open='true'] { z-index: 30; }
-/* The list opener: a corner mark at rest; on hover a tab slides out to the right of the
-   button (a bigger target, like the reference terminals). Touch screens always show the tab. */
+/* The list opener: a corner mark at rest. On hover the button and a tab on its right light up as
+   one piece — the same background, the button's right corners squared where the tab joins it, no
+   gap between them — and the tab shows a chevron. Every tool in the bar lights up on hover the same
+   way. Touch screens always show the chevron (no hover). */
+.fnc-drawbar .fnc-btn:hover { background: var(--fnc-surface); }
 .fnc-tool-more {
   position: absolute;
   top: 0;
@@ -1151,35 +1154,41 @@ const CSS = /* css */ `
   justify-content: flex-end;
   width: 12px;
   padding: 0 0 2px;
-  border-radius: 0 var(--fnc-radius) var(--fnc-radius) 0;
   color: var(--fnc-text-2);
-  transition: right 0.12s ease, width 0.12s ease, background 0.12s ease;
 }
 .fnc-tool-corner { display: flex; opacity: 0.7; }
 .fnc-tool-chevron { display: none; }
 .fnc-tool-chevron svg { width: 12px; height: 12px; }
-.fnc-tool-group:hover .fnc-tool-more,
-.fnc-tool-more[aria-expanded='true'],
-.fnc-tool-more:focus-visible {
-  right: -13px;
-  width: 14px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: var(--fnc-surface);
-  color: var(--fnc-text);
-  box-shadow: 0 0 0 1px var(--fnc-border);
+@media (hover: hover) {
+  .fnc-tool-group:has(.fnc-tool-more):hover > .fnc-btn,
+  .fnc-tool-group[data-open='true'] > .fnc-btn {
+    background: var(--fnc-surface);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .fnc-tool-group:hover .fnc-tool-more,
+  .fnc-tool-more[aria-expanded='true'],
+  .fnc-tool-more:focus-visible {
+    right: -14px;
+    width: 14px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 0 var(--fnc-radius) var(--fnc-radius) 0;
+    background: var(--fnc-surface);
+    color: var(--fnc-text-2);
+  }
+  .fnc-tool-more:hover,
+  .fnc-tool-more[aria-expanded='true'] { color: var(--fnc-text); }
+  .fnc-tool-group:hover .fnc-tool-corner,
+  .fnc-tool-more[aria-expanded='true'] .fnc-tool-corner,
+  .fnc-tool-more:focus-visible .fnc-tool-corner { display: none; }
+  .fnc-tool-group:hover .fnc-tool-chevron,
+  .fnc-tool-more[aria-expanded='true'] .fnc-tool-chevron,
+  .fnc-tool-more:focus-visible .fnc-tool-chevron { display: flex; }
 }
-.fnc-tool-group:hover .fnc-tool-corner,
-.fnc-tool-more[aria-expanded='true'] .fnc-tool-corner,
-.fnc-tool-more:focus-visible .fnc-tool-corner { display: none; }
-.fnc-tool-group:hover .fnc-tool-chevron,
-.fnc-tool-more[aria-expanded='true'] .fnc-tool-chevron,
-.fnc-tool-more:focus-visible .fnc-tool-chevron { display: flex; }
-/* Once the list is open the tab has done its job: it fades out (clicking its spot still closes the list). */
-.fnc-tool-group[data-open='true'] .fnc-tool-more { opacity: 0; }
 @media (hover: none) {
-  .fnc-tool-more { right: -12px; width: 14px; align-items: center; justify-content: center; padding: 0; }
+  .fnc-tool-more { right: -8px; width: 10px; align-items: center; justify-content: center; padding: 0; }
   .fnc-tool-corner { display: none; }
   .fnc-tool-chevron { display: flex; }
 }
