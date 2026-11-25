@@ -82,6 +82,12 @@ export const CHART_THEMES: readonly ChartThemePreset[] = [
     colors: { upColor: '#F04452', downColor: '#3182F6', background: '#000000', gridColor: '#121212', textColor: '#B8BCC4' },
   },
   {
+    // The same true black with the global colors: green up, red down.
+    id: 'deep-dark-global',
+    name: { ko: '딥 다크 그린', en: 'Deep dark green' },
+    colors: { upColor: '#26A69A', downColor: '#EF5350', background: '#000000', gridColor: '#121212', textColor: '#B8BCC4' },
+  },
+  {
     id: 'mono',
     name: { ko: '모노', en: 'Mono' },
     colors: { upColor: '#E4E4E7', downColor: '#6B6B75', background: '#121214', gridColor: '#1F1F23', textColor: '#D4D4D8' },
