@@ -76,7 +76,9 @@ export type {
   SeriesKind,
   TablePosition,
 } from './indicators/definitions.js';
-export type { IndicatorConfig, IndicatorPatch } from './indicators/manager.js';
+export type { IndicatorConfig, IndicatorDisplay, IndicatorPatch, IntervalUnit, IntervalVisibility } from './indicators/manager.js';
+export { intervalUnit, shownOnInterval } from './intervals.js';
+export type { IndicatorDefaults } from './indicators/defaults.js';
 export { maLines, PRICE_SOURCES, priceSource } from './indicators/definitions.js';
 export type { MaLine, PriceSource, SeriesStyle } from './indicators/definitions.js';
 /** Indicator math, reusable in strategy/backtest code. */

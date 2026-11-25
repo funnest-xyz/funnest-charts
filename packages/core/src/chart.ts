@@ -10,7 +10,9 @@ import { DEFAULT_TIME_SCALE_OPTIONS, TimeScale, type IndexRange, type TimeScaleO
 import { decimalsOf, formatCompact, formatPrice, resolveTickSize, roundToTick } from './price.js';
 import type { IndicatorDefinition, IndicatorOutput, IndicatorParams, IndicatorSeries, IndicatorType } from './indicators/definitions.js';
 import { graphicsRange, resolveIndicatorColor } from './render/indicator-draw.js';
-import { IndicatorManager, indicatorRegistry, type IndicatorConfig, type IndicatorPatch } from './indicators/manager.js';
+import { IndicatorManager, indicatorRegistry, shownOnInterval, type IndicatorConfig, type IndicatorPatch, type TimeframeInput } from './indicators/manager.js';
+import { composeHigher, mapToHigher } from './indicators/timeframe.js';
+import { saveIndicatorDefaults, savedIndicatorDefaults, type IndicatorDefaults } from './indicators/defaults.js';
 import { DrawingManager, drawingRegistry, type Drawing, type DrawingDefaults, type DrawingDefinition, type DrawingOrder, type DrawingType } from './objects/drawings.js';
 import {
   TradingLayer,
@@ -237,7 +239,9 @@ export interface IndicatorLegendItem {
   /** More can go on this one (it isn't on another itself). */
   hostable: boolean;
   visible: boolean;
-  /** Visible series only. */
+  /** Not shown on this interval (its 보임 settings): the legend shows it dimmed. */
+  offInterval?: boolean;
+  /** Visible series only (none when its 상태 라인 밸류 is off). */
   values: { key: string; label: string; value: string; color: string }[];
 }
 
@@ -433,6 +437,9 @@ export class Chart {
   /** Undo/redo of drawings + indicators, as JSON snapshots. */
   private readonly history = { undo: [] as string[], redo: [] as string[], current: '', applying: false };
   private readonly compares = new Map<string, CompareEntry>();
+  /** 타임프레임: bars of longer intervals indicators are computed on (fetched once per symbol and interval). */
+  private readonly higher = new Map<string, { bars: Bar[]; loading: boolean; failed: boolean; noMore: boolean; version: number }>();
+  private readonly higherCache = new Map<string, { key: string; value: { bars: readonly Bar[]; index: Int32Array } }>();
   private compareVersion = 0;
   /** Base bar index of the % axis and compare lines (the first visible bar). */
   private percentBaseIndex = 0;
@@ -489,6 +496,7 @@ export class Chart {
 
     this.colors = new ColorResolver(probe);
     this.indicators = new IndicatorManager(indicatorRegistry(options.indicatorDefinitions));
+    this.indicators.timeframeSource = (cfg) => this.timeframeInput(cfg);
     this.drawings = new DrawingManager((change) => {
       this.invalidate();
       if (change === 'commit') {
@@ -579,6 +587,11 @@ export class Chart {
     return this.store.bars;
   }
 
+  /** The time zone times are shown in (the chart's display time zone, else the symbol's). */
+  get timeZone(): string {
+    return this.displayTimezone ?? this.symbol?.timezone ?? 'UTC';
+  }
+
   get symbolInfo(): SymbolInfo | null {
     return this.symbol;
   }
@@ -636,6 +649,10 @@ export class Chart {
     }
     this.symbol = info;
     this.resolution = resolution;
+    this.drawings.resolution = resolution;
+    // Another symbol or interval: other bars for 타임프레임 too.
+    this.higher.clear();
+    this.higherCache.clear();
     this.formatter = new TimeFormatter(this.displayTimezone ?? info.timezone, this.locale);
     this.pricePrecision = info.pricePrecision;
     this.tickSize = info.tickSize;
@@ -1224,9 +1241,29 @@ export class Chart {
 
   /** Adds an indicator (overlays draw on the candles, others get their own pane). Returns its id. */
   addIndicator(type: IndicatorType, params?: IndicatorParams): string {
-    const id = this.indicators.add(type, params);
+    // 기본값으로 저장 of this type: its inputs (unless given), looks and 보임.
+    const saved = savedIndicatorDefaults(type);
+    const id = this.indicators.add(type, params ?? saved?.params);
+    if (saved) {
+      const patch: IndicatorPatch = {};
+      if (saved.styles) patch.styles = saved.styles;
+      if (saved.display) patch.display = saved.display;
+      if (saved.timeframe) patch.timeframe = saved.timeframe;
+      if (saved.waitClose === false) patch.waitClose = false;
+      this.indicators.update(id, patch);
+    }
     this.indicatorsChanged();
     return id;
+  }
+
+  /** What a new indicator of this type starts with (기본값으로 저장), or null: its own defaults. */
+  indicatorDefaults(type: IndicatorType): IndicatorDefaults | null {
+    return savedIndicatorDefaults(type);
+  }
+
+  /** 기본값으로 저장 (an indicator's current settings) — or null: back to the type's own defaults. */
+  saveIndicatorDefaults(type: IndicatorType, defaults: IndicatorDefaults | null): void {
+    saveIndicatorDefaults(type, defaults);
   }
 
   /**
@@ -1324,15 +1361,21 @@ export class Chart {
       // An overlay's own precision; on an indicator, the parent's (an MA over RSI reads like RSI).
       const precision = output.precision ?? (parent ? this.indicators.output(parent, this.store.bars, this.dataVersion).precision : null) ?? this.pricePrecision;
       const parentTitle = parent ? this.indicators.def(parent.type).title(parent.params) : '';
+      const d = cfg.display ?? {};
+      // 상태 표시줄의 입력값 off: the name alone ("RSI", not "RSI 14").
+      const own = d.statusInputs === false ? def.title(cfg.params).split(' ')[0]! : def.title(cfg.params);
+      const tf = this.timeframeActive(cfg) ? ` · ${resolutionLabel(cfg.timeframe!, this.locale)}` : '';
+      const offInterval = !shownOnInterval(d.intervals, this.resolution);
       return {
         id: cfg.id,
         type: cfg.type,
-        title: parent ? `${def.title(cfg.params)} (${parentTitle.split(' ')[0]})` : def.title(cfg.params),
+        title: (parent ? `${own} (${parentTitle.split(' ')[0]})` : own) + tf,
         overlay: this.indicators.isOverlay(cfg),
         ...(parent ? { parent: parent.id } : {}),
         hostable: !cfg.on,
         visible: cfg.visible !== false,
-        values: output.series.filter((series) => series.visible).map((series) => {
+        ...(offInterval ? { offInterval } : {}),
+        values: (d.statusValues === false || offInterval ? [] : output.series.filter((series) => series.visible)).map((series) => {
           const v = series.values[index - (series.shift ?? 0)];
           return {
             key: series.key,
@@ -1364,6 +1407,8 @@ export class Chart {
     let most = 0;
     for (const cfg of this.indicators.list) {
       if (cfg.visible === false) continue;
+      // On another interval: its history is that interval's, fetched on its own.
+      if (this.timeframeActive(cfg)) continue;
       const own = this.indicators.registry.get(cfg.type)?.lookback?.(cfg.params) ?? 0;
       // On an indicator: what that one needs, then this one's own on top.
       const parent = this.indicators.parentOf(cfg);
@@ -2162,7 +2207,7 @@ export class Chart {
     // What actually gets drawn/scaled: hidden indicators and hidden series drop out.
     const drawable = (config: IndicatorConfig): IndicatorOutput => {
       const { fill, ...out } = this.indicators.output(config, bars, this.dataVersion);
-      if (config.visible === false) return { ...out, series: [] };
+      if (config.visible === false || !shownOnInterval(config.display?.intervals, this.resolution)) return { ...out, series: [] };
       const series = out.series.filter((x) => x.visible);
       const shown = (key: string) => series.some((x) => x.key === key);
       return fill && shown(fill.upper) && shown(fill.lower) ? { ...out, series, fill } : { ...out, series };
@@ -2315,7 +2360,117 @@ export class Chart {
       countdown: this.countdownLabel,
       extendedPrice: this.extendedPriceFrame(),
       sessionShade: this.sessionShade(range, plotWidth),
+      seriesLabels: this.seriesLabels(panes, overlays, subPanes.map((p) => p.config)),
     };
+  }
+
+  /**
+   * 프라이스 스케일 라벨: each shown line's latest value on its pane's price scale, in its color
+   * (indicators whose display doesn't turn them off).
+   */
+  private seriesLabels(panes: PaneFrame[], overlays: { config: IndicatorConfig; output: IndicatorOutput }[], paneConfigs: IndicatorConfig[]): NonNullable<Frame['seriesLabels']> {
+    const out: NonNullable<Frame['seriesLabels']> = [];
+    const last = this.store.length - 1;
+    if (last < 0) return out;
+    const add = (pane: PaneFrame, config: IndicatorConfig, output: IndicatorOutput, precision: number | null) => {
+      if (config.visible === false || config.display?.axisLabels === false || !shownOnInterval(config.display?.intervals, this.resolution)) return;
+      const digits = output.precision ?? precision ?? this.pricePrecision;
+      for (const s of output.series) {
+        if (!s.visible || s.kind === 'histogram' || s.kind === 'columns') continue;
+        const v = s.values[last];
+        if (v === undefined || !Number.isFinite(v)) continue;
+        const y = pane.top + pane.scale.priceToY(v);
+        if (y < pane.top || y > pane.top + pane.height) continue;
+        out.push({ y, top: pane.top, bottom: pane.top + pane.height, text: formatPrice(v, digits), color: s.color });
+      }
+    };
+    const main = panes.find((p) => p.kind === 'main');
+    if (main) for (const o of overlays) add(main, o.config, this.indicators.output(o.config, this.store.bars, this.dataVersion), null);
+    for (const config of paneConfigs) {
+      const pane = panes.find((p) => p.id === config.id);
+      if (!pane) continue;
+      const own = this.indicators.output(config, this.store.bars, this.dataVersion);
+      add(pane, config, own, null);
+      for (const kid of this.indicators.childrenOf(config.id)) add(pane, kid, this.indicators.output(kid, this.store.bars, this.dataVersion), own.precision);
+    }
+    return out;
+  }
+
+  // ── 타임프레임 ─────────────────────────────────────────────────────
+
+  /** Whether it's computed on its own (longer) interval right now. */
+  private timeframeActive(cfg: IndicatorConfig): boolean {
+    if (!cfg.timeframe || !this.resolution) return false;
+    try {
+      return resolutionToMs(cfg.timeframe) > resolutionToMs(this.resolution);
+    } catch {
+      return false;
+    }
+  }
+
+  /** The longer interval's bars lined up with the chart's, for the indicator manager (loading them the first time). */
+  private timeframeInput(cfg: IndicatorConfig): TimeframeInput | null {
+    if (!this.timeframeActive(cfg) || !this.symbol || !this.datafeed) return null;
+    const tf = cfg.timeframe!;
+    let entry = this.higher.get(tf);
+    if (!entry) {
+      entry = { bars: [], loading: false, failed: false, noMore: false, version: 0 };
+      this.higher.set(tf, entry);
+      void this.loadHigher(tf);
+    } else if (!entry.loading && !entry.failed && !entry.noMore && entry.bars.length && (this.store.first()?.time ?? Infinity) < entry.bars[0]!.time) {
+      // The chart went further back than what was fetched: fetch again from there.
+      void this.loadHigher(tf);
+    }
+    const wait = cfg.waitClose !== false;
+    const key = `${tf}:${entry.version}:${wait ? 1 : 0}`;
+    const fetched = entry;
+    return {
+      key,
+      get: () => {
+        const cacheKey = `${key}:${this.dataVersion}`;
+        const hit = this.higherCache.get(`${tf}:${wait}`);
+        if (hit?.key === cacheKey) return hit.value;
+        const bars = composeHigher(fetched.bars, this.store.bars, tf);
+        const value = { bars, index: mapToHigher(this.store.bars, bars, tf, wait) };
+        this.higherCache.set(`${tf}:${wait}`, { key: cacheKey, value });
+        return value;
+      },
+    };
+  }
+
+  private async loadHigher(tf: string): Promise<void> {
+    const feed = this.datafeed;
+    const info = this.symbol;
+    const entry = this.higher.get(tf);
+    if (!feed || !info || !entry || entry.loading) return;
+    const token = this.loadToken;
+    entry.loading = true;
+    try {
+      const step = resolutionToMs(tf);
+      const now = Date.now();
+      const first = this.store.first()?.time ?? now;
+      // Enough to cover the chart's bars, plus what the indicators on it need before them.
+      let lookback = 0;
+      for (const cfg of this.indicators.list) {
+        if (cfg.timeframe !== tf) continue;
+        const parent = this.indicators.parentOf(cfg);
+        const n = (this.indicators.registry.get(cfg.type)?.lookback?.(cfg.params) ?? 0) + (parent ? (this.indicators.registry.get(parent.type)?.lookback?.(parent.params) ?? 0) : 0);
+        if (Number.isFinite(n)) lookback = Math.max(lookback, n);
+      }
+      lookback = Math.min(MAX_INDICATOR_LOOKBACK, lookback);
+      const countBack = Math.min(5000, Math.ceil((now - first) / step) + lookback + 20);
+      const result = await feed.getBars(info, tf, { from: first - (lookback + 2) * step, to: now, countBack });
+      if (token !== this.loadToken || this.higher.get(tf) !== entry) return;
+      entry.bars = [...result.bars].sort((a, b) => a.time - b.time);
+      entry.noMore = result.noMoreData;
+      entry.version++;
+      this.invalidate();
+      this.emitter.emit('indicatorsChange', this.getIndicators());
+    } catch {
+      entry.failed = true;
+    } finally {
+      entry.loading = false;
+    }
   }
 
   /** The quote's pre-market / after-hours price, when the setting shows it. */

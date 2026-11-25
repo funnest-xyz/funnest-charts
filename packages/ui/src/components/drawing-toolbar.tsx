@@ -1,9 +1,10 @@
 /** @jsxImportSource preact */
-import { drawingLevels, drawingOption, type CursorMode, type DrawingDefinition, type DrawingLevel, type DrawingStyle, type DrawingType, type Locale } from '@funnest/charts';
+import { drawingLevels, drawingOption, timeZoneOffset, type CursorMode, type Drawing, type DrawingDefinition, type DrawingLevel, type DrawingStyle, type DrawingType, type Locale } from '@funnest/charts';
 import { Fragment, type JSX } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
-import { stringsOf } from '../i18n.js';
+import { stringsOf, type Strings } from '../i18n.js';
+import { cleanIntervals, IntervalVisibilityEditor } from './interval-visibility.js';
 import {
   BellIcon,
   ChevronLeftIcon,
@@ -24,6 +25,8 @@ import {
   TemplateIcon,
   LevelsIcon,
   LayersIcon,
+  TextIcon,
+  ClockIcon,
   SettingsIcon,
   PaletteIcon,
   FibonacciIcon,
@@ -414,13 +417,58 @@ function DashGlyph({ dash }: { dash: NonNullable<DrawingStyle['dash']> }) {
  * color (swatches, a custom one, recent customs), line width and style, text for text tools,
  * lock, duplicate, delete (also the only way to delete on touch).
  */
+/** 좌표: each point's price and time (in the chart's time zone), typed in. */
+function DrawingCoords({ ctx, drawing, t }: { ctx: WidgetContext; drawing: Drawing; t: Strings }) {
+  const tz = ctx.chart.timeZone;
+  const toLocal = (time: number) => new Date(time + timeZoneOffset(time, tz)).toISOString().slice(0, 16);
+  const fromLocal = (text: string) => {
+    const asUtc = Date.parse(`${text}:00Z`);
+    if (!Number.isFinite(asUtc)) return null;
+    // The offset at that moment (twice: across a DST change the first guess can be an hour off).
+    const guess = asUtc - timeZoneOffset(asUtc, tz);
+    return asUtc - timeZoneOffset(guess, tz);
+  };
+  const setPoint = (i: number, patch: { time?: number; price?: number }) =>
+    ctx.chart.updateDrawing(drawing.id, { points: drawing.points.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
+  return (
+    <div class="fnc-coords">
+      {drawing.points.map((p, i) => (
+        <div class="fnc-coord-row" key={`${drawing.id}:${i}:${p.time}:${p.price}`}>
+          <span class="fnc-coord-name">{drawing.points.length > 1 ? `${t.point} ${i + 1}` : t.point}</span>
+          <input
+            class="fnc-input fnc-coord-price"
+            type="number"
+            step="any"
+            defaultValue={String(p.price)}
+            aria-label={`${t.point} ${i + 1} ${t.price}`}
+            onChange={(e) => {
+              const v = Number((e.target as HTMLInputElement).value);
+              if (Number.isFinite(v)) setPoint(i, { price: v });
+            }}
+          />
+          <input
+            class="fnc-input fnc-coord-time"
+            type="datetime-local"
+            defaultValue={toLocal(p.time)}
+            aria-label={`${t.point} ${i + 1} ${t.time}`}
+            onChange={(e) => {
+              const time = fromLocal((e.target as HTMLInputElement).value);
+              if (time !== null) setPoint(i, { time });
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
   const t = stringsOf(s);
   const d = s.selection;
   const [offset, setOffset] = useState<[number, number]>(() => readJson(POS_KEY, [0, 0]));
   const [recent, setRecent] = useState<string[]>(() => readJson(RECENT_KEY, []));
-  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels' | 'options' | 'order'>(null);
+  const [menu, setMenu] = useState<null | 'width' | 'colors' | 'font' | 'template' | 'levels' | 'options' | 'order' | 'coords' | 'visibility' | 'note'>(null);
   const [templates, setTemplates] = useState<Record<string, DrawingTemplate[]>>(() => readJson(TEMPLATES_KEY, {}));
   const [naming, setNaming] = useState<string | null>(null);
   const colorInput = useRef<HTMLInputElement>(null);
@@ -876,6 +924,108 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
                 {label}
               </button>
             ))}
+          </div>
+        )}
+      </div>
+      {def && !def.text && (
+        <div class="fnc-selbar-menu">
+          <button
+            class={style.text ? 'fnc-btn fnc-btn-on' : 'fnc-btn'}
+            data-tip={t.note}
+            aria-label={t.note}
+            aria-expanded={menu === 'note'}
+            onClick={() => setMenu(menu === 'note' ? null : 'note')}
+          >
+            <TextIcon />
+          </button>
+          {menu === 'note' && (
+            <div class="fnc-menu fnc-selbar-pop fnc-note-menu" role="menu" onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+              <textarea
+                key={d.id}
+                defaultValue={style.text ?? ''}
+                placeholder={t.noteText}
+                aria-label={t.noteText}
+                onInput={(e) => {
+                  const text = (e.target as HTMLTextAreaElement).value;
+                  const { text: _drop, ...rest } = style;
+                  setStyleRaw(text.trim() ? { ...rest, text } : rest);
+                }}
+              />
+              <div class="fnc-note-row">
+                <input
+                  type="color"
+                  class="fnc-color"
+                  aria-label={t.textColor}
+                  value={/^#[0-9a-f]{6}$/i.test(style.textColor ?? d.color ?? '') ? (style.textColor ?? d.color)! : '#3182f6'}
+                  onInput={(e) => setStyle({ textColor: (e.target as HTMLInputElement).value })}
+                />
+                <select class="fnc-select" aria-label={t.fontSize} value={String(style.fontSize ?? 14)} onChange={(e) => setStyle({ fontSize: Number((e.target as HTMLSelectElement).value) })}>
+                  {[10, 11, 12, 14, 16, 20, 24, 28, 32, 40].map((n) => (
+                    <option value={String(n)}>{n}px</option>
+                  ))}
+                </select>
+                <button type="button" class="fnc-note-toggle" aria-pressed={!!style.bold} aria-label={t.bold} onClick={() => setStyle({ bold: !style.bold })}>
+                  <b>B</b>
+                </button>
+                <button type="button" class="fnc-note-toggle" aria-pressed={!!style.italic} aria-label={t.italic} onClick={() => setStyle({ italic: !style.italic })}>
+                  <i>I</i>
+                </button>
+              </div>
+              <div class="fnc-note-row">
+                <span>{t.noteH}</span>
+                <select class="fnc-select" aria-label={t.noteH} value={style.textH ?? 'center'} onChange={(e) => setStyle({ textH: (e.target as HTMLSelectElement).value as 'left' | 'center' | 'right' })}>
+                  <option value="left">{t.alignLeft}</option>
+                  <option value="center">{t.alignCenter}</option>
+                  <option value="right">{t.alignRight}</option>
+                </select>
+                <span>{t.noteV}</span>
+                <select
+                  class="fnc-select"
+                  aria-label={t.noteV}
+                  value={style.textV ?? (def.note === 'line' ? 'top' : 'middle')}
+                  onChange={(e) => setStyle({ textV: (e.target as HTMLSelectElement).value as 'top' | 'middle' | 'bottom' })}
+                >
+                  <option value="top">{t.alignTop}</option>
+                  <option value="middle">{t.alignMiddle}</option>
+                  <option value="bottom">{t.alignBottom}</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      <div class="fnc-selbar-menu">
+        <button class="fnc-btn" data-tip={t.coordinates} aria-label={t.coordinates} aria-expanded={menu === 'coords'} onClick={() => setMenu(menu === 'coords' ? null : 'coords')}>
+          <CrossCursorIcon />
+        </button>
+        {menu === 'coords' && (
+          <div class="fnc-menu fnc-selbar-pop fnc-coords-menu" role="menu" onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+            <DrawingCoords ctx={ctx} drawing={d} t={t} />
+          </div>
+        )}
+      </div>
+      <div class="fnc-selbar-menu">
+        <button
+          class={style.intervals ? 'fnc-btn fnc-btn-on' : 'fnc-btn'}
+          data-tip={t.tabVisibility}
+          aria-label={t.tabVisibility}
+          aria-expanded={menu === 'visibility'}
+          onClick={() => setMenu(menu === 'visibility' ? null : 'visibility')}
+        >
+          <ClockIcon />
+        </button>
+        {menu === 'visibility' && (
+          <div class="fnc-menu fnc-selbar-pop fnc-visibility-menu" role="menu" onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+            <p class="fnc-hint">{t.visibilityHint}</p>
+            <IntervalVisibilityEditor
+              t={t}
+              value={style.intervals}
+              onChange={(v) => {
+                const intervals = cleanIntervals(v);
+                const { intervals: _drop, ...rest } = style;
+                setStyleRaw(intervals ? { ...rest, intervals } : rest);
+              }}
+            />
           </div>
         )}
       </div>

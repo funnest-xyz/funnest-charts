@@ -1,4 +1,5 @@
 import type { Bar } from '../types.js';
+import { shownOnInterval, type IntervalVisibility } from '../intervals.js';
 import type { Locale } from '../model/time-format.js';
 import type { Painter } from '../render/painter.js';
 import type { Palette } from '../render/renderer.js';
@@ -25,6 +26,14 @@ export interface DrawingStyle {
   text?: string;
   /** Text size in CSS px. */
   fontSize?: number;
+  /** A note's color (other tools than text ones); absent: the drawing's color. */
+  textColor?: string;
+  bold?: boolean;
+  italic?: boolean;
+  /** Where a note sits: along the line / across the box. */
+  textH?: 'left' | 'center' | 'right';
+  /** Above, on or below the line (top / middle / bottom of the box). */
+  textV?: 'top' | 'middle' | 'bottom';
   /** Can't be dragged or edited until unlocked (still selectable). */
   locked?: boolean;
   /** Not drawn and can't be hit (a drawings list can show it again). */
@@ -38,6 +47,8 @@ export interface DrawingStyle {
   levels?: DrawingLevel[];
   /** The tool's settings as the user set them (`DrawingDefinition.options`); absent keys: the defaults. */
   options?: Record<string, DrawingOptionValue>;
+  /** 보임: which intervals it shows on (absent: all). */
+  intervals?: IntervalVisibility;
 }
 
 export type DrawingOptionValue = number | boolean | string;
@@ -210,6 +221,12 @@ export interface DrawingDefinition {
   freehand?: boolean;
   /** Has text (`style.text`): the widget offers a text field for it when selected. */
   text?: boolean;
+  /**
+   * Tools without their own text can carry a note (`style.text`, the widget's 텍스트 menu):
+   * 'line' writes it along the line through the first two points (turned with it), 'box' in the
+   * box around the points. Default 'box'.
+   */
+  note?: 'line' | 'box';
   /** Parts with their own colors: the widget lets each be recolored (read them with `rc.colorOf`). */
   colors?: DrawingColorSlot[];
   /**
@@ -326,6 +343,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
   {
     type: 'trendline',
     name: { ko: '추세선', en: 'Trend line' },
+    note: 'line',
     group: 'line',
     clicks: 2,
     options: TRENDLINE_OPTIONS,
@@ -354,6 +372,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
   {
     type: 'horizontal',
     name: { ko: '수평선', en: 'Horizontal line' },
+    note: 'line',
     group: 'level',
     clicks: 1,
     // The anchor's time doesn't matter; keep the handle inside the plot.
@@ -467,6 +486,8 @@ const CLOSE_PX = 7;
  * What each tool looks like comes from its DrawingDefinition.
  */
 export class DrawingManager {
+  /** The chart's interval now (drawings with 보임 settings show only on theirs). */
+  resolution: string | null = null;
   drawings: Drawing[] = [];
   tool: DrawingType | null = null;
   selectedId: string | null = null;
@@ -721,7 +742,7 @@ export class DrawingManager {
     if (this.hiddenAll) return null;
     for (let i = this.drawings.length - 1; i >= 0; i--) {
       const d = this.drawings[i]!;
-      if (d.style?.hidden) continue;
+      if (d.style?.hidden || !shownOnInterval(d.style?.intervals, this.resolution)) continue;
       const def = this.registry.get(d.type);
       if (def && def.distance(this.geometry(c, d), x, y, d) <= tolerance) return { kind: 'drawing', id: d.id, part: 'body' };
     }
@@ -760,7 +781,7 @@ export class DrawingManager {
   // ── Rendering ─────────────────────────────────────────────────────
 
   render(rc: ObjectRenderContext, badges: AxisBadge[], bars: readonly Bar[] = [], barIndexAt: (time: number) => number = () => -1): void {
-    const shown = this.hiddenAll ? [] : this.drawings.filter((d) => !d.style?.hidden);
+    const shown = this.hiddenAll ? [] : this.drawings.filter((d) => !d.style?.hidden && shownOnInterval(d.style?.intervals, this.resolution));
     const all = this.draft ? [...shown, this.draft.drawing] : shown;
     const c = rc.coords;
     for (const d of all) {
@@ -788,9 +809,70 @@ export class DrawingManager {
       } finally {
         rc.painter.ctx.restore();
       }
+      if (!def.text && style.text) {
+        rc.painter.ctx.save();
+        try {
+          const at = this.geometry(c, d).points;
+          // A one-point line (수평선) runs across the pane: the note goes along that.
+          const pts: [number, number][] = def.note === 'line' && at.length === 1 ? [[0, at[0]![1]], [c.plotWidth, at[0]![1]]] : at;
+          drawNote(rc.painter, pts, style, style.textColor ?? color, def.note ?? 'box');
+        } finally {
+          rc.painter.ctx.restore();
+        }
+      }
       if ((d.id === this.selectedId && !style.locked) || d === this.draft?.drawing) {
         for (const [px, py] of this.handles(c, d)) rc.painter.circle(px, py, HANDLE_RADIUS, rc.palette.background, color);
       }
     }
   }
+}
+
+/**
+ * A note on a drawing that isn't a text tool (TradingView's 텍스트 tab): along its line, turned
+ * with it and kept upright, or in the box around its points.
+ */
+export function drawNote(p: Painter, points: [number, number][], style: DrawingStyle, color: string, mode: 'line' | 'box'): void {
+  const text = style.text?.trim();
+  if (!text || !points.length) return;
+  const ctx = p.ctx;
+  const size = Math.min(72, Math.max(6, style.fontSize ?? 14));
+  // A stand-in canvas (tests) can't write text.
+  if (typeof ctx?.fillText !== 'function') return;
+  const family = String(ctx.font ?? '').replace(/^.*?\d+(\.\d+)?px\s*/, '') || 'sans-serif';
+  ctx.font = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}${size}px ${family}`;
+  ctx.fillStyle = color;
+  const lines = text.split('\n');
+  const lineHeight = size * 1.25;
+  const h = style.textH ?? 'center';
+  const v = style.textV ?? (mode === 'line' ? 'top' : 'middle');
+  const align: CanvasTextAlign = h;
+  const gap = 4;
+  const drawLines = (x: number, y: number) => {
+    // y is where the block's edge sits: its bottom (top), middle, or top (bottom).
+    const total = lines.length * lineHeight;
+    const start = v === 'top' ? y - total : v === 'middle' ? y - total / 2 : y;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'middle';
+    lines.forEach((line, i) => ctx.fillText(line, x, start + lineHeight * (i + 0.5)));
+  };
+  if (mode === 'line') {
+    let [a, b] = points.length >= 2 ? [points[0]!, points[1]!] : [points[0]!, [points[0]![0] + 1, points[0]![1]] as [number, number]];
+    // Read left to right whichever way it was drawn.
+    if (b[0] < a[0]) [a, b] = [b, a];
+    const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const along = points.length < 2 ? 0 : h === 'left' ? 0 : h === 'right' ? len : len / 2;
+    ctx.translate(a[0], a[1]);
+    ctx.rotate(angle);
+    drawLines(along + (h === 'left' ? gap : h === 'right' ? -gap : 0), v === 'top' ? -gap : v === 'bottom' ? gap : 0);
+    return;
+  }
+  const xs = points.map((q) => q[0]);
+  const ys = points.map((q) => q[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const x = h === 'left' ? x0 + gap : h === 'right' ? x1 - gap : (x0 + x1) / 2;
+  // Inside the box: under its top edge, in its middle, over its bottom edge.
+  const total = lines.length * lineHeight;
+  const y = v === 'top' ? y0 + gap + total : v === 'bottom' ? y1 - gap - total : (y0 + y1) / 2;
+  drawLines(x, v === 'top' ? y : v === 'bottom' ? y : y);
 }

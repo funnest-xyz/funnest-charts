@@ -45,6 +45,10 @@ export interface SeriesStyle {
   /** Line width in CSS px. */
   width?: number;
   visible?: boolean;
+  /** Lines: solid, dashed or dotted. */
+  lineStyle?: LineStyle;
+  /** How it's drawn instead of the indicator's own way (a line as columns, steps, dots…). */
+  kind?: SeriesKind;
 }
 
 /**

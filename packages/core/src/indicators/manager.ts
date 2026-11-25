@@ -1,6 +1,41 @@
 import { newId } from '../objects/types.js';
 import type { Bar } from '../types.js';
-import { INDICATORS, maLines, type IndicatorDefinition, type IndicatorOutput, type IndicatorParams, type IndicatorType, type SeriesStyle } from './definitions.js';
+import type { IntervalVisibility } from '../intervals.js';
+export { intervalUnit, shownOnInterval, type IntervalUnit, type IntervalVisibility } from '../intervals.js';
+import { INDICATORS, maLines, type IndicatorDefinition, type IndicatorOutput, type IndicatorParams, type IndicatorSeries, type IndicatorType, type SeriesStyle } from './definitions.js';
+
+/** How an indicator shows (its 모습 · 보임 settings beyond each line's own style). */
+export interface IndicatorDisplay {
+  /** Decimals for its values (legend, price scale); omitted: the indicator's own. */
+  precision?: number;
+  /** Each line's latest value on the price scale. Default true. */
+  axisLabels?: boolean;
+  /** Its values in the legend (상태 라인 밸류). Default true. */
+  statusValues?: boolean;
+  /** Its inputs after its name in the legend (상태 표시줄의 입력값): "RSI 14" or "RSI". Default true. */
+  statusInputs?: boolean;
+  /** Its reference levels (RSI 30 / 70). Default true. */
+  levels?: boolean;
+  /** One color for all its levels. */
+  levelColor?: string;
+  /** Its levels' values, in order (RSI 30 / 70 → 20 / 80); a level without one keeps its own. */
+  levelValues?: number[];
+  /** The band between its lines (Bollinger). Default true. */
+  fill?: boolean;
+  fillColor?: string;
+  /** 보임: which intervals it shows on (omitted: all). */
+  intervals?: IntervalVisibility;
+}
+
+/**
+ * 타임프레임: an indicator computed on another interval's bars, then lined up with the chart's
+ * (`index[i]`: the bar of `bars` chart bar i reads, -1 none). Given by the chart, which loads them.
+ */
+export interface TimeframeInput {
+  /** Changes when the bars or the lining up do (part of the cache key). */
+  key: string;
+  get(): { bars: readonly Bar[]; index: Int32Array };
+}
 
 export interface IndicatorConfig {
   id: string;
@@ -16,9 +51,19 @@ export interface IndicatorConfig {
    * says `onIndicator`; never on another such child. Removing the parent removes it too.
    */
   on?: { id: string; key: string };
+  /** 모습 · 보임 beyond each line's style (see IndicatorDisplay). */
+  display?: IndicatorDisplay;
+  /**
+   * 타임프레임: computed on this interval's bars instead of the chart's (a daily RSI on an hourly
+   * chart). Used only while it's longer than the chart's interval. On another indicator: that
+   * one is worked out on these bars too, for this one.
+   */
+  timeframe?: string;
+  /** 타임프레임 마감 대기: only closed bars of `timeframe` (what's drawn never changes). Default true. */
+  waitClose?: boolean;
 }
 
-export type IndicatorPatch = Partial<Pick<IndicatorConfig, 'params' | 'visible' | 'styles'>>;
+export type IndicatorPatch = Partial<Pick<IndicatorConfig, 'params' | 'visible' | 'styles' | 'display' | 'timeframe' | 'waitClose'>>;
 
 const clone = (c: IndicatorConfig): IndicatorConfig => JSON.parse(JSON.stringify(c)) as IndicatorConfig;
 
@@ -33,6 +78,9 @@ export function indicatorRegistry(extra: readonly IndicatorDefinition[] = []): M
 export class IndicatorManager {
   list: IndicatorConfig[] = [];
   private readonly cache = new Map<string, { key: string; output: IndicatorOutput }>();
+
+  /** The chart's 타임프레임 bars for a config (null: computed on the chart's own bars). */
+  timeframeSource: (cfg: IndicatorConfig) => TimeframeInput | null = () => null;
 
   constructor(readonly registry: Map<string, IndicatorDefinition> = indicatorRegistry()) {}
 
@@ -57,6 +105,8 @@ export class IndicatorManager {
       visible: c.visible ?? true,
       styles: c.styles ?? {},
       ...(c.on ? { on: { id: String(c.on.id), key: String(c.on.key) } } : {}),
+      ...(c.display && typeof c.display === 'object' ? { display: c.display } : {}),
+      ...(typeof c.timeframe === 'string' && c.timeframe ? { timeframe: c.timeframe, ...(c.waitClose === false ? { waitClose: false } : {}) } : {}),
     };
   }
 
@@ -154,6 +204,18 @@ export class IndicatorManager {
     // Styles are replaced, not merged: removing an MA row re-keys the remaining rows.
     if (patch.styles) cfg.styles = { ...patch.styles };
     if (patch.visible !== undefined) cfg.visible = patch.visible;
+    if ('display' in patch) {
+      if (patch.display) cfg.display = { ...patch.display };
+      else delete cfg.display;
+    }
+    if ('timeframe' in patch) {
+      if (patch.timeframe) cfg.timeframe = patch.timeframe;
+      else delete cfg.timeframe;
+    }
+    if ('waitClose' in patch) {
+      if (patch.waitClose === false) cfg.waitClose = false;
+      else delete cfg.waitClose;
+    }
     return true;
   }
 
@@ -182,10 +244,17 @@ export class IndicatorManager {
   /** Computed series with user styles applied; recomputed only when data or settings change. */
   output(cfg: IndicatorConfig, bars: readonly Bar[], dataVersion: number): IndicatorOutput {
     const parent = this.parentOf(cfg);
-    const key = `${dataVersion}|${JSON.stringify(cfg.params)}|${JSON.stringify(cfg.styles)}|${parent ? `${cfg.on!.key}:${JSON.stringify(parent.params)}` : ''}`;
+    const timeframe = this.timeframeSource(cfg);
+    const parentKey = parent ? `${cfg.on!.key}:${JSON.stringify(parent.params)}:${parent.timeframe ?? ''}:${this.timeframeSource(parent)?.key ?? ''}` : '';
+    const key = `${dataVersion}|${JSON.stringify(cfg.params)}|${JSON.stringify(cfg.styles)}|${JSON.stringify(cfg.display ?? null)}|${parentKey}|${timeframe?.key ?? ''}`;
     const hit = this.cache.get(cfg.id);
     if (hit?.key === key) return hit.output;
-    const raw = parent ? this.computeOn(cfg, parent, bars, dataVersion) : this.def(cfg.type).compute(bars, cfg.params);
+    const raw = timeframe
+      ? this.computeOnTimeframe(cfg, parent, bars.length, timeframe)
+      : parent
+        ? this.computeOn(cfg, parent, bars, dataVersion)
+        : this.def(cfg.type).compute(bars, cfg.params);
+    const d = cfg.display ?? {};
     const output: IndicatorOutput = {
       ...raw,
       series: raw.series.map((s) => {
@@ -195,11 +264,63 @@ export class IndicatorManager {
           color: style?.color ?? s.color,
           width: style?.width ?? s.width,
           visible: style?.visible ?? s.visible,
+          ...(style?.lineStyle ? { lineStyle: style.lineStyle } : {}),
+          ...(style?.kind ? { kind: style.kind } : {}),
         };
       }),
+      ...(d.precision !== undefined && Number.isInteger(d.precision) ? { precision: Math.max(0, Math.min(10, d.precision)) } : {}),
     };
+    if (d.levels === false) delete output.levels;
+    else if (output.levels && (d.levelColor || d.levelValues?.length)) {
+      const color = d.levelColor;
+      const values = d.levelValues ?? [];
+      output.levels = output.levels.map((l, i) => {
+        const own = typeof l === 'number' ? { value: l } : l;
+        const v = values[i];
+        return { ...own, ...(v !== undefined && Number.isFinite(v) ? { value: v } : {}), ...(color ? { color } : {}) };
+      });
+    }
+    if (d.fill === false) {
+      delete output.fill;
+      delete output.fills;
+    } else if (d.fillColor) {
+      if (output.fill) output.fill = { ...output.fill, color: d.fillColor, ...(output.fill.downColor ? { downColor: d.fillColor } : {}) };
+      if (output.fills) output.fills = output.fills.map((f) => ({ ...f, color: d.fillColor! }));
+    }
     this.cache.set(cfg.id, { key, output });
     return output;
+  }
+
+  /**
+   * 타임프레임: computed on the longer interval's bars, then each chart bar takes the value of the
+   * bar it reads (its lines and bands only: candle colors and marks belong to the chart's bars).
+   */
+  private computeOnTimeframe(cfg: IndicatorConfig, parent: IndicatorConfig | undefined, length: number, timeframe: TimeframeInput): IndicatorOutput {
+    const { bars, index } = timeframe.get();
+    let out: IndicatorOutput;
+    if (parent) {
+      // On another indicator: that one on these bars, then this one on its series.
+      const source = this.def(parent.type).compute(bars, parent.params).series.find((x) => x.key === cfg.on!.key);
+      out = this.computeOnValues(cfg, source?.values ?? new Float64Array(bars.length).fill(Number.NaN), bars);
+    } else out = this.def(cfg.type).compute(bars, cfg.params);
+    const spread = (s: IndicatorSeries): IndicatorSeries => {
+      const values = new Float64Array(length).fill(Number.NaN);
+      for (let i = 0; i < length; i++) {
+        const j = index[i] ?? -1;
+        if (j >= 0) values[i] = s.values[j] ?? Number.NaN;
+      }
+      // Colors per bar and shifts are in the other interval's bars: dropped.
+      const { colors: _colors, shift: _shift, ...rest } = s;
+      return { ...rest, values };
+    };
+    return {
+      series: out.series.map(spread),
+      ...(out.fill && !out.fill.colors ? { fill: out.fill } : {}),
+      ...(out.fills ? { fills: out.fills.filter((f) => !f.colors) } : {}),
+      ...(out.levels ? { levels: out.levels } : {}),
+      ...(out.range ? { range: out.range } : {}),
+      precision: out.precision,
+    };
   }
 
   /**
@@ -208,9 +329,13 @@ export class IndicatorManager {
    * answer is lined up with the chart's bars again.
    */
   private computeOn(cfg: IndicatorConfig, parent: IndicatorConfig, bars: readonly Bar[], dataVersion: number): IndicatorOutput {
-    const def = this.def(cfg.type);
     const source = this.output(parent, bars, dataVersion).series.find((x) => x.key === cfg.on!.key);
-    const values = source?.values ?? new Float64Array(bars.length).fill(Number.NaN);
+    return this.computeOnValues(cfg, source?.values ?? new Float64Array(bars.length).fill(Number.NaN), bars);
+  }
+
+  /** `cfg` computed with `values` (lined up with `bars`) as every price of each bar. */
+  private computeOnValues(cfg: IndicatorConfig, values: Float64Array, bars: readonly Bar[]): IndicatorOutput {
+    const def = this.def(cfg.type);
     let first = 0;
     while (first < values.length && !Number.isFinite(values[first]!)) first++;
     const own: Bar[] = [];

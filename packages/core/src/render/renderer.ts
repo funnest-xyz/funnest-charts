@@ -81,6 +81,8 @@ export interface Frame {
   extendedPrice: { price: number; session: 'pre' | 'post'; label: string } | null;
   /** x ranges (plot pixels) of intraday bars outside the regular session, shaded. */
   sessionShade: [number, number][];
+  /** 프라이스 스케일 라벨: indicator lines' latest values on the price scale (y in panes' pixels, kept within top–bottom). */
+  seriesLabels?: { y: number; top: number; bottom: number; text: string; color: string }[];
 }
 
 export interface CrosshairInfo {
@@ -714,6 +716,30 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
       if (y < pane.top + 8 || y > pane.top + pane.height - 8) continue;
       p.text((pane.tickFormat ?? pane.format)(v), labelX, y, pal.textSecondary);
     }
+  }
+
+  // Indicator lines' latest values (under the trading badges and the last price)
+  // Kept apart in each pane (top to bottom, each at least a badge below the one above).
+  const placed = (f.seriesLabels ?? [])
+    .map((l) => ({ ...l, y: Math.min(l.bottom - BADGE_HEIGHT / 2, Math.max(l.top + BADGE_HEIGHT / 2, l.y)) }))
+    .sort((a, b) => a.top - b.top || a.y - b.y);
+  for (let i = 1; i < placed.length; i++) {
+    const prev = placed[i - 1]!;
+    const cur = placed[i]!;
+    if (cur.top === prev.top && cur.y < prev.y + BADGE_HEIGHT) cur.y = prev.y + BADGE_HEIGHT;
+  }
+  // Pushed past a pane's bottom: back up, pushing the ones above up in turn.
+  for (let i = placed.length - 1; i >= 0; i--) {
+    const cur = placed[i]!;
+    const next = placed[i + 1];
+    const limit = next && next.top === cur.top ? next.y - BADGE_HEIGHT : cur.bottom - BADGE_HEIGHT / 2;
+    if (cur.y > limit) cur.y = limit;
+  }
+  for (const label of placed) {
+    const bg = m.color(label.color);
+    const y = label.y;
+    p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, bg);
+    p.text(label.text, labelX, y, isDarkColor(bg) ? '#FFFFFF' : '#191F28');
   }
 
   // Object badges (orders, positions, horizontal lines), clamped to the pane edge when off-screen

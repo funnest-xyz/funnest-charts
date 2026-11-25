@@ -41,7 +41,7 @@ function IndicatorItem({ ctx, item }: { ctx: WidgetContext; item: IndicatorLegen
   const t = stringsOf(ctx.store.get());
   return (
     <div
-      class={item.visible ? 'fnc-ind' : 'fnc-ind fnc-ind-hidden'}
+      class={item.visible && !item.offInterval ? 'fnc-ind' : 'fnc-ind fnc-ind-hidden'}
       role="button"
       tabIndex={0}
       aria-label={`${item.title} ${t.indicatorSettings}`}
