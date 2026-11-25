@@ -20,3 +20,6 @@ apps/*/public/logos/
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Output of scripts/screenshots-chart-types.mjs (local checks, not docs).
+screenshots/
