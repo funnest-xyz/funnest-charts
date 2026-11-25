@@ -583,7 +583,8 @@ export function drawIndicatorTables(ctx: CanvasRenderingContext2D, p: Painter, m
   for (const { t, rowH, widths, tw, th, h, y0 } of laid) {
     withFont(c, t.size);
     const x0 = h === 'left' ? edge : h === 'right' ? W - tw - edge : (W - tw) / 2;
-    ctx.fillStyle = c.color(t.bg, 'rgba(19, 23, 34, 0.85)');
+    // The chart's own background, nearly opaque: readable on dark and light themes alike.
+    ctx.fillStyle = c.color(t.bg, withAlpha(pal.background, 0.9));
     ctx.fillRect(x0, y0, tw, th);
     t.rows.forEach((row, r) => {
       let x = x0;
