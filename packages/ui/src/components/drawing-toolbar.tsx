@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
 import { stringsOf, type Strings } from '../i18n.js';
 import { cleanIntervals, IntervalVisibilityEditor } from './interval-visibility.js';
+import { useBesideAnchor } from './keep-in-view.js';
 import {
   BellIcon,
   ChevronLeftIcon,
@@ -87,6 +88,8 @@ function ToolGroup({
   const current = armed ?? tools.find((d) => d.type === chosen) ?? tools[0]!;
   const name = current.name[s.locale];
   const ref = useRef<HTMLDivElement>(null);
+  // Beside the button in the viewport: a scrolling drawing bar can't clip it.
+  const menu = useBesideAnchor<HTMLDivElement>(open, ref);
 
   useEffect(() => {
     if (!open) return;
@@ -122,7 +125,7 @@ function ToolGroup({
         </button>
       )}
       {open && (
-        <div class="fnc-menu fnc-tool-menu" role="menu">
+        <div class="fnc-menu fnc-tool-menu" role="menu" ref={menu}>
           {tools.map((def, i) => {
             const section = def.section?.[s.locale];
             const heading = section && section !== tools[i - 1]?.section?.[s.locale];
@@ -170,6 +173,8 @@ function CursorGroup({ ctx, open, onOpen, onPick }: { ctx: WidgetContext; open: 
   const s = useStore(ctx.store);
   const t = stringsOf(s);
   const ref = useRef<HTMLDivElement>(null);
+  // Beside the button in the viewport: a scrolling drawing bar can't clip it.
+  const menu = useBesideAnchor<HTMLDivElement>(open, ref);
   const current = CURSORS.find((c) => c.mode === s.cursorMode) ?? CURSORS[0]!;
   useEffect(() => {
     if (!open) return;
@@ -197,7 +202,7 @@ function CursorGroup({ ctx, open, onOpen, onPick }: { ctx: WidgetContext; open: 
         </span>
       </button>
       {open && (
-        <div class="fnc-menu fnc-tool-menu" role="menu">
+        <div class="fnc-menu fnc-tool-menu" role="menu" ref={menu}>
           <div class="fnc-tool-section" role="presentation">
             {t.cursorModes}
           </div>
