@@ -241,8 +241,8 @@ function Info({ text }: { text: string }) {
 }
 
 /**
- * The demo chart: the real chart widget (legend, indicators, panes, buttons, axes) as the chart
- * behind the dialog has it, on a made-up market (펀네스트, the Funnest mark, made-up prices) at its
+ * The demo chart: the real chart widget (legend, volume, buttons, axes) as the chart behind the
+ * dialog has it, without indicators, on a made-up market (펀네스트, the Funnest mark, made-up prices) at its
  * interval — a new price every
  * few hundred ms (a new bar every few) so the animations show. Only the toolbar and the drawing bar
  * are left out. It takes every setting as it changes; turning 로드 시 그리기 효과 on loads it again.
@@ -314,9 +314,10 @@ function Preview({ ctx, settings, t }: { ctx: WidgetContext; settings: ChartSett
       pauseWhenHidden: false,
     });
     demo.current = widget.chart;
-    // The real chart's layout: chart type, indicators, pane sizes, settings and zoom — not its
-    // drawings or comparisons (they belong to real prices).
-    const state = { ...real.save(), symbol: PREVIEW_SYMBOL, resolution, drawings: {}, compares: [] };
+    // The real chart's layout: chart type, settings and zoom. Not its indicators (their lines,
+    // legends and axis labels would cover the few candles a preview has room for), drawings or
+    // comparisons (they belong to real prices).
+    const state = { ...real.save(), symbol: PREVIEW_SYMBOL, resolution, indicators: [], drawings: {}, compares: [], paneWeights: {} };
     const load = () => void widget.load(state).catch(() => {});
     reload.current = load;
     load();
