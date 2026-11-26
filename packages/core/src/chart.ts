@@ -449,7 +449,7 @@ export class Chart {
   private paused = false;
   private hiddenTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly pauseWhenHidden: number | false;
-  private readonly displayTimezone: string | undefined;
+  private displayTimezone: string | undefined;
   private loadingHistory = false;
   /**
    * Bumped by every data replacement (setData) and history request: a page answers only if it
@@ -2261,6 +2261,21 @@ export class Chart {
 
   setTimezone(timeZone: string): void {
     this.formatter = new TimeFormatter(this.displayTimezone ?? timeZone, this.locale);
+    this.invalidate();
+  }
+
+  /**
+   * Shows every time (axis, crosshair, legend, drawings' dates) in `timeZone` from now on, whatever
+   * the symbol's exchange — like `displayTimezone` at creation. `null` goes back to the symbol's
+   * own time zone. Labels only: the bars and their sessions stay as the datafeed gives them.
+   */
+  setDisplayTimezone(timeZone: string | null): void {
+    if (timeZone !== null) {
+      // An unknown zone throws here, not on the next frame.
+      new Intl.DateTimeFormat('en-US', { timeZone });
+    }
+    this.displayTimezone = timeZone ?? undefined;
+    this.formatter = new TimeFormatter(this.displayTimezone ?? this.symbol?.timezone ?? this.formatter.timeZone, this.locale);
     this.invalidate();
   }
 

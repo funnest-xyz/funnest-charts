@@ -75,6 +75,8 @@ export interface MultiChart {
   setSymbol(symbol: string, resolution?: Resolution): Promise<void>;
   setResolution(resolution: Resolution): Promise<void>;
   setLocale(locale: Locale): void;
+  /** Every pane's times in `timeZone` (IANA, e.g. 'UTC', 'America/New_York'); new panes too. */
+  setDisplayTimezone(timeZone: string): void;
   setTheme(theme: Partial<ThemeTokens>): void;
   setColorScheme(scheme: ColorScheme): void;
   save(): MultiChartState;
@@ -150,7 +152,8 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
   } = options;
   if (paneSpecs.length === 0) throw new Error('funnest-charts: createMultiChart needs at least one pane');
   const locale = (chartOptions.locale ??= browserLocale());
-  const displayTimezone = defaultDisplayTimezone(locale, chartOptions.displayTimezone);
+  // Changes with setDisplayTimezone; panes made later read it too.
+  let displayTimezone = defaultDisplayTimezone(locale, chartOptions.displayTimezone);
 
   const shell = createShell(container, {
     colorScheme,
@@ -502,6 +505,13 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
         p.chart.setLocale(locale);
         p.store.set({ locale });
       }
+    },
+    setDisplayTimezone: (timeZone) => {
+      if (timeZone === displayTimezone) return;
+      // Checked before any pane changes (an unknown zone throws).
+      new Intl.DateTimeFormat('en-US', { timeZone });
+      displayTimezone = timeZone;
+      for (const p of panes) p.setDisplayTimezone(timeZone);
     },
     setTheme: shell.setTheme,
     setColorScheme: shell.setColorScheme,

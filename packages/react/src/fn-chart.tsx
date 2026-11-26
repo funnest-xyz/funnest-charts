@@ -29,7 +29,7 @@ export interface FnChartProps extends TradingChartOptions {
 
 /**
  * React wrapper around `createTradingChart`. Creation-time options are read on mount;
- * `symbol`, `resolution`, `locale` and `theme` stay in sync with props; a new `datafeed`
+ * `symbol`, `resolution`, `locale`, `displayTimezone` and `theme` stay in sync with props; a new `datafeed`
  * recreates the widget. The ref exposes the widget (save/load, chart API, slots…).
  */
 export const FnChart = forwardRef<TradingChart | null, FnChartProps>(function FnChart(props, ref) {
@@ -69,6 +69,10 @@ export const FnChart = forwardRef<TradingChart | null, FnChartProps>(function Fn
   useEffect(() => {
     if (widget && locale) widget.setLocale(locale);
   }, [widget, locale]);
+  const { displayTimezone } = options;
+  useEffect(() => {
+    if (widget && displayTimezone) widget.setDisplayTimezone(displayTimezone);
+  }, [widget, displayTimezone]);
 
   useEffect(() => {
     if (widget && colorScheme) widget.setColorScheme(colorScheme);

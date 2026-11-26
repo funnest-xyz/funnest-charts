@@ -17,8 +17,8 @@ export interface FnMultiChartProps extends MultiChartOptions {
 /**
  * React wrapper around `createMultiChart`: split layout of 1–8 linked charts with one toolbar.
  * `panes`, `layout` and `sync` are read on mount (the user changes them from the toolbar; use
- * the ref's `setLayout`/`setSync`/`load` to drive them). `locale`, `theme` and `colorScheme`
- * stay in sync with props; a new `datafeed` recreates the widget.
+ * the ref's `setLayout`/`setSync`/`load` to drive them). `locale`, `displayTimezone`, `theme` and
+ * `colorScheme` stay in sync with props; a new `datafeed` recreates the widget.
  */
 export const FnMultiChart = forwardRef<MultiChart | null, FnMultiChartProps>(function FnMultiChart(props, ref) {
   const { className, style, onReady, children, ...options } = props;
@@ -47,6 +47,10 @@ export const FnMultiChart = forwardRef<MultiChart | null, FnMultiChartProps>(fun
   useEffect(() => {
     if (widget && locale) widget.setLocale(locale);
   }, [widget, locale]);
+  const { displayTimezone } = options;
+  useEffect(() => {
+    if (widget && displayTimezone) widget.setDisplayTimezone(displayTimezone);
+  }, [widget, displayTimezone]);
   useEffect(() => {
     if (widget && colorScheme) widget.setColorScheme(colorScheme);
   }, [widget, colorScheme]);

@@ -138,6 +138,8 @@ export interface TradingChart {
   setSymbol(symbol: string, resolution?: Resolution): Promise<void>;
   setResolution(resolution: Resolution): Promise<void>;
   setLocale(locale: Locale): void;
+  /** Times in `timeZone` (IANA, e.g. 'UTC', 'America/New_York') from now on. */
+  setDisplayTimezone(timeZone: string): void;
   /** Override theme tokens (kept across light/dark switches). */
   setTheme(theme: Partial<ThemeTokens>): void;
   setColorScheme(scheme: ColorScheme): void;
@@ -243,6 +245,7 @@ export function createTradingChart(container: HTMLElement, options: TradingChart
       pane.chart.setLocale(locale);
       pane.store.set({ locale });
     },
+    setDisplayTimezone: (timeZone) => pane.setDisplayTimezone(timeZone),
     save: () => pane.chart.save(),
     load: (state) => pane.chart.load(state),
     setTheme: shell.setTheme,

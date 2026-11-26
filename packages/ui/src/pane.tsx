@@ -45,6 +45,8 @@ export interface Pane {
   readonly ctx: WidgetContext;
   readonly canSearch: boolean;
   load(symbol: string, resolution: Resolution): Promise<void>;
+  /** Every time in this pane in `timeZone` from now on. */
+  setDisplayTimezone(timeZone: string): void;
   destroy(): void;
 }
 
@@ -207,6 +209,10 @@ export function createPane(shell: Shell, config: PaneConfig): Pane {
     ctx,
     canSearch: typeof config.datafeed.searchSymbols === 'function',
     load,
+    setDisplayTimezone: (timeZone) => {
+      chart.setDisplayTimezone(timeZone);
+      ctx.displayTimezone = timeZone;
+    },
     destroy: () => {
       offs.forEach((off) => off());
       render(null, overlayHost);
