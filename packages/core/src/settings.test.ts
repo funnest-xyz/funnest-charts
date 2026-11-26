@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings.js';
 
 describe('parseChartState', () => {
+  it('takes settings saved under older defaults to the new ones, and keeps newer saves as they are', () => {
+    const old = parseChartState({ version: 1, settings: { symbolWatermark: true } });
+    expect(old.settings.symbolWatermark).toBe(false);
+    expect(old.defaultsRev).toBe(1);
+    const now = parseChartState({ version: 1, defaultsRev: 1, settings: { symbolWatermark: true } });
+    expect(now.settings.symbolWatermark).toBe(true);
+  });
+
   it('fills defaults and validates fields', () => {
     const s = parseChartState({ version: 1, chartType: 'nope', settings: { volume: false }, view: { barSpacing: 12 } });
     expect(s.chartType).toBe('candles');

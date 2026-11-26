@@ -147,7 +147,7 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   priceAxisAnimation: true,
   priceAnimation: true,
   drawOnLoad: false,
-  symbolWatermark: true,
+  symbolWatermark: false,
   replayWatermark: true,
   lockView: false,
   lockRatio: false,
@@ -179,9 +179,27 @@ export interface ChartState {
   paneWeights?: Record<string, number>;
   /** How many indicator panes sit above the volume pane (0: right under the price pane). */
   volumeSlot?: number;
+  /**
+   * Which defaults the saved settings were made under (CHART_DEFAULTS_REV). Saved before a default
+   * changed, a setting that default belongs to is taken back to it (see parseChartState).
+   */
+  defaultsRev?: number;
 }
 
+/**
+ * Bumped when a default changes in a way saved layouts should follow:
+ * 1 — 종목 워터마크 off by default (0.11.0–0.11.4 saved it on with everything else).
+ */
+export const CHART_DEFAULTS_REV = 1;
+
 const CHART_TYPES: readonly ChartType[] = ['candles', 'hollow', 'heikin', 'bars', 'line', 'step', 'baseline', 'area', 'volumeCandles', 'renko', 'kagi', 'lineBreak', 'pnf'];
+
+/** Settings saved under older defaults, with the ones that changed since taken to the new default. */
+function followDefaults(settings: ChartSettings, rev: number): ChartSettings {
+  // rev 1: every layout saved by 0.11.0–0.11.4 has the watermark on (the default then).
+  if (rev < 1) settings.symbolWatermark = DEFAULT_CHART_SETTINGS.symbolWatermark;
+  return settings;
+}
 
 /** Validates untrusted JSON (e.g. from storage) into a ChartState; throws on an incompatible shape. */
 export function parseChartState(input: unknown): ChartState {
@@ -192,7 +210,8 @@ export function parseChartState(input: unknown): ChartState {
     symbol: typeof s.symbol === 'string' ? s.symbol : null,
     resolution: typeof s.resolution === 'string' ? s.resolution : null,
     chartType: CHART_TYPES.includes(s.chartType as ChartType) ? (s.chartType as ChartType) : 'candles',
-    settings: { ...DEFAULT_CHART_SETTINGS, ...(s.settings ?? {}) },
+    settings: followDefaults({ ...DEFAULT_CHART_SETTINGS, ...(s.settings ?? {}) }, Number(s.defaultsRev) || 0),
+    defaultsRev: CHART_DEFAULTS_REV,
     indicators: Array.isArray(s.indicators) ? s.indicators : [],
     drawings: s.drawings && typeof s.drawings === 'object' ? s.drawings : {},
     paneWeights:

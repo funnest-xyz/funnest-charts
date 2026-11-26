@@ -291,7 +291,12 @@ function usePageLayer(anchor: { current: HTMLElement | null }, settings: ChartSe
 function Info({ text }: { text: string }) {
   return (
     <span class="fnc-info" tabIndex={0} role="img" aria-label={text} onClick={(e) => e.preventDefault()}>
-      i<span class="fnc-info-tip" aria-hidden="true">{text}</span>
+      {/* The i drawn, not typed: a letter sits where its font puts it, this in the middle. */}
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <circle cx="9" cy="5.6" r="1.25" fill="currentColor" />
+        <rect x="8" y="7.9" width="2" height="5.6" rx="1" fill="currentColor" />
+      </svg>
+      <span class="fnc-info-tip" aria-hidden="true">{text}</span>
     </span>
   );
 }

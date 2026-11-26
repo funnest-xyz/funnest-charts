@@ -1,5 +1,5 @@
 export { Chart, createChart, fallbackResolution } from './chart.js';
-export { CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings.js';
+export { CHART_DEFAULTS_REV, CHART_THEMES, DEFAULT_CHART_SETTINGS, matchChartTheme, parseChartState } from './settings.js';
 export type { ChartSettings, ChartState, ChartThemeColors, ChartThemePreset } from './settings.js';
 export type { ChartContextMenu, ChartEvents, ChartLayout, ChartOptions, ChartPaneLayout, CompareInfo, IndicatorLegendItem, LegendItem, LegendItemOptions, ReplayStatus, ScreenshotOptions } from './chart.js';
 export type { PriceScaleMode } from './model/price-scale.js';

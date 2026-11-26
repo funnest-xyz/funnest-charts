@@ -25,7 +25,7 @@ import {
   type TradingLabels,
 } from './objects/trading.js';
 import { snapToOhlc } from './objects/magnet.js';
-import { DEFAULT_CHART_SETTINGS, parseChartState, type ChartSettings, type ChartState } from './settings.js';
+import { CHART_DEFAULTS_REV, DEFAULT_CHART_SETTINGS, parseChartState, type ChartSettings, type ChartState } from './settings.js';
 import { TradingSync, type TradingAdapter } from './objects/trading-sync.js';
 import type { ChartOverlay, ObjectHit, PaneCoords } from './objects/types.js';
 import { CanvasLayer } from './render/canvas-layer.js';
@@ -1195,6 +1195,7 @@ export class Chart {
       compares: [...this.compares.keys()],
       paneWeights: Object.fromEntries(this.paneWeights),
       volumeSlot: this.volumeSlot,
+      defaultsRev: CHART_DEFAULTS_REV,
     };
   }
 
