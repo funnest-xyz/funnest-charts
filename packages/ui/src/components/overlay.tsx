@@ -221,6 +221,10 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   const hovering = useRef(false);
   hovering.current = !!hover;
   const measure = useRef<() => void>(() => {});
+  // Live prices do it too: a new price, a longer volume and the line wraps, a shorter one and it
+  // doesn't. So the room only grows — it starts over when what the legend holds changes (another
+  // symbol or interval, another width, rows added or taken away), not with the values.
+  const kept = useRef<{ key: string; px: number }>({ key: '', px: 0 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -229,7 +233,11 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
     const update = () => {
       if (tracking.current || hovering.current) return;
       const floating = ctx.legendValues === 'crosshair' ? el.querySelector<HTMLElement>('.fnc-legend-values') : null;
-      ctx.chart.setTopInset(el.offsetTop + el.offsetHeight - (floating ? floating.offsetHeight + 2 : 0) + 4);
+      const px = el.offsetTop + el.offsetHeight - (floating ? floating.offsetHeight + 2 : 0) + 4;
+      const { symbol, resolution } = ctx.store.get();
+      const key = `${symbol?.symbol ?? ''}|${resolution}|${el.offsetWidth}|${el.getElementsByTagName('*').length}`;
+      kept.current = key === kept.current.key ? { key, px: Math.max(kept.current.px, px) } : { key, px };
+      ctx.chart.setTopInset(kept.current.px);
     };
     measure.current = update;
     const ro = new ResizeObserver(update);

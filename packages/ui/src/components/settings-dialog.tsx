@@ -12,7 +12,8 @@ import {
   type Resolution,
   type SymbolInfo,
 } from '@funnest/charts';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { createPortal } from 'preact';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
 import { stringsOf, type Strings } from '../i18n.js';
 import { CloseIcon } from '../icons.js';
@@ -106,7 +107,10 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
       </label>
     ));
 
-  return (
+  const anchor = useRef<HTMLSpanElement>(null);
+  const layer = usePageLayer(anchor, settings);
+
+  const dialog = (
     <div class="fnc-backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div class="fnc-dialog fnc-settings-dialog" role="dialog" aria-modal="true" aria-label={t.chartSettings} onKeyDown={(e) => e.key === 'Escape' && close()}>
         <div class="fnc-dialog-head">
@@ -229,6 +233,58 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
       </div>
     </div>
   );
+  // Over the whole page (the middle of the screen, not of this chart), in a layer of its own;
+  // the marker stays where the dialog was asked for, to read the chart's colors from.
+  return (
+    <>
+      <span ref={anchor} hidden />
+      {layer && createPortal(dialog, layer)}
+    </>
+  );
+}
+
+/** The CSS variables the widget's look is made of (copied onto the page layer). */
+const LOOK_VARS = ['--fnc-accent', '--fnc-bg', '--fnc-border', '--fnc-danger', '--fnc-down', '--fnc-font', '--fnc-radius', '--fnc-shadow', '--fnc-surface', '--fnc-text', '--fnc-text-2', '--fnc-text-3', '--fnc-tip-bg', '--fnc-tip-text', '--fnc-up'];
+
+/**
+ * A layer over the whole page (or over the fullscreen element, when the chart is fullscreen) that
+ * looks like the chart it came from: its color scheme, direction and CSS variables (a chart theme's
+ * colors too), copied again whenever the settings change.
+ */
+function usePageLayer(anchor: { current: HTMLElement | null }, settings: ChartSettings): HTMLElement | null {
+  const [layer, setLayer] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const at = anchor.current;
+    if (!at) return;
+    const doc = at.ownerDocument;
+    const el = doc.createElement('div');
+    el.className = 'fnc-root fnc-layer';
+    (doc.fullscreenElement ?? doc.body).appendChild(el);
+    setLayer(el);
+    return () => el.remove();
+  }, []);
+  useLayoutEffect(() => {
+    const at = anchor.current;
+    if (!at || !layer) return;
+    const copy = () => {
+      const widget = at.closest<HTMLElement>('.fnc-root');
+      const from = at.closest<HTMLElement>('.fnc-stage') ?? widget ?? at;
+      if (widget?.dataset.colorScheme) layer.dataset.colorScheme = widget.dataset.colorScheme;
+      const dir = widget?.closest('[dir]')?.getAttribute('dir');
+      if (dir) layer.setAttribute('dir', dir);
+      const cs = getComputedStyle(from);
+      for (const name of LOOK_VARS) {
+        const value = cs.getPropertyValue(name).trim();
+        if (value) layer.style.setProperty(name, value);
+        else layer.style.removeProperty(name);
+      }
+    };
+    copy();
+    // The chart repaints its colors after this setting change: copy those too.
+    const frame = requestAnimationFrame(copy);
+    return () => cancelAnimationFrame(frame);
+  }, [layer, settings]);
+  return layer;
 }
 
 /** ⓘ beside a setting: what it does, on hover or focus (a press doesn't flip the switch). */

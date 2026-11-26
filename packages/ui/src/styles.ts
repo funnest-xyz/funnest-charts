@@ -1228,12 +1228,14 @@ const CSS = /* css */ `
 .fnc-seg-sm button { min-width: 36px; height: 26px; padding: 0 6px; font-size: 12px; }
 
 /* ── 차트 설정: tabs and settings on the left, a live demo chart on the right (on top on a phone) ── */
+/* The settings dialog's own layer over the page (above a fullscreen chart too). */
+.fnc-root.fnc-layer { position: fixed; inset: 0; z-index: 2147483001; width: auto; height: auto; background: transparent; overflow: visible; }
 .fnc-dialog.fnc-settings-dialog { width: min(940px, calc(100% - 32px)); height: min(660px, 100%); max-height: none; }
 .fnc-settings-body { display: flex; flex: 1; min-height: 0; }
 .fnc-settings-side { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; border-right: 1px solid var(--fnc-border); }
-.fnc-settings-side .fnc-settings-tabs { flex: none; gap: 2px; padding: 12px 20px 0; }
-/* The tabs share the row, each label centred in its share. */
-.fnc-settings-tabs .fnc-tab { display: inline-flex; align-items: center; justify-content: center; flex: 1 1 0; min-width: 0; padding: 0 4px; }
+.fnc-settings-side .fnc-settings-tabs { flex: none; justify-content: center; justify-content: safe center; gap: 4px; padding: 12px 16px 0; }
+/* The tabs as wide as their words (the pill hugs the label), the row of them in the middle. */
+.fnc-settings-tabs .fnc-tab { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0 14px; }
 .fnc-root .fnc-dialog form.fnc-settings-form { flex: 1; min-height: 0; overflow-y: auto; }
 .fnc-settings-preview { display: flex; flex-direction: column; gap: 8px; flex: 1.2 1 0; min-width: 0; padding: 20px; }
 .fnc-settings-preview-chart { position: relative; flex: 1; min-height: 160px; border: 1px solid var(--fnc-border); border-radius: 12px; overflow: hidden; }
@@ -1243,7 +1245,7 @@ const CSS = /* css */ `
   .fnc-dialog.fnc-settings-dialog { width: 100%; height: 100%; border-radius: 0; }
   .fnc-settings-dialog .fnc-dialog-head { height: 44px; }
   .fnc-settings-side .fnc-settings-tabs { padding: 6px 12px 0; }
-  .fnc-settings-tabs .fnc-tab { padding: 0 6px; font-size: 12.5px; }
+  .fnc-settings-tabs .fnc-tab { padding: 0 12px; }
   .fnc-settings-preview { padding: 8px 12px; }
   .fnc-settings-preview .fnc-section, .fnc-settings-preview .fnc-toggle-hint { display: none; }
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
@@ -1310,7 +1312,7 @@ const CSS = /* css */ `
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
   .fnc-settings-side { flex: 1; min-height: 0; border-right: 0; }
   .fnc-settings-side .fnc-settings-tabs { padding: 8px 12px 0; }
-  .fnc-settings-tabs .fnc-tab { padding: 0 6px; font-size: 12.5px; }
+  .fnc-settings-tabs .fnc-tab { padding: 0 12px; }
   .fnc-form-actions.fnc-settings-actions { padding: 8px 16px; }
 }
 
