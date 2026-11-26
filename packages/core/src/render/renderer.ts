@@ -55,6 +55,16 @@ export interface Palette {
   up: string;
   down: string;
   accent: string;
+  /** The gradient's bottom color, or null for a solid background. */
+  backgroundBottom: string | null;
+  axisText: string;
+  axisBackground: string;
+  upBorder: string;
+  downBorder: string;
+  upWick: string;
+  downWick: string;
+  volumeUp: string;
+  volumeDown: string;
 }
 
 /** Everything computed once per full frame; shared by the main and overlay passes. */
@@ -211,30 +221,53 @@ function drawCandles(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel,
       const color = own(i);
       if (color) (custom.get(color) ?? custom.set(color, []).get(color)!).push(i);
     }
-  const paint = (indices: Iterable<number>) => {
+  // part: 'wick' the high-low line, 'body' the open-close box, 'inner' the box less a device
+  // pixel all round (its fill inside an outline of another color); 'all' wick and body together.
+  const paint = (indices: Iterable<number>, part: 'all' | 'wick' | 'body' | 'inner' = 'all') => {
+    const edge = Math.max(1, Math.round(dpr));
     for (const i of indices) {
       const bar = bars[i]!;
       const left = Math.round(timeScale.indexToX(i) * dpr) - half;
-      const yHigh = y(bar.high);
-      const yLow = y(bar.low);
-      ctx.rect(left, yHigh, wick, Math.max(1, yLow - yHigh));
+      if (part === 'all' || part === 'wick') {
+        const yHigh = y(bar.high);
+        const yLow = y(bar.low);
+        ctx.rect(left, yHigh, wick, Math.max(1, yLow - yHigh));
+      }
+      if (part === 'wick') continue;
       const w = widthOf(i);
       if (w > wick) {
         const yOpen = y(bar.open);
         const yClose = y(bar.close);
         const top = Math.min(yOpen, yClose);
-        ctx.rect(left - (w - wick) / 2, top, w, Math.max(1, Math.max(yOpen, yClose) - top));
+        const h = Math.max(1, Math.max(yOpen, yClose) - top);
+        const x = left - (w - wick) / 2;
+        if (part !== 'inner') ctx.rect(x, top, w, h);
+        else if (w > 2 * edge && h > 2 * edge) ctx.rect(x + edge, top + edge, w - 2 * edge, h - 2 * edge);
       }
     }
   };
   const recolored = new Set([...custom.values()].flat());
-  for (const up of [true, false]) {
+  const pal = frame.palette;
+  const fillPart = (indices: number[], part: 'all' | 'wick' | 'body' | 'inner', color: string) => {
     ctx.beginPath();
+    paint(indices, part);
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  for (const up of [true, false]) {
     const indices: number[] = [];
     for (let i = from; i <= to; i++) if (bars[i]!.close >= bars[i]!.open === up && !recolored.has(i)) indices.push(i);
-    paint(indices);
-    ctx.fillStyle = up ? frame.palette.up : frame.palette.down;
-    ctx.fill();
+    const body = up ? pal.up : pal.down;
+    const wickColor = up ? pal.upWick : pal.downWick;
+    const border = up ? pal.upBorder : pal.downBorder;
+    // One color for all of it (the usual case): one fill.
+    if (wickColor === body && border === body) {
+      fillPart(indices, 'all', body);
+      continue;
+    }
+    fillPart(indices, 'wick', wickColor);
+    fillPart(indices, 'body', border);
+    if (border !== body) fillPart(indices, 'inner', body);
   }
   for (const [color, indices] of custom) {
     ctx.beginPath();
@@ -530,7 +563,7 @@ function drawVolume(ctx: CanvasRenderingContext2D, dpr: number, m: RenderModel, 
       const top = Math.round((pane.top + pane.scale.priceToY(bar.volume)) * dpr);
       ctx.rect(left, top, body, Math.max(1, bottom - top));
     }
-    ctx.fillStyle = up ? frame.palette.up : frame.palette.down;
+    ctx.fillStyle = up ? frame.palette.volumeUp : frame.palette.volumeDown;
     ctx.fill();
   }
   ctx.restore();
@@ -600,7 +633,12 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   // Anywhere among the lower panes: the user can move it below indicators.
   const volume = f.panes.find((x) => x.kind === 'volume');
 
-  ctx.fillStyle = pal.background;
+  if (pal.backgroundBottom) {
+    const g = ctx.createLinearGradient(0, 0, 0, f.height);
+    g.addColorStop(0, pal.background);
+    g.addColorStop(1, pal.backgroundBottom);
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, f.width, f.height);
   ctx.font = f.font;
 
@@ -736,6 +774,13 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     p.text(ext!.label, f.plotWidth - 6, extY - 9, extColor, 'right');
   }
 
+  // 축 배경: the price axis column and the time axis row, when they have a color of their own.
+  if (pal.axisBackground !== pal.background) {
+    ctx.fillStyle = pal.axisBackground;
+    ctx.fillRect(f.plotWidth, 0, f.width - f.plotWidth, f.panesHeight);
+    ctx.fillRect(0, f.panesHeight, f.width, f.height - f.panesHeight);
+  }
+
   // Frame lines
   for (const pane of f.panes) if (pane.kind !== 'main') p.hLine(pane.top, 0, f.plotWidth, pal.border);
   p.vLine(f.plotWidth, 0, f.panesHeight, pal.border);
@@ -748,7 +793,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     if (y < 8 || y > main.height - 8) continue;
     if (last && y > lastY - BADGE_HEIGHT && y < lastY + (f.countdown ? BADGE_HEIGHT * 2 - 4 : BADGE_HEIGHT)) continue;
     if (extShown && Math.abs(y - extY) < BADGE_HEIGHT) continue;
-    p.text((main.tickFormat ?? m.formatPrice)(price), labelX, y, pal.textSecondary);
+    p.text((main.tickFormat ?? m.formatPrice)(price), labelX, y, pal.axisText);
   }
 
   // Indicator pane axis labels
@@ -757,7 +802,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     for (const v of pane.ticks) {
       const y = pane.top + pane.scale.priceToY(v);
       if (y < pane.top + 8 || y > pane.top + pane.height - 8) continue;
-      p.text((pane.tickFormat ?? pane.format)(v), labelX, y, pal.textSecondary);
+      p.text((pane.tickFormat ?? pane.format)(v), labelX, y, pal.axisText);
     }
   }
 
@@ -819,7 +864,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   for (const tick of f.timeTicks) {
     const w = p.measure(tick.label);
     if (tick.x - w / 2 < 0 || tick.x + w / 2 > f.plotWidth) continue;
-    p.text(tick.label, tick.x, timeY, pal.textSecondary, 'center');
+    p.text(tick.label, tick.x, timeY, pal.axisText, 'center');
   }
 }
 

@@ -284,6 +284,17 @@ const MAX_INDICATOR_LOOKBACK = 5_000;
 const TIME_LABEL_MIN_GAP = 72;
 const PRICE_TICK_SPACING = 48;
 
+/** A gradient's other end when none is set: the color a little darker (lighter on dark ones). */
+function shade(color: string): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(color);
+  const rgb = hex ? [0, 2, 4].map((i) => parseInt(hex[1]!.slice(i, i + 2), 16)) : (/rgba?\(([^)]+)\)/.exec(color)?.[1]?.split(',').slice(0, 3).map(Number) ?? null);
+  if (!rgb || rgb.some((v) => !Number.isFinite(v))) return color;
+  const dark = 0.299 * rgb[0]! + 0.587 * rgb[1]! + 0.114 * rgb[2]! < 128;
+  const k = dark ? 1.6 : 0.92;
+  const v = rgb.map((x) => Math.max(0, Math.min(255, Math.round(dark ? x * k + 8 : x * k))));
+  return `rgb(${v.join(', ')})`;
+}
+
 const LABELS: Record<Locale, { high: string; low: string; replay: string }> = {
   ko: { high: '최고', low: '최저', replay: '리플레이' },
   en: { high: 'High', low: 'Low', replay: 'Replay' },
@@ -2162,6 +2173,11 @@ export class Chart {
     return this.trading.labelSettings;
   }
 
+  /** The colors the chart draws with now (settings over the theme, CSS variables resolved). */
+  get paletteInUse(): Palette {
+    return this.resolvePalette();
+  }
+
   /** The theme tokens in use (as given: CSS variables stay variables). */
   get themeTokens(): ThemeTokens {
     return { ...this.theme };
@@ -2900,16 +2916,29 @@ export class Chart {
     const c = (v: string) => this.colors.color(v);
     // A chart theme's text color also gives the muted text (axis labels) and crosshair.
     const muted = s.textColor && /^#[0-9a-f]{6}$/i.test(s.textColor) ? `${s.textColor}99` : null;
+    const background = c(s.background ?? t.background);
+    const textSecondary = c(muted ?? t.textSecondary);
+    const up = c(s.upColor ?? t.up);
+    const down = c(s.downColor ?? t.down);
     return {
-      background: c(s.background ?? t.background),
+      background,
       text: c(s.textColor ?? t.text),
-      textSecondary: c(muted ?? t.textSecondary),
+      textSecondary,
       grid: c(s.gridColor ?? t.grid),
-      border: c(s.gridColor ?? t.border),
-      crosshair: c(muted ?? t.crosshair),
-      up: c(this.settingsValue.upColor ?? t.up),
-      down: c(this.settingsValue.downColor ?? t.down),
+      border: c(s.paneBorderColor ?? s.gridColor ?? t.border),
+      crosshair: c(s.crosshairColor ?? muted ?? t.crosshair),
+      up,
+      down,
       accent: c(t.accent),
+      backgroundBottom: s.backgroundStyle === 'gradient' ? c(s.backgroundBottom ?? shade(background)) : null,
+      axisText: s.axisTextColor ? c(s.axisTextColor) : textSecondary,
+      axisBackground: s.axisBackground ? c(s.axisBackground) : background,
+      upBorder: s.upBorderColor ? c(s.upBorderColor) : up,
+      downBorder: s.downBorderColor ? c(s.downBorderColor) : down,
+      upWick: s.upWickColor ? c(s.upWickColor) : up,
+      downWick: s.downWickColor ? c(s.downWickColor) : down,
+      volumeUp: s.volumeUpColor ? c(s.volumeUpColor) : up,
+      volumeDown: s.volumeDownColor ? c(s.volumeDownColor) : down,
     };
   }
 

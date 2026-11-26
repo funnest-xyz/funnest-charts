@@ -3,11 +3,13 @@ import {
   CHART_THEMES,
   DEFAULT_CHART_SETTINGS,
   matchChartTheme,
+  themeSettings,
   resolutionToMs,
   type Bar,
   type Chart,
   type ChartSettings,
   type Datafeed,
+  type Palette,
   type PriceScaleMode,
   type Resolution,
   type SymbolInfo,
@@ -16,7 +18,7 @@ import { createPortal } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WidgetContext } from '../context.js';
 import { stringsOf, type Strings } from '../i18n.js';
-import { CloseIcon } from '../icons.js';
+import { CloseIcon, ResetIcon } from '../icons.js';
 import { useStore } from '../store.js';
 import { createTradingChart } from '../trading-chart.js';
 
@@ -61,6 +63,29 @@ const MOTION_ROWS: ToggleRow[] = [
   { key: 'drawOnLoad', label: 'settingDrawOnLoad', hint: 'hintDrawOnLoad' },
 ];
 
+type ColorKey = { [K in keyof ChartSettings]: ChartSettings[K] extends string | null ? (K extends 'priceScale' | 'backgroundStyle' ? never : K) : never }[keyof ChartSettings];
+type ColorRow = { key: ColorKey; label: keyof Strings; shown: (p: Palette) => string; seeThrough?: boolean };
+
+const CHART_COLORS: ColorRow[] = [
+  { key: 'gridColor', label: 'settingGridColor', shown: (p) => p.grid },
+  { key: 'paneBorderColor', label: 'settingPaneBorder', shown: (p) => p.border },
+  { key: 'crosshairColor', label: 'settingCrosshair', shown: (p) => p.crosshair },
+  { key: 'axisTextColor', label: 'settingAxisText', shown: (p) => p.axisText },
+  { key: 'axisBackground', label: 'settingAxisBg', shown: (p) => p.axisBackground },
+];
+const CANDLE_COLORS: ColorRow[] = [
+  { key: 'upColor', label: 'settingUpBody', shown: (p) => p.up },
+  { key: 'downColor', label: 'settingDownBody', shown: (p) => p.down },
+  { key: 'upBorderColor', label: 'settingUpBorder', shown: (p) => p.upBorder },
+  { key: 'downBorderColor', label: 'settingDownBorder', shown: (p) => p.downBorder },
+  { key: 'upWickColor', label: 'settingUpWick', shown: (p) => p.upWick },
+  { key: 'downWickColor', label: 'settingDownWick', shown: (p) => p.downWick },
+];
+const VOLUME_COLORS: ColorRow[] = [
+  { key: 'volumeUpColor', label: 'settingVolumeUp', shown: (p) => p.volumeUp, seeThrough: true },
+  { key: 'volumeDownColor', label: 'settingVolumeDown', shown: (p) => p.volumeDown, seeThrough: true },
+];
+
 const SCALES: { mode: PriceScaleMode; label: keyof Strings }[] = [
   { mode: 'normal', label: 'scaleNormal' },
   { mode: 'percent', label: 'scalePercentLong' },
@@ -88,6 +113,19 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
   // Show the effective theme colors when no override is set.
   const themeColor = (name: '--fnc-up' | '--fnc-down' | '--fnc-bg' | '--fnc-border') => toHex(getComputedStyle(ctx.root).getPropertyValue(name).trim());
   const currentTheme = matchChartTheme(settings);
+  // The colors drawn now (asked again on each render: settings changes re-render).
+  const palette = ctx.chart.paletteInUse;
+  const colorRow = ({ key, label, shown, seeThrough }: ColorRow) => (
+    <div class="fnc-row fnc-color-row">
+      <span class="fnc-toggle-label">{t[label]}</span>
+      {settings[key] && (
+        <button type="button" class="fnc-color-reset" title={t.followTheme} aria-label={`${t[label]} ${t.followTheme}`} onClick={() => set({ [key]: null })}>
+          <ResetIcon />
+        </button>
+      )}
+      <Swatch label={t[label]} color={toHex(shown(palette))} seeThrough={seeThrough} onPick={(c) => set({ [key]: c })} />
+    </div>
+  );
 
   const tabs: [Tab, string][] = [
     ['look', t.settingsTabLook],
@@ -140,7 +178,7 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
                       const up = c.upColor ?? themeColor('--fnc-up');
                       const down = c.downColor ?? themeColor('--fnc-down');
                       return (
-                        <button type="button" role="radio" class="fnc-theme" aria-checked={currentTheme?.id === theme.id} onClick={() => set({ ...c })}>
+                        <button type="button" role="radio" class="fnc-theme" aria-checked={currentTheme?.id === theme.id} onClick={() => set(themeSettings(theme))}>
                           {/* Two candles on the theme's canvas. */}
                           <svg class="fnc-theme-swatch" viewBox="0 0 56 36" aria-hidden="true">
                             <rect x="0.5" y="0.5" width="55" height="35" rx="5" fill={bg} stroke={grid} />
@@ -155,18 +193,39 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
                       );
                     })}
                   </div>
+                  <div class="fnc-section">{t.settingsChart}</div>
+                  <div class="fnc-row fnc-color-row">
+                    <span class="fnc-toggle-label">{t.settingBackground}</span>
+                    {(settings.background || settings.backgroundBottom || settings.backgroundStyle !== 'solid') && (
+                      <button
+                        type="button"
+                        class="fnc-color-reset"
+                        title={t.followTheme}
+                        aria-label={`${t.settingBackground} ${t.followTheme}`}
+                        onClick={() => set({ background: null, backgroundBottom: null, backgroundStyle: 'solid' })}
+                      >
+                        <ResetIcon />
+                      </button>
+                    )}
+                    <select
+                      class="fnc-settings-select"
+                      aria-label={t.settingBackground}
+                      value={settings.backgroundStyle}
+                      onChange={(e) => set({ backgroundStyle: e.currentTarget.value as ChartSettings['backgroundStyle'] })}
+                    >
+                      <option value="solid">{t.bgSolid}</option>
+                      <option value="gradient">{t.bgGradient}</option>
+                    </select>
+                    <Swatch label={t.settingBackground} color={toHex(palette.background)} onPick={(c) => set({ background: c })} />
+                    {settings.backgroundStyle === 'gradient' && (
+                      <Swatch label={t.bgGradientBottom} color={toHex(palette.backgroundBottom ?? palette.background)} onPick={(c) => set({ backgroundBottom: c })} />
+                    )}
+                  </div>
+                  {CHART_COLORS.map(colorRow)}
                   <div class="fnc-section">{t.settingsCandles}</div>
-                  {(['upColor', 'downColor'] as const).map((key) => (
-                    <label class="fnc-row">
-                      <span class="fnc-row-label fnc-row-label-wide">{key === 'upColor' ? t.settingUpColor : t.settingDownColor}</span>
-                      <input type="color" class="fnc-color" value={settings[key] ?? themeColor(key === 'upColor' ? '--fnc-up' : '--fnc-down')} onInput={(e) => set({ [key]: e.currentTarget.value })} />
-                      {settings[key] && (
-                        <button type="button" class="fnc-link" onClick={() => set({ [key]: null })}>
-                          {t.followTheme}
-                        </button>
-                      )}
-                    </label>
-                  ))}
+                  {CANDLE_COLORS.map(colorRow)}
+                  <div class="fnc-section">{t.settingVolume}</div>
+                  {VOLUME_COLORS.map(colorRow)}
                   <div class="fnc-section">{t.settingsGrid}</div>
                   {toggles(GRID)}
                 </>
@@ -285,6 +344,19 @@ function usePageLayer(anchor: { current: HTMLElement | null }, settings: ChartSe
     return () => cancelAnimationFrame(frame);
   }, [layer, settings]);
   return layer;
+}
+
+/**
+ * A color square that opens the browser's color picker. `seeThrough`: shown over a checkerboard at
+ * the strength the chart draws it (volume bars), so it reads as the bars do.
+ */
+function Swatch({ label, color, seeThrough, onPick }: { label: string; color: string; seeThrough?: boolean | undefined; onPick(color: string): void }) {
+  return (
+    <label class={seeThrough ? 'fnc-swatch-pick is-see-through' : 'fnc-swatch-pick'} title={label}>
+      <span style={{ background: color }} />
+      <input type="color" aria-label={label} value={color} onInput={(e) => onPick(e.currentTarget.value)} />
+    </label>
+  );
 }
 
 /** ⓘ beside a setting: what it does, on hover or focus (a press doesn't flip the switch). */

@@ -65,7 +65,43 @@ export interface ChartSettings {
   background: string | null;
   gridColor: string | null;
   textColor: string | null;
+  /** 배경: one color, or `background` at the top fading to `backgroundBottom` at the bottom. */
+  backgroundStyle: 'solid' | 'gradient';
+  /** The gradient's bottom color (null: the background's own, a touch darker or lighter). */
+  backgroundBottom: string | null;
+  /** 창 구분선: the lines between panes and around the axes (null: the grid color / theme). */
+  paneBorderColor: string | null;
+  /** 크로스헤어 (null: the theme's). */
+  crosshairColor: string | null;
+  /** 축 텍스트: price and time axis labels (null: the muted text color). */
+  axisTextColor: string | null;
+  /** 축 배경: behind the price and time axes (null: the chart's background). */
+  axisBackground: string | null;
+  /** Candle outlines (null: the body's color). */
+  upBorderColor: string | null;
+  downBorderColor: string | null;
+  /** Candle wicks (null: the body's color). */
+  upWickColor: string | null;
+  downWickColor: string | null;
+  /** Volume bars, drawn see-through (null: the candle colors). */
+  volumeUpColor: string | null;
+  volumeDownColor: string | null;
 }
+
+/** The detailed colors (차트 · 캔들 · 거래량 in 차트 설정 › 모습); a theme clears them. */
+export const DETAIL_COLOR_KEYS = [
+  'backgroundBottom',
+  'paneBorderColor',
+  'crosshairColor',
+  'axisTextColor',
+  'axisBackground',
+  'upBorderColor',
+  'downBorderColor',
+  'upWickColor',
+  'downWickColor',
+  'volumeUpColor',
+  'volumeDownColor',
+] as const satisfies readonly (keyof ChartSettings)[];
 
 /** The settings a chart theme sets. */
 export type ChartThemeColors = Pick<ChartSettings, 'upColor' | 'downColor' | 'background' | 'gridColor' | 'textColor'>;
@@ -124,11 +160,17 @@ export const CHART_THEMES: readonly ChartThemePreset[] = [
   },
 ];
 
-/** The preset whose colors `settings` match, if any. */
+/** The preset whose colors `settings` match, if any (detailed colors set by hand match none). */
 export function matchChartTheme(settings: ChartSettings): ChartThemePreset | undefined {
   const keys = Object.keys(FOLLOW) as (keyof ChartThemeColors)[];
   const same = (a: string | null, b: string | null) => (a ?? '').toLowerCase() === (b ?? '').toLowerCase();
+  if (settings.backgroundStyle !== 'solid' || DETAIL_COLOR_KEYS.some((k) => settings[k] !== null)) return undefined;
   return CHART_THEMES.find((t) => keys.every((k) => same(t.colors[k], settings[k])));
+}
+
+/** Applying a theme: its five colors, and the detailed ones back to following it. */
+export function themeSettings(theme: ChartThemePreset): Partial<ChartSettings> {
+  return { ...theme.colors, backgroundStyle: 'solid', ...Object.fromEntries(DETAIL_COLOR_KEYS.map((k) => [k, null])) };
 }
 
 export const DEFAULT_CHART_SETTINGS: ChartSettings = {
@@ -156,6 +198,18 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   background: null,
   gridColor: null,
   textColor: null,
+  backgroundStyle: 'solid',
+  backgroundBottom: null,
+  paneBorderColor: null,
+  crosshairColor: null,
+  axisTextColor: null,
+  axisBackground: null,
+  upBorderColor: null,
+  downBorderColor: null,
+  upWickColor: null,
+  downWickColor: null,
+  volumeUpColor: null,
+  volumeDownColor: null,
 };
 
 /**

@@ -1233,12 +1233,41 @@ const CSS = /* css */ `
 .fnc-dialog.fnc-settings-dialog { width: min(940px, calc(100% - 32px)); height: min(660px, 100%); max-height: none; }
 .fnc-settings-body { display: flex; flex: 1; min-height: 0; }
 .fnc-settings-side { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; border-right: 1px solid var(--fnc-border); }
-/* The tabs as wide as their words (the pill hugs the label), from the left: the first word starts
-   where the sections' titles (테마, 캔들…) do — the row has the form's side padding, and the first
-   pill reaches left by its own padding. */
-.fnc-settings-side .fnc-settings-tabs { flex: none; gap: 4px; padding: 10px 20px; }
-.fnc-settings-tabs .fnc-tab { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0 14px; }
-.fnc-settings-tabs .fnc-tab:first-child { margin-left: -14px; }
+/* Tabs as words with a line under the chosen one (nothing reaches past the words): the row has
+   the form's side padding, so the first word starts where the sections' titles (테마, 차트…) do. */
+.fnc-settings-side .fnc-settings-tabs { flex: none; gap: 22px; padding: 0 20px; }
+.fnc-settings-tabs .fnc-tab { display: inline-flex; align-items: center; flex: none; height: 46px; padding: 0; border-radius: 0; font-size: 14px; }
+.fnc-settings-tabs .fnc-tab[aria-selected='true'] { background: none; color: var(--fnc-text); box-shadow: inset 0 -2px 0 var(--fnc-text); }
+/* Settings rows packed like a list; section titles (테마, 차트, 캔들…) in the text color, set apart. */
+.fnc-root .fnc-dialog form.fnc-settings-form { gap: 2px; }
+.fnc-settings-form .fnc-section { margin: 14px 0 4px; color: var(--fnc-text); font-size: 13px; font-weight: 700; }
+.fnc-settings-form .fnc-section:first-child { margin-top: 0; }
+.fnc-settings-form .fnc-toggle-row { min-height: 40px; }
+.fnc-settings-form .fnc-themes, .fnc-settings-form .fnc-settings-seg { margin-bottom: 4px; }
+/* Color rows: the name, then (when changed) back-to-theme, then the square. */
+.fnc-color-row { gap: 8px; min-height: 40px; }
+.fnc-color-reset { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; color: var(--fnc-text-2); }
+.fnc-color-reset:hover { background: var(--fnc-surface); color: var(--fnc-text); }
+.fnc-color-reset svg { width: 16px; height: 16px; }
+.fnc-swatch-pick { position: relative; display: inline-flex; flex: none; width: 26px; height: 26px; border-radius: 7px; overflow: hidden; cursor: pointer; box-shadow: inset 0 0 0 1px var(--fnc-border); }
+.fnc-swatch-pick > span { position: absolute; inset: 3px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.25); }
+.fnc-swatch-pick.is-see-through { background: repeating-conic-gradient(#8885 0% 25%, transparent 0% 50%) 50% / 8px 8px; }
+.fnc-swatch-pick.is-see-through > span { opacity: 0.35; }
+.fnc-swatch-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.fnc-swatch-pick:focus-within { outline: 2px solid var(--fnc-accent); outline-offset: 2px; }
+.fnc-settings-select {
+  height: 32px;
+  padding: 0 28px 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fnc-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  color: var(--fnc-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  appearance: none;
+  cursor: pointer;
+}
 .fnc-root .fnc-dialog form.fnc-settings-form { flex: 1; min-height: 0; overflow-y: auto; }
 .fnc-settings-preview { display: flex; flex-direction: column; gap: 8px; flex: 1.2 1 0; min-width: 0; padding: 20px; }
 .fnc-settings-preview-chart { position: relative; flex: 1; min-height: 160px; border: 1px solid var(--fnc-border); border-radius: 12px; overflow: hidden; }
@@ -1247,9 +1276,8 @@ const CSS = /* css */ `
   .fnc-backdrop:has(> .fnc-settings-dialog) { padding: 0; align-items: stretch; }
   .fnc-dialog.fnc-settings-dialog { width: 100%; height: 100%; border-radius: 0; }
   .fnc-settings-dialog .fnc-dialog-head { height: 44px; }
-  .fnc-settings-side .fnc-settings-tabs { padding: 6px 16px; }
-  .fnc-settings-tabs .fnc-tab { padding: 0 12px; }
-  .fnc-settings-tabs .fnc-tab:first-child { margin-left: -12px; }
+  .fnc-settings-side .fnc-settings-tabs { gap: 18px; padding: 0 16px; }
+  .fnc-settings-tabs .fnc-tab { height: 38px; }
   .fnc-settings-preview { padding: 8px 12px; }
   .fnc-settings-preview .fnc-section, .fnc-settings-preview .fnc-toggle-hint { display: none; }
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
@@ -1312,9 +1340,8 @@ const CSS = /* css */ `
   .fnc-settings-preview-chart { flex: none; height: clamp(170px, 34dvh, 280px); min-height: 0; }
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
   .fnc-settings-side { flex: 1; min-height: 0; border-right: 0; }
-  .fnc-settings-side .fnc-settings-tabs { padding: 8px 20px; }
-  .fnc-settings-tabs .fnc-tab { padding: 0 12px; }
-  .fnc-settings-tabs .fnc-tab:first-child { margin-left: -12px; }
+  .fnc-settings-side .fnc-settings-tabs { gap: 18px; padding: 0 20px; }
+  .fnc-settings-tabs .fnc-tab { height: 42px; }
   .fnc-form-actions.fnc-settings-actions { padding: 8px 16px; }
 }
 

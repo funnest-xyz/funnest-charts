@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { formatPrice, type ChartContextMenu } from '@funnest/charts';
+import type { ChartContextMenu } from '@funnest/charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ContextMenuItem, WidgetContext } from '../context.js';
 import { stringsOf } from '../i18n.js';
@@ -11,7 +11,7 @@ const MARGIN = 8;
 
 /**
  * Right-click menu on the chart (mouse only): undo/redo, the host's own items
- * (`contextMenuItems`), a horizontal line at the clicked price, reset and settings.
+ * (`contextMenuItems`), go to date, lock chart, reset and settings.
  */
 export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
@@ -54,8 +54,6 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
   if (!target) return null;
   const mac = /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = mac ? '⌘' : 'Ctrl+';
-  const price = target.price;
-  const precision = s.symbol?.pricePrecision ?? 2;
   const extra = ctx.contextMenuItems?.({ ...target, chart: ctx.chart }) ?? [];
 
   const items: ContextMenuItem[] = [
@@ -64,22 +62,11 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
     'separator',
     ...(extra.length ? [...extra, 'separator' as const] : []),
   ];
-  if (price !== null) {
-    const time = target.time ?? ctx.chart.bars[ctx.chart.bars.length - 1]?.time ?? Date.now();
-    items.push({
-      label: t.horizontalAt.replace('{price}', formatPrice(price, precision)),
-      icon: 'line',
-      onSelect: () => ctx.chart.addDrawing({ type: 'horizontal', points: [{ time, price }] }),
-    });
-  }
-  const { zoomAnimation, scrollInertia, lockView, lockRatio } = ctx.chart.settings;
-  // 부드러운 스크롤·확대: both 확대·축소 애니메이션 and 이동 관성 (차트 설정 › 애니메이션 has each).
-  const smooth = zoomAnimation && scrollInertia;
+  // 수평선 is in the drawing bar; 부드러운 스크롤 · 가격 축 비율 고정 in 차트 설정 (애니메이션, 가격 축).
+  const { lockView } = ctx.chart.settings;
   items.push(
     { label: t.goToDateMore, icon: 'date', onSelect: () => ctx.store.set({ dialog: { kind: 'goToDate' } }) },
-    { label: t.smoothScroll, icon: 'smooth', checked: smooth, onSelect: () => ctx.chart.setSettings({ smoothScroll: !smooth }) },
     { label: t.lockView, icon: 'lock', checked: lockView, onSelect: () => ctx.chart.setSettings({ lockView: !lockView }) },
-    { label: t.lockRatio, icon: 'ratio', checked: lockRatio, onSelect: () => ctx.chart.setSettings({ lockRatio: !lockRatio }) },
     'separator',
     { label: t.resetChart, icon: 'reset', disabled: lockView, onSelect: () => ctx.chart.resetView() },
     { label: t.chartSettingsMore, icon: 'settings', onSelect: () => ctx.store.set({ dialog: { kind: 'chartSettings' } }) },
