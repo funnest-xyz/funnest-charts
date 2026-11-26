@@ -1233,7 +1233,7 @@ const CSS = /* css */ `
 .fnc-dialog.fnc-settings-dialog { width: min(940px, calc(100% - 32px)); height: min(660px, 100%); max-height: none; }
 .fnc-settings-body { display: flex; flex: 1; min-height: 0; }
 .fnc-settings-side { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; border-right: 1px solid var(--fnc-border); }
-.fnc-settings-side .fnc-settings-tabs { flex: none; justify-content: center; justify-content: safe center; gap: 4px; padding: 12px 16px 0; }
+.fnc-settings-side .fnc-settings-tabs { flex: none; justify-content: center; justify-content: safe center; gap: 4px; padding: 10px 16px; }
 /* The tabs as wide as their words (the pill hugs the label), the row of them in the middle. */
 .fnc-settings-tabs .fnc-tab { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0 14px; }
 .fnc-root .fnc-dialog form.fnc-settings-form { flex: 1; min-height: 0; overflow-y: auto; }
@@ -1244,7 +1244,7 @@ const CSS = /* css */ `
   .fnc-backdrop:has(> .fnc-settings-dialog) { padding: 0; align-items: stretch; }
   .fnc-dialog.fnc-settings-dialog { width: 100%; height: 100%; border-radius: 0; }
   .fnc-settings-dialog .fnc-dialog-head { height: 44px; }
-  .fnc-settings-side .fnc-settings-tabs { padding: 6px 12px 0; }
+  .fnc-settings-side .fnc-settings-tabs { padding: 6px 12px; }
   .fnc-settings-tabs .fnc-tab { padding: 0 12px; }
   .fnc-settings-preview { padding: 8px 12px; }
   .fnc-settings-preview .fnc-section, .fnc-settings-preview .fnc-toggle-hint { display: none; }
@@ -1311,7 +1311,7 @@ const CSS = /* css */ `
   .fnc-settings-preview-chart { flex: none; height: clamp(170px, 34dvh, 280px); min-height: 0; }
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
   .fnc-settings-side { flex: 1; min-height: 0; border-right: 0; }
-  .fnc-settings-side .fnc-settings-tabs { padding: 8px 12px 0; }
+  .fnc-settings-side .fnc-settings-tabs { padding: 8px 12px; }
   .fnc-settings-tabs .fnc-tab { padding: 0 12px; }
   .fnc-form-actions.fnc-settings-actions { padding: 8px 16px; }
 }

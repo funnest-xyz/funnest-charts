@@ -1,6 +1,6 @@
 {
   "name": "@funnest/charts",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "description": "Canvas charting engine for financial charts",
   "keywords": [
     "chart",
