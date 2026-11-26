@@ -394,10 +394,22 @@ export class TradingLayer {
         ctx.fillStyle = '#FFFFFF';
         ctx.fill();
       } else {
-        // The letter in the chart's own font, bold.
+        // The letter in the chart's own font, bold — centred on its own ink, not its advance box or
+        // the digits' height: B's stem gives it a wider left bearing, so 'center' sits it right.
         const font = ctx.font;
         ctx.font = `700 ${Math.round(markR * 1.25)}px ${font.replace(/^.*?\d+(\.\d+)?px\s*/, '') || 'sans-serif'}`;
-        p.text(buy ? 'B' : 'S', g.x, g.y + 0.5, '#FFFFFF', 'center', 'middle');
+        const letter = buy ? 'B' : 'S';
+        const m = ctx.measureText(letter);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        if (Number.isFinite(m.actualBoundingBoxAscent) && m.actualBoundingBoxAscent > 0) {
+          const left = m.actualBoundingBoxLeft;
+          const right = m.actualBoundingBoxRight;
+          ctx.fillText(letter, g.x - (right - left) / 2, g.y + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+        } else {
+          p.text(letter, g.x, g.y, '#FFFFFF', 'center', 'middle');
+        }
         ctx.font = font;
       }
       if (g.count > 1) p.text(String(g.count), g.x + markR + 4, g.y, color, 'left', 'middle');
