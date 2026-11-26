@@ -131,6 +131,16 @@ pnpm build
 Releases are published from GitHub Actions with npm Trusted Publishing.\
 Bump the versions in `packages/*/package.json`, commit, then push a tag such as `git tag v0.1.1 && git push origin v0.1.1`.
 
+## Star History
+
+<a href="https://www.star-history.com/#funnest-xyz/funnest-charts&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=funnest-xyz/funnest-charts&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=funnest-xyz/funnest-charts&type=Date" />
+    <img alt="Funnest Charts star history" src="https://api.star-history.com/svg?repos=funnest-xyz/funnest-charts&type=Date" width="800" />
+  </picture>
+</a>
+
 ## License
 
 Code is [Apache-2.0](LICENSE).\

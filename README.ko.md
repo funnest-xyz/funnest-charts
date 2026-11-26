@@ -130,6 +130,16 @@ pnpm build
 배포는 GitHub Actions가 npm Trusted Publishing으로 해요.\
 `packages/*/package.json`의 버전을 올려 커밋한 뒤, `git tag v0.1.1 && git push origin v0.1.1`처럼 태그를 올리면 돼요.
 
+## 스타 히스토리
+
+<a href="https://www.star-history.com/#funnest-xyz/funnest-charts&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=funnest-xyz/funnest-charts&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=funnest-xyz/funnest-charts&type=Date" />
+    <img alt="Funnest Charts GitHub 스타 수 변화" src="https://api.star-history.com/svg?repos=funnest-xyz/funnest-charts&type=Date" width="800" />
+  </picture>
+</a>
+
 ## 라이선스
 
 코드는 [Apache-2.0](LICENSE)이에요.\
