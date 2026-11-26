@@ -142,6 +142,16 @@ describe('IndicatorManager', () => {
   });
 });
 
+describe('long moving averages', () => {
+  it('take periods past 1000 (1792일선)', () => {
+    for (const type of ['ma', 'ema'] as const) {
+      const spec = INDICATORS[type].params.find((p) => p.key === 'lines')!;
+      expect(spec.max).toBeGreaterThanOrEqual(1792);
+    }
+    expect(INDICATORS.ma.lookback!({ lines: [{ period: 1792, source: 'close' }] })).toBe(1792);
+  });
+});
+
 describe('lookback: bars an indicator needs behind a value', () => {
   // A long random walk: the "true" value at the end is the one computed from all of it.
   let seed = 7;

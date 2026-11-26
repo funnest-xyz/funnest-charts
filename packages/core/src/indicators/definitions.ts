@@ -229,6 +229,11 @@ export interface IndicatorDefinition {
  * ((1 − 2/(n+1))^k < 0.001 → k ≈ 3.45·(n+1)).
  */
 export const emaLookback = (period: number) => Math.ceil(period + 3.5 * (period + 1));
+/**
+ * The longest 이동평균 / 지수이동평균 period (1792일선 and other long ones): as many bars as the chart
+ * keeps loaded behind the screen for indicators (MAX_INDICATOR_LOOKBACK in chart.ts).
+ */
+export const MAX_MA_PERIOD = 5000;
 /** Wilder's smoothing (RSI): weight 1/n, so k ≈ 6.9·n after the seed. */
 export const wilderLookback = (period: number) => Math.ceil(period + 7 * period);
 
@@ -299,7 +304,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     name: { ko: '이동평균선', en: 'Moving Average' },
     description: { ko: '단순 이동평균 (5·20·60·120)', en: 'Simple moving averages' },
     overlay: true,
-    params: [{ key: 'lines', label: PARAM('기간', 'Period'), kind: 'lines', min: 1, max: 1000 }],
+    params: [{ key: 'lines', label: PARAM('기간', 'Period'), kind: 'lines', min: 1, max: MAX_MA_PERIOD }],
     defaults: {
       lines: [5, 20, 60, 120].map((period) => ({ period, source: 'close' as const })),
     },
@@ -313,7 +318,7 @@ export const INDICATORS: Record<BuiltinIndicatorType, IndicatorDefinition> = {
     name: { ko: '지수이동평균', en: 'Exponential MA' },
     description: { ko: '최근 가격에 가중치를 둔 이동평균', en: 'Moving average weighted to recent prices' },
     overlay: true,
-    params: [{ key: 'lines', label: PARAM('기간', 'Period'), kind: 'lines', min: 1, max: 1000 }],
+    params: [{ key: 'lines', label: PARAM('기간', 'Period'), kind: 'lines', min: 1, max: MAX_MA_PERIOD }],
     defaults: { lines: [12, 26].map((period) => ({ period, source: 'close' as const })) },
     title: (p) => `EMA ${maLines(p).map((l) => l.period).join('·')}`,
     compute: (bars, p) => movingAverages(bars, p, 'EMA', ema, ['#3182F6', '#F06595', '#15AABF', '#FF9F0A']),
