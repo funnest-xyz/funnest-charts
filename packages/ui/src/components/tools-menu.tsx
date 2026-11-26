@@ -48,8 +48,9 @@ const TYPES: { type: ChartType; label: keyof Strings; icon: () => JSX.Element }[
 
 const SCALES: { mode: PriceScaleMode; label: keyof Strings }[] = [
   { mode: 'normal', label: 'scaleNormal' },
-  { mode: 'log', label: 'scaleLog' },
   { mode: 'percent', label: 'scalePercent' },
+  { mode: 'indexed', label: 'scaleIndexedShort' },
+  { mode: 'log', label: 'scaleLog' },
 ];
 
 const SYNC_KEYS: { key: keyof LayoutSync; label: 'syncCrosshair' | 'syncTime' | 'syncSymbol' | 'syncInterval' }[] = [

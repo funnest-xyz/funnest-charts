@@ -16,17 +16,37 @@ export interface ChartSettings {
   volume: boolean;
   /** Zoom/scroll buttons at the bottom center of the chart (@funnest/charts-ui). */
   navigationButtons: boolean;
-  /** Price axis: linear prices, log scale, or % change from the first visible bar. Comparing symbols forces '%'. */
+  /**
+   * Price axis: linear prices, % change from the first visible bar, the first visible bar as 100
+   * ('indexed'), or log scale. Comparing symbols forces '%'.
+   */
   priceScale: PriceScaleMode;
   /** Time left until the current bar closes, under the last-price badge. */
   countdown: boolean;
   /** Stocks: the pre-market / after-hours price as a dotted line with its own axis badge (when the quote has one). */
   extendedPriceLine: boolean;
   /**
-   * 부드러운 스크롤·확대 (mouse and trackpad): wheel zoom and sideways scroll ease toward where they
-   * were sent instead of jumping, and a drag let go glides further. Touch always glides.
+   * @deprecated Split into `zoomAnimation` and `scrollInertia`; setting it sets both.
+   * 부드러운 스크롤·확대 (mouse and trackpad).
    */
   smoothScroll: boolean;
+  /** 확대·축소 애니메이션: wheel zoom eases toward where it was sent instead of jumping. */
+  zoomAnimation: boolean;
+  /**
+   * 이동 관성: a mouse drag let go glides on, and sideways wheel scrolling eases. Off: the view stops
+   * where the drag ended (touch always glides).
+   */
+  scrollInertia: boolean;
+  /** 가격 축 애니메이션: the auto-fitted price axis slides to its new range instead of jumping. */
+  priceAxisAnimation: boolean;
+  /** 가격 변동 애니메이션: the last candle's close (and the last-price line) slides to a new price. */
+  priceAnimation: boolean;
+  /** 로드 시 그리기 효과: on loading data, the series draws in from left to right. */
+  drawOnLoad: boolean;
+  /** 종목 워터마크: the symbol and interval, large and faint, behind the price pane. */
+  symbolWatermark: boolean;
+  /** 리플레이 워터마크: "리플레이" behind the price pane while a bar replay runs. */
+  replayWatermark: boolean;
   /**
    * 차트 고정: dragging, the wheel, pinches, axis drags and the zoom / scroll buttons leave the view
    * as it is (it still follows new bars at the right edge). The crosshair and drawing still work.
@@ -122,6 +142,13 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   countdown: true,
   extendedPriceLine: true,
   smoothScroll: false,
+  zoomAnimation: true,
+  scrollInertia: true,
+  priceAxisAnimation: true,
+  priceAnimation: true,
+  drawOnLoad: false,
+  symbolWatermark: true,
+  replayWatermark: true,
   lockView: false,
   lockRatio: false,
   upColor: null,

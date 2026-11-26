@@ -284,10 +284,16 @@ const MAX_INDICATOR_LOOKBACK = 5_000;
 const TIME_LABEL_MIN_GAP = 72;
 const PRICE_TICK_SPACING = 48;
 
-const LABELS: Record<Locale, { high: string; low: string }> = {
-  ko: { high: '최고', low: '최저' },
-  en: { high: 'High', low: 'Low' },
+const LABELS: Record<Locale, { high: string; low: string; replay: string }> = {
+  ko: { high: '최고', low: '최저', replay: '리플레이' },
+  en: { high: 'High', low: 'Low', replay: 'Replay' },
 };
+/** 가격 변동 애니메이션: how long a new price takes to slide in. */
+const PRICE_TWEEN_MS = 260;
+/** 가격 축 애니메이션: each frame the axis covers 1 - e^(-dt / this) of the way left. */
+const AXIS_TWEEN_TAU = 70;
+/** 로드 시 그리기 효과: how long the series takes to draw in. */
+const REVEAL_MS = 750;
 
 const TRADING_LABELS: Record<Locale, TradingLabels> = {
   ko: { buy: '매수', sell: '매도', position: '평균단가', alert: '알림' },
@@ -473,6 +479,16 @@ export class Chart {
   /** Pieces of the next hidden bar already shown. */
   private replayShown = 0;
   private replaySelecting = false;
+  /** 가격 변동 애니메이션: the last bar's close sliding from `from` to `to` (performance.now() at `start`). */
+  private priceTween: { time: number; from: number; to: number; start: number } | null = null;
+  /** 가격 축 애니메이션: the price-pane range on screen, easing toward the fitted one each frame. */
+  private axisShown: { lo: number; hi: number; at: number } | null = null;
+  /** The next frame shows the fitted range at once (new data, another axis mode). */
+  private axisSnap = true;
+  /** 로드 시 그리기 효과: when the series began drawing in (performance.now()), or null. */
+  private revealStart: number | null = null;
+  /** Something above is still moving: paint again next frame. */
+  private animating = false;
   /** Pane height weights the user set by dragging borders (unset panes use PANE_WEIGHT). */
   private readonly paneWeights = new Map<PaneId, number>();
   private paneWeightTotal = 1;
@@ -565,6 +581,9 @@ export class Chart {
     this.timeScale.rightOffset = this.timeScale.options.rightOffset;
     this.mainScale.autoScale = true;
     this.volumeScale.autoScale = true;
+    this.priceTween = null;
+    this.axisSnap = true;
+    this.revealStart = this.settingsValue.drawOnLoad && bars.length > 0 ? this.win.performance.now() : null;
     this.noMoreHistory = false;
     this.historyRequestedFor = Number.NaN;
     // Pages requested for the bars being replaced must not land on the new ones.
@@ -584,8 +603,10 @@ export class Chart {
       else if (!tail || bar.time > tail.time) replay.future.push(bar);
       return;
     }
+    const before = this.store.last();
     const result = this.store.upsert(bar);
     if (result === 'ignored') return;
+    if (before && bar.time >= before.time) this.tweenPrice(before, bar, result === 'append');
     if (result === 'append') {
       this.timeScale.barCount = this.store.length;
       // Scrolled back into history? Keep the view still instead of following the new bar.
@@ -593,6 +614,28 @@ export class Chart {
     }
     this.dataVersion++;
     this.invalidate();
+  }
+
+  /** 가격 변동 애니메이션: the last close slides from where it is on screen to `bar.close`. */
+  private tweenPrice(before: Bar, bar: Bar, appended: boolean): void {
+    if (!this.settingsValue.priceAnimation || this.store instanceof PriceBarStore) {
+      this.priceTween = null;
+      return;
+    }
+    const now = this.win.performance.now();
+    // A new bar starts from its open; the same bar from wherever its close is drawn right now.
+    const from = appended ? bar.open : (this.shownClose(now) ?? before.close);
+    this.priceTween = from === bar.close ? null : { time: bar.time, from, to: bar.close, start: now };
+  }
+
+  /** The last bar's close as drawn at `now` while it slides (null: no slide on). */
+  private shownClose(now: number): number | null {
+    const tw = this.priceTween;
+    if (!tw || this.store.last()?.time !== tw.time) return null;
+    const t = Math.min(1, (now - tw.start) / PRICE_TWEEN_MS);
+    if (t >= 1) return null;
+    const e = 1 - (1 - t) ** 3;
+    return tw.from + (tw.to - tw.from) * e;
   }
 
   /** Adds older bars (history paging). The view stays where it is. */
@@ -1127,6 +1170,8 @@ export class Chart {
   setSettings(patch: Partial<ChartSettings>): void {
     // 가격 축 비율 고정 turned on: the ratio is taken from the view as it is now.
     if (patch.lockRatio !== undefined && patch.lockRatio !== this.settingsValue.lockRatio) this.priceBarRatio = null;
+    // The old 부드러운 스크롤·확대 switch: both of what it became.
+    if (patch.smoothScroll !== undefined) patch = { zoomAnimation: patch.smoothScroll, scrollInertia: patch.smoothScroll, ...patch };
     this.settingsValue = { ...this.settingsValue, ...patch };
     this.invalidate();
     this.emitter.emit('settingsChange', this.settings);
@@ -2116,6 +2161,11 @@ export class Chart {
     return this.trading.labelSettings;
   }
 
+  /** The theme tokens in use (as given: CSS variables stay variables). */
+  get themeTokens(): ThemeTokens {
+    return { ...this.theme };
+  }
+
   setTheme(theme: Partial<ThemeTokens>): void {
     this.theme = { ...this.theme, ...theme };
     this.colors.clear();
@@ -2205,9 +2255,12 @@ export class Chart {
 
     if (this.mainDirty || !this.frame) {
       this.mainDirty = false;
+      this.animating = false;
       this.frame = this.computeFrame();
       drawMain(this.mainLayer, this.renderModel(this.frame));
       this.afterFrame();
+      // A slide (price, axis) or the draw-in is still going: the next frame paints again.
+      if (this.animating) this.invalidate();
     }
     const crosshair = this.resolveCrosshair(this.frame);
     drawOverlay(this.overlayLayer, this.renderModel(this.frame), crosshair, this.executionTooltip());
@@ -2220,9 +2273,12 @@ export class Chart {
   }
 
   private renderModel(frame: Frame): RenderModel {
+    const now = this.win.performance.now();
     return {
       frame,
-      bars: this.store.bars,
+      bars: this.shownBars(now),
+      reveal: this.revealAt(now),
+      watermark: this.watermark(),
       priceBars: this.store instanceof PriceBarStore ? this.store.meta : null,
       lastBar: this.store instanceof PriceBarStore ? (this.store.raw.last() ?? null) : null,
       timeScale: this.timeScale,
@@ -2245,6 +2301,42 @@ export class Chart {
         barIndexAt: (time) => this.store.indexAtOrBefore(time),
       },
     };
+  }
+
+  /** The bars as drawn: the last one's close where its slide has got to (가격 변동 애니메이션). */
+  private shownBars(now: number): readonly Bar[] {
+    const bars = this.store.bars;
+    const close = this.shownClose(now);
+    if (close === null) {
+      this.priceTween = null;
+      return bars;
+    }
+    this.animating = true;
+    const last = bars[bars.length - 1]!;
+    const shown = bars.slice();
+    shown[shown.length - 1] = { ...last, close, high: Math.max(last.high, close), low: Math.min(last.low, close) };
+    return shown;
+  }
+
+  /** 로드 시 그리기 효과: how far the series has drawn in (0-1), or undefined when it's all there. */
+  private revealAt(now: number): number | undefined {
+    if (this.revealStart === null) return undefined;
+    const t = (now - this.revealStart) / REVEAL_MS;
+    if (t >= 1) {
+      this.revealStart = null;
+      return undefined;
+    }
+    this.animating = true;
+    return 1 - (1 - Math.max(0, t)) ** 3;
+  }
+
+  /** 종목 · 리플레이 워터마크: the words drawn faint behind the price pane, or null. */
+  private watermark(): { title: string; replay: string } | null {
+    const s = this.settingsValue;
+    const info = this.symbol;
+    const title = s.symbolWatermark && info ? [info.name || info.symbol, this.resolution ? resolutionLabel(this.resolution, this.locale) : ''].filter(Boolean).join(' · ') : '';
+    const replay = s.replayWatermark && this.replayState ? LABELS[this.locale].replay : '';
+    return title || replay ? { title, replay } : null;
   }
 
   /** Approximate ms per bar: the resolution when known, else the smallest recent gap. */
@@ -2278,7 +2370,7 @@ export class Chart {
       yToPrice: (y) => scale.yToPrice(y),
       snapPrice: (p) => roundToTick(p, this.tickSize),
       // Drawing and order badges follow the axis (a % axis labels them in %).
-      formatPrice: this.mainScale.mode === 'percent' ? this.mainValueFormat() : (p) => formatPrice(p, this.pricePrecision),
+      formatPrice: this.mainScale.mode === 'percent' || this.mainScale.mode === 'indexed' ? this.mainValueFormat() : (p) => formatPrice(p, this.pricePrecision),
       locale: this.locale,
     };
   }
@@ -2329,6 +2421,7 @@ export class Chart {
     if (this.mainScale.mode !== mode) {
       this.mainScale.mode = mode;
       this.mainScale.autoScale = true;
+      this.axisSnap = true;
     }
     let compareOverlays: IndicatorOutput[] = [];
     this.countdownLabel = this.countdownText();
@@ -2405,6 +2498,9 @@ export class Chart {
       if (needed === this.priceAxisWidth) break;
       this.priceAxisWidth = needed;
     }
+
+    // 가격 축 애니메이션: the fitted range is where the axis is heading; on screen it eases there.
+    if (this.easeAxis()) priceTicks = this.mainTicks(mainHeight);
 
     const plotWidth = this.timeScale.width;
     const panes: PaneFrame[] = [
@@ -2646,6 +2742,11 @@ export class Chart {
       const pct = (p: number) => (p / base - 1) * 100;
       return niceTicks(pct(lo), pct(hi), count).map((t) => base * (1 + t / 100));
     }
+    if (s.mode === 'indexed') {
+      // 100 기준: the first visible bar's close is 100.
+      const base = this.percentBase();
+      return niceTicks((lo / base) * 100, (hi / base) * 100, count).map((t) => (base * t) / 100);
+    }
     return niceTicks(lo, hi, count, minStep);
   }
 
@@ -2655,17 +2756,21 @@ export class Chart {
 
   /** Price-axis tick labels: prices, or "+2.5%" on a % axis (decimals follow the step). */
   private mainTickFormat(ticks: readonly number[]): (v: number) => string {
-    if (this.mainScale.mode !== 'percent') return (v) => formatPrice(v, this.pricePrecision);
+    const mode = this.mainScale.mode;
+    if (mode !== 'percent' && mode !== 'indexed') return (v) => formatPrice(v, this.pricePrecision);
     const base = this.percentBase();
     const step = ticks.length > 1 ? (Math.abs(ticks[1]! - ticks[0]!) / base) * 100 : 1;
     const decimals = Math.min(2, decimalsOf(Number(step.toPrecision(6))));
+    if (mode === 'indexed') return (v) => formatPrice((v / base) * 100, decimals);
     return (v) => formatPercent((v / base - 1) * 100, decimals);
   }
 
   /** Crosshair and last-price label of the price pane. */
   private mainValueFormat(): (v: number) => string {
-    if (this.mainScale.mode !== 'percent') return (v) => formatPrice(roundToTick(v, this.tickSize), this.pricePrecision);
+    const mode = this.mainScale.mode;
+    if (mode !== 'percent' && mode !== 'indexed') return (v) => formatPrice(roundToTick(v, this.tickSize), this.pricePrecision);
     const base = this.percentBase();
+    if (mode === 'indexed') return (v) => formatPrice((v / base) * 100, 2);
     return (v) => formatPercent((v / base - 1) * 100, 2);
   }
 
@@ -2687,6 +2792,35 @@ export class Chart {
       }
     }
     return end !== null && end > now ? formatCountdown(end - now) : null;
+  }
+
+  /**
+   * 가격 축 애니메이션: moves the price pane's range part of the way from where it was drawn to the
+   * fitted one. True when it changed the range (ticks follow). Snaps on new data, a mode change, a
+   * locked ratio, or with the setting off; a range the user set by hand is never eased.
+   */
+  private easeAxis(): boolean {
+    const scale = this.mainScale;
+    const now = this.win.performance.now();
+    const target = { lo: scale.min, hi: scale.max };
+    const shown = this.axisShown;
+    const snap = this.axisSnap || !shown || !scale.autoScale || !this.settingsValue.priceAxisAnimation || this.settingsValue.lockRatio;
+    this.axisSnap = false;
+    if (snap) {
+      this.axisShown = { ...target, at: now };
+      return false;
+    }
+    const k = 1 - Math.exp(-Math.min(100, Math.max(0, now - shown.at)) / AXIS_TWEEN_TAU);
+    const span = Math.max(1e-12, target.hi - target.lo);
+    let lo = shown.lo + (target.lo - shown.lo) * k;
+    let hi = shown.hi + (target.hi - shown.hi) * k;
+    // Within a thousandth of the span: there.
+    if (Math.abs(target.lo - lo) < span * 1e-3 && Math.abs(target.hi - hi) < span * 1e-3) [lo, hi] = [target.lo, target.hi];
+    this.axisShown = { lo, hi, at: now };
+    if (lo === target.lo && hi === target.hi) return false;
+    scale.setRange(lo, hi);
+    this.animating = true;
+    return true;
   }
 
   /** Auto-scales the price pane to visible candles and overlay indicators; returns the candle extremes. */
@@ -2922,7 +3056,8 @@ export class Chart {
 
   private createInteractionHost(): InteractionHost {
     return {
-      smooth: () => this.settingsValue.smoothScroll,
+      zoomEase: () => this.settingsValue.zoomAnimation,
+      inertia: () => this.settingsValue.scrollInertia,
       hitTest: (x, y): HitRegion => {
         const f = this.frame;
         if (!f) return { area: 'none', pane: null };

@@ -9,9 +9,10 @@ export interface PriceScaleMargins {
 
 /**
  * 'normal': linear prices. 'log': equal distances are equal ratios. 'percent': linear, but labels
- * show the change from a base price (the first visible bar's close).
+ * show the change from a base price (the first visible bar's close). 'indexed': linear, labels show
+ * the price with that base as 100 (100 기준).
  */
-export type PriceScaleMode = 'normal' | 'log' | 'percent';
+export type PriceScaleMode = 'normal' | 'log' | 'percent' | 'indexed';
 
 /** Vertical scale for one pane. y is relative to the pane's top. */
 export class PriceScale {

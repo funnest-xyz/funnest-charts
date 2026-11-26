@@ -70,7 +70,9 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
       onSelect: () => ctx.chart.addDrawing({ type: 'horizontal', points: [{ time, price }] }),
     });
   }
-  const { smoothScroll: smooth, lockView, lockRatio } = ctx.chart.settings;
+  const { zoomAnimation, scrollInertia, lockView, lockRatio } = ctx.chart.settings;
+  // 부드러운 스크롤·확대: both 확대·축소 애니메이션 and 이동 관성 (차트 설정 › 애니메이션 has each).
+  const smooth = zoomAnimation && scrollInertia;
   items.push(
     { label: t.goToDateMore, onSelect: () => ctx.store.set({ dialog: { kind: 'goToDate' } }) },
     { label: t.smoothScroll, checked: smooth, onSelect: () => ctx.chart.setSettings({ smoothScroll: !smooth }) },

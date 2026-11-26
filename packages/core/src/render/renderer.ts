@@ -120,6 +120,10 @@ export interface RenderModel {
   /** Where the mouse is, unsnapped (the dot and demo cursors follow it). */
   pointer?: { x: number; y: number } | null;
   bars: readonly Bar[];
+  /** 로드 시 그리기 효과: the share of the plot's width the series has drawn into so far (unset: all). */
+  reveal?: number | undefined;
+  /** 종목 · 리플레이 워터마크: words drawn large and faint behind the price pane. */
+  watermark?: { title: string; replay: string } | null;
   /** Price-move charts: their box, and kagi's thick / thin lines. */
   priceBars?: { box: number; yang?: Uint8Array; cross?: Float64Array } | null;
   /** The bar the last-price line reads, when it isn't the last one drawn (price-move charts: the price now). */
@@ -551,6 +555,42 @@ function drawHighLow(p: Painter, m: RenderModel, pane: PaneFrame): void {
   }
 }
 
+/**
+ * 종목 · 리플레이 워터마크: the symbol and interval large and faint in the middle of the price
+ * pane, and "리플레이" under it (or alone) while a replay runs. Sized to fit the pane.
+ */
+function drawWatermark(ctx: CanvasRenderingContext2D, f: Frame, main: PaneFrame, w: { title: string; replay: string }): void {
+  const family = f.font.replace(/^.*?\d+(\.\d+)?px\s*/, '') || 'sans-serif';
+  const dark = isDarkColor(f.palette.background);
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+  const cx = f.plotWidth / 2;
+  const cy = main.top + main.height / 2;
+  const fit = (text: string, size: number) => {
+    ctx.font = `700 ${size}px ${family}`;
+    const width = ctx.measureText(text).width;
+    return width > f.plotWidth * 0.8 ? Math.max(12, Math.floor((size * f.plotWidth * 0.8) / width)) : size;
+  };
+  const big = Math.round(Math.max(16, Math.min(64, main.height * 0.14, f.plotWidth * 0.08)));
+  const titleSize = w.title ? fit(w.title, big) : 0;
+  const replaySize = w.replay ? fit(w.replay, w.title ? Math.round(big * 0.55) : big) : 0;
+  const gap = w.title && w.replay ? titleSize * 0.35 : 0;
+  const total = titleSize + gap + replaySize;
+  let y = cy - total / 2;
+  if (w.title) {
+    ctx.font = `700 ${titleSize}px ${family}`;
+    ctx.fillText(w.title, cx, y + titleSize / 2);
+    y += titleSize + gap;
+  }
+  if (w.replay) {
+    ctx.font = `700 ${replaySize}px ${family}`;
+    ctx.fillText(w.replay, cx, y + replaySize / 2);
+  }
+  ctx.restore();
+}
+
 export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   const ctx = layer.begin();
   const p = new Painter(ctx, layer.dpr);
@@ -593,6 +633,9 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     }
   }
   if (f.settings.gridVertical) for (const tick of f.timeTicks) p.vLine(tick.x, 0, f.panesHeight, pal.grid);
+  if (m.watermark) drawWatermark(ctx, f, main, m.watermark);
+  // 로드 시 그리기 효과: series show only left of this x while they draw in.
+  const seriesWidth = f.plotWidth * (m.reveal ?? 1);
 
   // App overlays that sit under the series (layer: 'below')
   const o = m.objects;
@@ -620,7 +663,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
   if (hasBars) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, main.top, f.plotWidth, main.height);
+    ctx.rect(0, main.top, seriesWidth, main.height);
     ctx.clip();
     for (const overlay of f.overlays) drawIndicatorBackgrounds(ctx, p, m, main, overlay);
     if (m.chartType === 'candles') drawCandles(ctx, layer.dpr, m, main);
@@ -641,7 +684,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     if (volume && volume.kind === 'volume' && volume.height > 0) {
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, volume.top, f.plotWidth, volume.height);
+      ctx.rect(0, volume.top, seriesWidth, volume.height);
       ctx.clip();
       drawVolume(ctx, layer.dpr, m, volume);
       ctx.restore();
@@ -658,7 +701,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     if (!hasBars) continue;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, pane.top, f.plotWidth, pane.height);
+    ctx.rect(0, pane.top, seriesWidth, pane.height);
     ctx.clip();
     drawIndicatorBackgrounds(ctx, p, m, pane, pane.indicator);
     drawIndicator(ctx, p, m, pane, pane.indicator);

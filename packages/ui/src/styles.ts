@@ -1221,6 +1221,92 @@ const CSS = /* css */ `
 .fnc-seg button[aria-checked='true'] { background: var(--fnc-bg); color: var(--fnc-text); font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
 .fnc-seg-sm button { min-width: 36px; height: 26px; padding: 0 6px; font-size: 12px; }
 
+/* ── 차트 설정: tabs and settings on the left, a live demo chart on the right (on top on a phone) ── */
+.fnc-dialog.fnc-settings-dialog { width: min(940px, calc(100% - 32px)); height: min(660px, 100%); max-height: none; }
+.fnc-settings-body { display: flex; flex: 1; min-height: 0; }
+.fnc-settings-side { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; border-right: 1px solid var(--fnc-border); }
+.fnc-settings-side .fnc-settings-tabs { flex: none; padding: 12px 20px 0; }
+.fnc-root .fnc-dialog form.fnc-settings-form { flex: 1; min-height: 0; overflow-y: auto; }
+.fnc-settings-preview { display: flex; flex-direction: column; gap: 8px; flex: 1.2 1 0; min-width: 0; padding: 20px; }
+.fnc-settings-preview-chart { position: relative; flex: 1; min-height: 160px; border: 1px solid var(--fnc-border); border-radius: 12px; overflow: hidden; }
+/* A phone on its side (short, touch): the whole screen, the settings and the preview side by side. */
+@media (max-height: 500px) and (pointer: coarse) {
+  .fnc-backdrop:has(> .fnc-settings-dialog) { padding: 0; align-items: stretch; }
+  .fnc-dialog.fnc-settings-dialog { width: 100%; height: 100%; border-radius: 0; }
+  .fnc-settings-dialog .fnc-dialog-head { height: 44px; }
+  .fnc-settings-side .fnc-settings-tabs { gap: 2px; padding: 6px 12px 0; }
+  .fnc-settings-tabs .fnc-tab { flex: 1 1 auto; padding: 0 6px; font-size: 12.5px; }
+  .fnc-settings-preview { padding: 8px 12px; }
+  .fnc-settings-preview .fnc-section, .fnc-settings-preview .fnc-toggle-hint { display: none; }
+  .fnc-settings-preview-chart .fnc-ranges { display: none; }
+  .fnc-form-actions.fnc-settings-actions { padding: 6px 16px; }
+}
+/* The preview is the real widget without its toolbar (and drawing bar, off by option). */
+.fnc-settings-preview-chart > .fnc-root { position: absolute; inset: 0; }
+.fnc-settings-preview-chart .fnc-toolbar { display: none; }
+.fnc-form-actions.fnc-settings-actions { position: static; flex: none; margin: 0; padding: 12px 20px; }
+.fnc-settings-seg { display: flex; }
+.fnc-settings-seg button { flex: 1; min-width: 0; padding: 0 6px; white-space: nowrap; }
+.fnc-toggle-label { flex: 1; min-width: 0; }
+.fnc-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fnc-surface);
+  color: var(--fnc-text-2);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+.fnc-info:focus-visible { outline: 2px solid var(--fnc-accent); outline-offset: 2px; }
+.fnc-info-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: -8px;
+  z-index: 2;
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--fnc-text);
+  color: var(--fnc-bg);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.fnc-info:hover .fnc-info-tip, .fnc-info:focus .fnc-info-tip { opacity: 1; visibility: visible; }
+/* Stacked when the widget is narrow (a phone, or one pane of a split screen). */
+@container fnc (max-width: 720px) {
+  /* The whole screen: the preview and the settings both need the height. */
+  .fnc-backdrop:has(> .fnc-settings-dialog) { padding: 0; align-items: stretch; }
+  .fnc-dialog.fnc-settings-dialog { width: 100%; height: 100%; border-radius: 0; }
+  .fnc-settings-dialog .fnc-dialog-head { height: 48px; }
+  .fnc-settings-body { flex-direction: column; }
+  .fnc-settings-preview { order: -1; flex: none; padding: 12px 16px 4px; }
+  .fnc-settings-preview .fnc-section, .fnc-settings-preview .fnc-toggle-hint { display: none; }
+  /* Room for the real widget's legend and a few candles; the settings keep the rest. */
+  .fnc-settings-preview-chart { flex: none; height: clamp(170px, 34dvh, 280px); min-height: 0; }
+  .fnc-settings-preview-chart .fnc-ranges { display: none; }
+  .fnc-settings-side { flex: 1; min-height: 0; border-right: 0; }
+  .fnc-settings-side .fnc-settings-tabs { gap: 2px; padding: 8px 12px 0; }
+  /* The four tabs share the width instead of running off the edge. */
+  .fnc-settings-tabs .fnc-tab { flex: 1 1 auto; padding: 0 6px; font-size: 12.5px; }
+  .fnc-form-actions.fnc-settings-actions { padding: 8px 16px; }
+}
+
 /* ── Chart themes (settings dialog) ──────────────────── */
 .fnc-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; padding: 2px 0 6px; }
 .fnc-theme {

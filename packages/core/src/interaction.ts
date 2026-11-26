@@ -16,8 +16,10 @@ export interface InteractionHost {
   clearCrosshair(): void;
   panTime(dx: number): void;
   zoomTime(anchorX: number, factor: number): void;
-  /** 부드러운 스크롤·확대 is on (ChartSettings.smoothScroll). */
-  smooth(): boolean;
+  /** 확대·축소 애니메이션 is on (ChartSettings.zoomAnimation): wheel zoom eases in. */
+  zoomEase(): boolean;
+  /** 이동 관성 is on (ChartSettings.scrollInertia): mouse drags glide on, sideways wheel eases. */
+  inertia(): boolean;
   /** Pans the price axis only if it is in manual (non-auto) mode. */
   panPrice(pane: PaneId, dy: number): void;
   scalePrice(pane: PaneId, factor: number): void;
@@ -404,7 +406,9 @@ export class Interaction {
     const last = this.samples[this.samples.length - 1];
     if (!first || !last || last.t - first.t <= 0 || this.view().performance.now() - last.t > 50) return;
     let velocity = (last.x - first.x) / (last.t - first.t);
-    const smooth = !this.touch && this.host.smooth();
+    // 이동 관성 off: a mouse drag stops where it was let go (a finger's flick always glides).
+    if (!this.touch && !this.host.inertia()) return;
+    const smooth = !this.touch;
     if (Math.abs(velocity) < (smooth ? SMOOTH_KINETIC_MIN_VELOCITY : KINETIC_MIN_VELOCITY)) return;
     const friction = smooth ? SMOOTH_KINETIC_FRICTION : KINETIC_FRICTION;
 
@@ -473,8 +477,10 @@ export class Interaction {
     if (e.shiftKey && dx === 0) dx = dy;
     const sideways = Math.abs(dx) > Math.abs(dy) || e.shiftKey;
     const anchor = Math.min(p.x, this.host.plotWidth());
-    if (this.host.smooth()) this.ease(sideways ? 0 : -dy * WHEEL_ZOOM_SPEED, sideways ? -dx : 0, anchor);
-    else if (sideways) this.host.panTime(-dx);
+    if (sideways) {
+      if (this.host.inertia()) this.ease(0, -dx, anchor);
+      else this.host.panTime(-dx);
+    } else if (this.host.zoomEase()) this.ease(-dy * WHEEL_ZOOM_SPEED, 0, anchor);
     else this.host.zoomTime(anchor, Math.exp(-dy * WHEEL_ZOOM_SPEED));
   }
 
