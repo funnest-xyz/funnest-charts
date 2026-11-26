@@ -215,20 +215,31 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   // 'crosshair' mode: while the crosshair is on, the values (OHLC, indicators) show over the chart.
   const tracking = useRef(false);
   tracking.current = ctx.legendValues === 'crosshair' && !!hover;
+  // While the pointer is on the chart the values are the hovered bar's: their widths change from
+  // bar to bar, and a narrow legend wraps (거래량 onto a second line) or unwraps. The room kept for
+  // it stays as it was until the pointer leaves, so the candles don't grow and shrink under it.
+  const hovering = useRef(false);
+  hovering.current = !!hover;
+  const measure = useRef<() => void>(() => {});
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     // In 'crosshair' mode the OHLC row and the indicator values come and go over the chart: they
     // don't count, so the candles stay put when they appear.
     const update = () => {
-      if (tracking.current) return;
+      if (tracking.current || hovering.current) return;
       const floating = ctx.legendValues === 'crosshair' ? el.querySelector<HTMLElement>('.fnc-legend-values') : null;
       ctx.chart.setTopInset(el.offsetTop + el.offsetHeight - (floating ? floating.offsetHeight + 2 : 0) + 4);
     };
+    measure.current = update;
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
   }, [ctx.chart]);
+  // The pointer left: measure the legend as it is now (the latest bar's values).
+  useEffect(() => {
+    if (!hover) measure.current();
+  }, [!!hover]);
 
   if (!s.symbol) return <div class="fnc-legend" ref={ref} />;
   const bars = ctx.chart.bars;

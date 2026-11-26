@@ -3,8 +3,9 @@ import { formatPrice, type ChartContextMenu } from '@funnest/charts';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ContextMenuItem, WidgetContext } from '../context.js';
 import { stringsOf } from '../i18n.js';
-import { BellIcon, CheckIcon } from '../icons.js';
+import { CheckIcon } from '../icons.js';
 import { useStore } from '../store.js';
+import { MenuIcon } from './menu-icon.js';
 
 const MARGIN = 8;
 
@@ -58,8 +59,8 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
   const extra = ctx.contextMenuItems?.({ ...target, chart: ctx.chart }) ?? [];
 
   const items: ContextMenuItem[] = [
-    { label: t.undo, shortcut: `${mod}Z`, disabled: !s.canUndo, onSelect: () => ctx.chart.undo() },
-    { label: t.redo, shortcut: `${mod}${mac ? '⇧' : 'Shift+'}Z`, disabled: !s.canRedo, onSelect: () => ctx.chart.redo() },
+    { label: t.undo, icon: 'undo', shortcut: `${mod}Z`, disabled: !s.canUndo, onSelect: () => ctx.chart.undo() },
+    { label: t.redo, icon: 'redo', shortcut: `${mod}${mac ? '⇧' : 'Shift+'}Z`, disabled: !s.canRedo, onSelect: () => ctx.chart.redo() },
     'separator',
     ...(extra.length ? [...extra, 'separator' as const] : []),
   ];
@@ -67,6 +68,7 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
     const time = target.time ?? ctx.chart.bars[ctx.chart.bars.length - 1]?.time ?? Date.now();
     items.push({
       label: t.horizontalAt.replace('{price}', formatPrice(price, precision)),
+      icon: 'line',
       onSelect: () => ctx.chart.addDrawing({ type: 'horizontal', points: [{ time, price }] }),
     });
   }
@@ -74,13 +76,13 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
   // 부드러운 스크롤·확대: both 확대·축소 애니메이션 and 이동 관성 (차트 설정 › 애니메이션 has each).
   const smooth = zoomAnimation && scrollInertia;
   items.push(
-    { label: t.goToDateMore, onSelect: () => ctx.store.set({ dialog: { kind: 'goToDate' } }) },
-    { label: t.smoothScroll, checked: smooth, onSelect: () => ctx.chart.setSettings({ smoothScroll: !smooth }) },
-    { label: t.lockView, checked: lockView, onSelect: () => ctx.chart.setSettings({ lockView: !lockView }) },
-    { label: t.lockRatio, checked: lockRatio, onSelect: () => ctx.chart.setSettings({ lockRatio: !lockRatio }) },
+    { label: t.goToDateMore, icon: 'date', onSelect: () => ctx.store.set({ dialog: { kind: 'goToDate' } }) },
+    { label: t.smoothScroll, icon: 'smooth', checked: smooth, onSelect: () => ctx.chart.setSettings({ smoothScroll: !smooth }) },
+    { label: t.lockView, icon: 'lock', checked: lockView, onSelect: () => ctx.chart.setSettings({ lockView: !lockView }) },
+    { label: t.lockRatio, icon: 'ratio', checked: lockRatio, onSelect: () => ctx.chart.setSettings({ lockRatio: !lockRatio }) },
     'separator',
-    { label: t.resetChart, disabled: lockView, onSelect: () => ctx.chart.resetView() },
-    { label: t.chartSettingsMore, onSelect: () => ctx.store.set({ dialog: { kind: 'chartSettings' } }) },
+    { label: t.resetChart, icon: 'reset', disabled: lockView, onSelect: () => ctx.chart.resetView() },
+    { label: t.chartSettingsMore, icon: 'settings', onSelect: () => ctx.store.set({ dialog: { kind: 'chartSettings' } }) },
   );
 
   return (
@@ -99,10 +101,14 @@ export function ContextMenu({ ctx }: { ctx: WidgetContext }) {
               item.onSelect();
             }}
           >
-            {item.icon === 'alert' && <BellIcon />}
-            <span>{item.label}</span>
+            {item.icon ? <MenuIcon name={item.icon} /> : <span class="fnc-menu-icon" />}
+            <span class="fnc-menu-label">{item.label}</span>
             {item.shortcut && <kbd>{item.shortcut}</kbd>}
-            {item.checked && <CheckIcon />}
+            {item.checked && (
+              <span class="fnc-menu-check-mark">
+                <CheckIcon />
+              </span>
+            )}
           </button>
         ),
       )}

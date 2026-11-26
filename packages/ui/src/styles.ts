@@ -675,6 +675,8 @@ const CSS = /* css */ `
 
 /* A setting in a menu (부드러운 스크롤·확대): the check at the end. */
 .fnc-menu-check svg { margin-left: auto; color: var(--fnc-accent); }
+/* The row's own glyph stays neutral; only the check mark is in the accent. */
+.fnc-menu-check .fnc-menu-icon svg { margin-left: 0; color: var(--fnc-text-2); }
 
 /* 날짜로 이동: a date typed or picked on a month calendar. */
 .fnc-goto-dialog { width: min(320px, calc(100% - 32px)); }
@@ -707,8 +709,10 @@ const CSS = /* css */ `
 .fnc-selbar-action.is-text { width: auto; padding: 0 8px; font-size: 12px; font-weight: 600; }
 .fnc-selbar-action.is-on { color: var(--fnc-accent); }
 .fnc-selbar-action.is-on svg path:first-child { fill: currentColor; }
-.fnc-axis-plus-menu .fnc-menu-item, .fnc-ctx-menu .fnc-menu-item:has(svg) { color: var(--fnc-text); font-weight: 600; }
-.fnc-axis-plus-menu .fnc-menu-item svg, .fnc-ctx-menu .fnc-menu-item svg { flex: none; color: var(--fnc-text-2); }
+.fnc-axis-plus-menu .fnc-menu-item { color: var(--fnc-text); font-weight: 600; }
+/* A menu row's glyph: one 18px column, so every label starts at the same x. */
+.fnc-menu-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; color: var(--fnc-text-2); }
+.fnc-menu-icon svg { width: 16px; height: 16px; }
 
 /* 기간 · 날짜로 이동: a row under the chart. */
 .fnc-rangebar-host { flex: none; border-top: 1px solid var(--fnc-border); }
@@ -1092,7 +1096,9 @@ const CSS = /* css */ `
 
 /* ── Right-click menu ────────────────────────────────── */
 .fnc-ctx-menu { top: 0; left: 0; z-index: 40; min-width: 220px; pointer-events: auto; }
-.fnc-ctx-menu .fnc-menu-item { justify-content: space-between; gap: 24px; color: var(--fnc-text); }
+.fnc-ctx-menu .fnc-menu-item { gap: 10px; color: var(--fnc-text); }
+.fnc-ctx-menu .fnc-menu-label { flex: 1; min-width: 0; margin-right: 14px; }
+.fnc-menu-check-mark { display: inline-flex; flex: none; color: var(--fnc-accent); }
 .fnc-ctx-menu .fnc-menu-item:disabled { color: var(--fnc-text-2); }
 .fnc-ctx-menu kbd { font: inherit; font-size: 12px; color: var(--fnc-text-2); }
 .fnc-ctx-sep { height: 1px; margin: 4px 6px; background: var(--fnc-border); }
@@ -1225,7 +1231,9 @@ const CSS = /* css */ `
 .fnc-dialog.fnc-settings-dialog { width: min(940px, calc(100% - 32px)); height: min(660px, 100%); max-height: none; }
 .fnc-settings-body { display: flex; flex: 1; min-height: 0; }
 .fnc-settings-side { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; border-right: 1px solid var(--fnc-border); }
-.fnc-settings-side .fnc-settings-tabs { flex: none; padding: 12px 20px 0; }
+.fnc-settings-side .fnc-settings-tabs { flex: none; gap: 2px; padding: 12px 20px 0; }
+/* The tabs share the row, each label centred in its share. */
+.fnc-settings-tabs .fnc-tab { display: inline-flex; align-items: center; justify-content: center; flex: 1 1 0; min-width: 0; padding: 0 4px; }
 .fnc-root .fnc-dialog form.fnc-settings-form { flex: 1; min-height: 0; overflow-y: auto; }
 .fnc-settings-preview { display: flex; flex-direction: column; gap: 8px; flex: 1.2 1 0; min-width: 0; padding: 20px; }
 .fnc-settings-preview-chart { position: relative; flex: 1; min-height: 160px; border: 1px solid var(--fnc-border); border-radius: 12px; overflow: hidden; }
@@ -1234,8 +1242,8 @@ const CSS = /* css */ `
   .fnc-backdrop:has(> .fnc-settings-dialog) { padding: 0; align-items: stretch; }
   .fnc-dialog.fnc-settings-dialog { width: 100%; height: 100%; border-radius: 0; }
   .fnc-settings-dialog .fnc-dialog-head { height: 44px; }
-  .fnc-settings-side .fnc-settings-tabs { gap: 2px; padding: 6px 12px 0; }
-  .fnc-settings-tabs .fnc-tab { flex: 1 1 auto; padding: 0 6px; font-size: 12.5px; }
+  .fnc-settings-side .fnc-settings-tabs { padding: 6px 12px 0; }
+  .fnc-settings-tabs .fnc-tab { padding: 0 6px; font-size: 12.5px; }
   .fnc-settings-preview { padding: 8px 12px; }
   .fnc-settings-preview .fnc-section, .fnc-settings-preview .fnc-toggle-hint { display: none; }
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
@@ -1301,9 +1309,8 @@ const CSS = /* css */ `
   .fnc-settings-preview-chart { flex: none; height: clamp(170px, 34dvh, 280px); min-height: 0; }
   .fnc-settings-preview-chart .fnc-ranges { display: none; }
   .fnc-settings-side { flex: 1; min-height: 0; border-right: 0; }
-  .fnc-settings-side .fnc-settings-tabs { gap: 2px; padding: 8px 12px 0; }
-  /* The four tabs share the width instead of running off the edge. */
-  .fnc-settings-tabs .fnc-tab { flex: 1 1 auto; padding: 0 6px; font-size: 12.5px; }
+  .fnc-settings-side .fnc-settings-tabs { padding: 8px 12px 0; }
+  .fnc-settings-tabs .fnc-tab { padding: 0 6px; font-size: 12.5px; }
   .fnc-form-actions.fnc-settings-actions { padding: 8px 16px; }
 }
 

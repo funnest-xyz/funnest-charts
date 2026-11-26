@@ -18,6 +18,7 @@ export type { FnMultiChartProps } from './fn-multi-chart.js';
 export type {
   ContextMenuItem,
   ContextMenuItems,
+  MenuIconName,
   DrawingAction,
   DrawingActions,
   PriceAxisActions,

@@ -3,8 +3,9 @@ import { formatPrice } from '@funnest/charts';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ContextMenuItem, WidgetContext } from '../context.js';
 import { stringsOf } from '../i18n.js';
-import { BellIcon, HorizontalLineIcon, PlusIcon } from '../icons.js';
+import { PlusIcon } from '../icons.js';
 import { useStore } from '../store.js';
+import { MenuIcon } from './menu-icon.js';
 
 /**
  * The + at the right edge of the plot, on the crosshair's price (mouse only, like most chart
@@ -90,7 +91,7 @@ export function PriceAxisPlus({ ctx }: { ctx: WidgetContext }) {
                   item.onSelect();
                 }}
               >
-                {item.icon === 'alert' ? <BellIcon /> : item.icon === 'line' ? <HorizontalLineIcon /> : null}
+                {item.icon && <MenuIcon name={item.icon} />}
                 <span>{item.label}</span>
               </button>
             ),

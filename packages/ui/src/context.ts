@@ -67,14 +67,21 @@ export interface UiState {
   replay: ReplayStatus;
 }
 
+/**
+ * A menu row's glyph (before the label): 'alert' a bell, 'line' a horizontal line, 'date' a
+ * calendar, 'eye' display, 'clock' time, and the chart's own rows' (undo, redo, smooth, lock,
+ * ratio, reset, settings).
+ */
+export type MenuIconName = 'alert' | 'line' | 'date' | 'eye' | 'clock' | 'undo' | 'redo' | 'smooth' | 'lock' | 'ratio' | 'reset' | 'settings';
+
 /** A row in the chart's right-click menu, or a divider. */
 export type ContextMenuItem =
   | {
       label: string;
       shortcut?: string;
       disabled?: boolean;
-      /** 'alert': a bell before the label. */
-      icon?: 'alert';
+      /** A glyph before the label (see MenuIconName). Rows without one keep the space, so labels line up. */
+      icon?: MenuIconName;
       /** A setting that's on or off: a check mark, and it reads as a checkbox. */
       checked?: boolean;
       onSelect(): void;
