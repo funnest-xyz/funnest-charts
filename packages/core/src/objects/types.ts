@@ -51,5 +51,13 @@ export interface AxisBadge {
   fg: string;
 }
 
+/** A date on the time axis for a drawing (a vertical line's): at x, the chart formats `time`. */
+export interface TimeAxisBadge {
+  x: number;
+  time: number;
+  bg: string;
+  fg: string;
+}
+
 let counter = 0;
 export const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${(counter++).toString(36)}`;

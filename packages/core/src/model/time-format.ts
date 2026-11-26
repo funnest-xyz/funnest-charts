@@ -83,9 +83,9 @@ export class TimeFormatter {
 
   /** Full label for the crosshair, e.g. "2026.11.09 (월) 14:30". */
   crosshairLabel(time: number, intraday: boolean): string {
+    // TradingView's order, the weekday first: '수 2026-07-01', 'Wed 2026-07-01 09:30'.
     const p = this.parts(time);
-    const sep = this.locale === 'ko' ? '.' : '-';
-    const date = `${p.year}${sep}${pad2(p.month)}${sep}${pad2(p.day)} (${WEEKDAYS[this.locale][p.weekday]})`;
+    const date = `${WEEKDAYS[this.locale][p.weekday]} ${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
     return intraday ? `${date} ${pad2(p.hour)}:${pad2(p.minute)}` : date;
   }
 
@@ -141,14 +141,18 @@ export function computeTimeTicks(
   timeScale: TimeScale,
   formatter: TimeFormatter,
   minGap: number,
+  /** The time k bars after the last one: with it, the ticks go on into the empty space on the right. */
+  after?: (k: number) => number,
 ): TimeTick[] {
   const { from, to } = timeScale.visibleRange();
   if (to < from) return [];
+  const last = bars.length - 1;
+  const end = after && to === last ? Math.max(to, Math.floor(timeScale.xToIndexFloat(timeScale.width))) : to;
 
   const candidates: { index: number; weight: number; parts: TimeParts }[] = [];
   let prev = from > 0 ? formatter.parts(bars[from - 1]!.time) : null;
-  for (let i = from; i <= to; i++) {
-    const parts = formatter.parts(bars[i]!.time);
+  for (let i = from; i <= end; i++) {
+    const parts = formatter.parts(i <= last ? bars[i]!.time : after!(i - last));
     const weight = boundaryWeight(prev, parts);
     if (weight > TickWeight.None) candidates.push({ index: i, weight, parts });
     prev = parts;

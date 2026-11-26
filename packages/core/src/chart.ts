@@ -1033,10 +1033,68 @@ export class Chart {
     const last = bars.length - 1;
     const step = this.barInterval();
     if (index <= 0) return bars[0]!.time + index * step;
-    if (index >= last) return bars[last]!.time + (index - last) * step;
+    if (index >= last) return this.timeAfter(bars[last]!.time, index - last);
     const i = Math.floor(index);
     const a = bars[i]!.time;
     return a + (bars[i + 1]!.time - a) * (index - i);
+  }
+
+  /**
+   * The time `k` bars after `time` (the last bar), where there are no bars yet: monthly bars land
+   * on the next months' first days (months differ in length), the rest step by the bar's length.
+   */
+  private timeAfter(time: number, k: number): number {
+    const months = this.monthsPerBar();
+    if (!months) return time + k * this.barInterval();
+    const whole = Math.floor(k);
+    const at = this.addMonths(time, months * whole);
+    return k === whole ? at : at + (k - whole) * (this.addMonths(time, months * (whole + 1)) - at);
+  }
+
+  /** Inverse of timeAfter(): how many bars after `from` (the last bar) `time` is. */
+  private barsAfter(from: number, time: number): number {
+    const months = this.monthsPerBar();
+    if (!months) return (time - from) / this.barInterval();
+    let k = Math.max(0, Math.floor((time - from) / (31 * DAY_MS * months)));
+    while (this.addMonths(from, months * (k + 1)) <= time) k++;
+    const a = this.addMonths(from, months * k);
+    return k + (time - a) / (this.addMonths(from, months * (k + 1)) - a);
+  }
+
+  /** Months per bar on a monthly chart (1M, 3M…), else 0. */
+  private monthsPerBar(): number {
+    const res = this.resolution?.trim().toUpperCase() ?? '';
+    return /^\d*M$/.test(res) ? Number(res.slice(0, -1)) || 1 : 0;
+  }
+
+  /**
+   * `time` moved by whole calendar months in the chart's time zone, the time of day kept; a day
+   * past the month's end goes to its last day (a bar on the 31st of one zone is the 1st of another).
+   */
+  private addMonths(time: number, months: number): number {
+    const zone = this.formatter.timeZone;
+    const local = new Date(time + timeZoneOffset(time, zone));
+    const total = local.getUTCFullYear() * 12 + local.getUTCMonth() + months;
+    const year = Math.floor(total / 12), month = total - year * 12;
+    const day = Math.min(local.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
+    const guess = Date.UTC(year, month, day) + (local.getTime() % DAY_MS);
+    return guess - timeZoneOffset(guess, zone);
+  }
+
+  /** Time → fractional bar index: between bars as the store has them, past the last one by timeAfter(). */
+  private indexOfTimeFloat(time: number): number {
+    const last = this.store.last();
+    if (last && time > last.time) return this.store.length - 1 + this.barsAfter(last.time, time);
+    return this.store.indexFloatOfTime(time, this.barInterval());
+  }
+
+  /** The selected drawing's points, as the time axis marks them (a horizontal line's time means nothing: none). */
+  private selectionTimes(): { x: number; label: string }[] {
+    const d = this.drawings.selected;
+    if (!d || d.style?.hidden || d.type === 'horizontal' || this.store.length === 0) return [];
+    const intraday = this.isIntraday();
+    const times = [...new Set(d.points.map((q) => q.time))];
+    return times.map((time) => ({ x: this.timeScale.indexToX(this.indexOfTimeFloat(time)), label: this.formatter.crosshairLabel(time, intraday) }));
   }
 
   /** Inverse of indexToTime(). */
@@ -1045,7 +1103,7 @@ export class Chart {
     const last = bars.length - 1;
     const step = this.barInterval();
     if (time <= bars[0]!.time) return (time - bars[0]!.time) / step;
-    if (time >= bars[last]!.time) return last + (time - bars[last]!.time) / step;
+    if (time >= bars[last]!.time) return last + this.barsAfter(bars[last]!.time, time);
     const i = this.store.indexAtOrBefore(time);
     const a = bars[i]!.time;
     const b = bars[i + 1]!.time;
@@ -2372,13 +2430,15 @@ export class Chart {
     return {
       plotWidth: ts.width,
       height: scale.height,
-      timeToX: (time) => ts.indexToX(this.store.indexFloatOfTime(time, interval)),
-      timeToIndex: (time) => this.store.indexFloatOfTime(time, interval),
+      timeToX: (time) => ts.indexToX(this.indexOfTimeFloat(time)),
+      timeToIndex: (time) => this.indexOfTimeFloat(time),
       pointAt: (x, y) => {
         const index = Math.round(ts.xToIndexFloat(x));
         const bar = this.magnet ? this.store.at(index) : undefined;
+        const lastIndex = this.store.length - 1;
         return {
-          time: this.store.timeOfIndexFloat(index, interval),
+          // Past the last bar: the same calendar the time axis uses (a month's first day on a monthly chart).
+          time: index > lastIndex && lastIndex >= 0 ? this.timeAfter(this.store.last()!.time, index - lastIndex) : this.store.timeOfIndexFloat(index, interval),
           // Magnet: stick to the nearest OHLC of the bar under the pointer (no bar → free).
           price: bar ? snapToOhlc(bar, y, (p) => scale.priceToY(p)) : roundToTick(scale.yToPrice(y), this.tickSize),
         };
@@ -2575,7 +2635,8 @@ export class Chart {
       panes,
       range,
       priceTicks,
-      timeTicks: computeTimeTicks(this.store.bars, this.timeScale, this.formatter, TIME_LABEL_MIN_GAP),
+      timeTicks: computeTimeTicks(this.store.bars, this.timeScale, this.formatter, TIME_LABEL_MIN_GAP, (k) => this.timeAfter(this.store.last()!.time, k)),
+      selectionTimes: this.selectionTimes(),
       highLow,
       settings: this.settingsValue,
       overlays: [...overlays.map((o) => o.output), ...compareOverlays],
@@ -3021,15 +3082,21 @@ export class Chart {
     const outside = ch?.source === 'mouse' && (ch.x < 0 || ch.x > frame.plotWidth || ch.y < 0 || ch.y > frame.panesHeight);
     if (!ch || outside) return this.syncedTime === null ? null : this.resolveSyncedCrosshair(this.syncedTime);
 
-    const index = Math.min(bars.length - 1, Math.max(0, this.timeScale.xToIndex(ch.x)));
+    const slot = this.timeScale.xToIndex(ch.x);
+    const index = Math.min(bars.length - 1, Math.max(0, slot));
     const bar = bars[index]!;
-    const x = this.timeScale.indexToX(index);
+    // Past either end of the data (the empty space right of the last bar): the line keeps following
+    // the pointer, slot by slot, and the time axis shows that slot's time — the values stay the
+    // nearest bar's.
+    const beyond = ch.source === 'mouse' && slot !== index;
+    const x = this.timeScale.indexToX(beyond ? slot : index);
+    const time = beyond ? this.indexToTime(slot) : bar.time;
     // Touch: magnet to the close so a finger doesn't hide the value.
     const y = ch.source === 'touch' ? this.mainScale.priceToY(bar.close) : ch.y;
     const pane = this.paneAt(frame, y);
     const raw = pane.scale.yToPrice(y - pane.top);
     const value = pane.kind === 'main' ? roundToTick(raw, this.tickSize) : raw;
-    return { index, time: bar.time, bar, value, pane: pane.id, x, y, source: ch.source };
+    return { index, time, bar, value, pane: pane.id, x, y, source: ch.source };
   }
 
   /** The bar containing `time`, as a crosshair without a price (nothing when it's off the data). */
@@ -3070,7 +3137,7 @@ export class Chart {
   }
 
   private emitCrosshair(info: CrosshairInfo | null): void {
-    const key = info ? `${info.index}|${info.value}|${info.bar.close}|${info.bar.volume ?? ''}` : '';
+    const key = info ? `${info.index}|${info.time}|${info.value}|${info.bar.close}|${info.bar.volume ?? ''}` : '';
     if (key === this.lastCrosshairKey) return;
     this.lastCrosshairKey = key;
     this.emitter.emit('crosshairMove', info);

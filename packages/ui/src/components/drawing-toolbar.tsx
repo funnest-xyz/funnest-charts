@@ -125,10 +125,28 @@ function ToolGroup({
         </button>
       )}
       {open && (
-        <div class="fnc-menu fnc-tool-menu" role="menu" ref={menu}>
+        <div class={`fnc-menu fnc-tool-menu${tools.every((d) => d.tile) ? ' is-tiles' : ''}`} role="menu" ref={menu}>
           {tools.map((def, i) => {
             const section = def.section?.[s.locale];
             const heading = section && section !== tools[i - 1]?.section?.[s.locale];
+            // Tiles (an emoji picker): a plain board — no titles, no tooltips (the names stay for screen
+            // readers); a section starts a new block under a thin line.
+            if (def.tile) {
+              if (tools[i - 1]?.tile && !heading) return null;
+              const run: DrawingDefinition[] = [];
+              for (let j = i; j < tools.length && tools[j]!.tile && (j === i || tools[j]!.section?.[s.locale] === section); j++) run.push(tools[j]!);
+              return (
+                <Fragment key={def.type}>
+                  <div class={`fnc-tool-tiles${i > 0 ? ' is-after' : ''}`} role="group" aria-label={section ?? name}>
+                    {run.map((d) => (
+                      <button class="fnc-tool-tile" role="menuitemradio" aria-checked={d.type === current.type} aria-label={d.name[s.locale]} onClick={() => pick(d)}>
+                        <ToolIcon def={d} locale={s.locale} />
+                      </button>
+                    ))}
+                  </div>
+                </Fragment>
+              );
+            }
             return (
               <Fragment key={def.type}>
                 {heading && (
@@ -594,12 +612,12 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
       >
         <GripIcon />
       </button>
-      {/* Tools with levels (피보나치…) are colored level by level in 레벨 설정: no one color for all of them. */}
-      {!def?.levels &&
+      {/* Tools with levels (피보나치…) are colored level by level in 레벨 설정: no one color for all of them. Plain ones (이모지) have none. */}
+      {!def?.levels && !def?.plain &&
         [...SWATCHES, ...recent.filter((c) => !SWATCHES.includes(c))].map((color) => (
           <button class="fnc-swatch" style={{ background: color }} data-tip={t.color} aria-label={`${t.color} ${color}`} aria-pressed={current === color} onClick={() => pickColor(color)} />
         ))}
-      {!def?.levels && (
+      {!def?.levels && !def?.plain && (
       <label class="fnc-swatch fnc-swatch-add" data-tip={t.customColor} aria-label={t.customColor}>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
           <path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -783,6 +801,8 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
           )}
         </div>
       )}
+      {!def?.plain && (
+      <>
       <div class="fnc-sep" />
       <div class="fnc-selbar-menu">
         <button class="fnc-btn fnc-selbar-width" data-tip={t.lineWidth} aria-label={t.lineWidth} aria-expanded={menu === 'width'} onClick={() => setMenu(menu === 'width' ? null : 'width')}>
@@ -819,6 +839,8 @@ export function SelectionBar({ ctx }: { ctx: WidgetContext }) {
       >
         <DashGlyph dash={dash} />
       </button>
+      </>
+      )}
       {def?.text && (
         <input
           class="fnc-selbar-text"

@@ -1202,6 +1202,13 @@ const CSS = /* css */ `
 .fnc-tool-section { padding: 8px 10px 4px; color: var(--fnc-text-2); font-size: 11px; font-weight: 600; }
 .fnc-tool-section.is-after { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--fnc-border); }
 .fnc-tool-menu .fnc-menu-item { white-space: nowrap; }
+.fnc-tool-menu.is-tiles { min-width: 0; }
+.fnc-tool-tiles { display: grid; grid-template-columns: repeat(8, 34px); gap: 2px; padding: 6px; }
+.fnc-tool-tiles.is-after { border-top: 1px solid var(--fnc-border); }
+.fnc-tool-tile { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 7px; cursor: pointer; }
+.fnc-tool-tile:hover { background: var(--fnc-surface); }
+.fnc-tool-tile[aria-checked='true'] { background: var(--fnc-surface); box-shadow: inset 0 0 0 1.5px var(--fnc-accent); }
+.fnc-tool-tile svg { width: 24px; height: 24px; }
 .fnc-tool-row { position: relative; display: flex; align-items: center; }
 .fnc-tool-row .fnc-menu-item { flex: 1; padding-right: 36px; }
 .fnc-tool-fav { position: absolute; right: 6px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; color: var(--fnc-text-2); opacity: 0; cursor: pointer; }

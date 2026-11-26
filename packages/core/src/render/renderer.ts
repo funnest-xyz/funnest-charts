@@ -7,7 +7,7 @@ import { Painter } from './painter.js';
 import { heikinAshi } from './heikin-ashi.js';
 import type { DrawingManager } from '../objects/drawings.js';
 import type { TradingLabels, TradingLayer } from '../objects/trading.js';
-import type { AxisBadge, ChartOverlay, PaneCoords } from '../objects/types.js';
+import type { AxisBadge, ChartOverlay, PaneCoords, TimeAxisBadge } from '../objects/types.js';
 import type { IndicatorOutput } from '../indicators/definitions.js';
 import type { ChartSettings } from '../settings.js';
 import { barColorOf, drawIndicator, drawIndicatorBackgrounds, drawIndicatorTables } from './indicator-draw.js';
@@ -78,6 +78,8 @@ export interface Frame {
   range: IndexRange;
   priceTicks: number[];
   timeTicks: TimeTick[];
+  /** The selected drawing's points on the time axis (TradingView marks them there): x and date. */
+  selectionTimes: { x: number; label: string }[];
   highLow: { highIndex: number; lowIndex: number } | null;
   settings: ChartSettings;
   /** Indicators drawn over the candles. */
@@ -749,13 +751,14 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
 
   // Drawings and trading lines (clipped to the price pane; their axis badges come later)
   const badges: AxisBadge[] = [];
+  const timeBadges: TimeAxisBadge[] = [];
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, main.top, f.plotWidth, main.height);
   ctx.clip();
   for (const overlay of o.overlays) if (overlay.layer !== 'below') runOverlay(overlay);
   o.trading.render(rc, m.bars, o.barIndexAt, (i) => m.timeScale.indexToX(i), o.tradingLabels, badges);
-  o.drawings.render(rc, badges, m.bars, o.barIndexAt);
+  o.drawings.render(rc, badges, m.bars, o.barIndexAt, timeBadges);
   ctx.restore();
 
   // Last price line
@@ -859,13 +862,58 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     }
   }
 
-  // Time axis labels
+  // Time axis labels (not under the selected drawing's dates: those win, as on TradingView).
   const timeY = f.panesHeight + f.timeAxisHeight / 2;
+  const marks = f.selectionTimes.filter((s) => s.x >= -1 && s.x <= f.plotWidth + 1);
+  // Drawings' own dates (vertical lines), always shown — the selected one's is in `marks` already.
+  const own = timeBadges
+    .filter((b) => b.x >= -1 && b.x <= f.plotWidth + 1 && !marks.some((s) => Math.abs(s.x - b.x) < 1))
+    .map((b) => ({ ...b, label: m.formatCrosshairTime(b.time) }));
+  const boxes = [...marks.map((s) => timeBadgeBox(p, f, s.label, s.x)), ...own.map((b) => timeBadgeBox(p, f, b.label, b.x))];
   for (const tick of f.timeTicks) {
     const w = p.measure(tick.label);
     if (tick.x - w / 2 < 0 || tick.x + w / 2 > f.plotWidth) continue;
+    if (boxes.some((b) => tick.x + w / 2 > b.left - 4 && tick.x - w / 2 < b.right + 4)) continue;
     p.text(tick.label, tick.x, timeY, pal.axisText, 'center');
   }
+
+  // The selected drawing's span and its points' dates, over the ticks.
+  if (f.selectionTimes.length > 1) {
+    const xs = f.selectionTimes.map((s) => s.x);
+    const left = Math.max(0, Math.min(...xs)), right = Math.min(f.plotWidth, Math.max(...xs));
+    if (right > left) {
+      p.ctx.save();
+      p.ctx.globalAlpha = 0.14;
+      p.ctx.fillStyle = pal.accent;
+      p.ctx.fillRect(left, f.panesHeight, right - left, f.timeAxisHeight);
+      p.ctx.restore();
+    }
+  }
+  own.forEach((b) => drawTimeBadge(p, f, b.label, b.x, b.bg, b.fg));
+  marks.forEach((s) => drawTimeBadge(p, f, s.label, s.x));
+}
+
+/** Where a date badge on the time axis goes: centered on x, kept inside the plot. */
+function timeBadgeBox(p: Painter, f: Frame, label: string, x: number) {
+  p.ctx.save();
+  p.ctx.font = `600 ${f.font}`;
+  const w = p.measure(label) + 16;
+  p.ctx.restore();
+  const cx = Math.min(f.plotWidth - w / 2, Math.max(w / 2, x));
+  return { left: cx - w / 2, right: cx + w / 2, cx, w };
+}
+
+/**
+ * A date on the time axis (the crosshair's, a selected drawing's points): dark, bold, nearly the
+ * axis's height — it should be the first thing read down there.
+ */
+function drawTimeBadge(p: Painter, f: Frame, label: string, x: number, bg = f.palette.text, fg = f.palette.background): void {
+  const b = timeBadgeBox(p, f, label, x);
+  p.roundRect(b.left, f.panesHeight + 2, b.w, f.timeAxisHeight - 4, 3, bg);
+  p.ctx.save();
+  p.ctx.font = `600 ${f.font}`;
+  p.text(label, b.cx, f.panesHeight + f.timeAxisHeight / 2, fg, 'center');
+  p.ctx.restore();
 }
 
 function drawTooltip(p: Painter, f: Frame, tip: Tooltip): void {
@@ -942,11 +990,7 @@ export function drawOverlay(layer: CanvasLayer, m: RenderModel, ch: CrosshairInf
   if (ch.source !== 'sync') drawCrosshairValue(p, m, ch, mode === 'cross');
 
   // Time badge on the time axis
-  const timeLabel = m.formatCrosshairTime(ch.time);
-  const w = p.measure(timeLabel) + 16;
-  const cx = Math.min(f.plotWidth - w / 2, Math.max(w / 2, ch.x));
-  p.roundRect(cx - w / 2, f.panesHeight + 4, w, f.timeAxisHeight - 8, 4, pal.text);
-  p.text(timeLabel, cx, f.panesHeight + f.timeAxisHeight / 2, pal.background, 'center');
+  drawTimeBadge(p, f, m.formatCrosshairTime(ch.time), ch.x);
 }
 
 /** Horizontal line, touch dot and price-axis badge of a pointer crosshair. */

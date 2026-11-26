@@ -141,7 +141,7 @@ describe('time ticks', () => {
     // 2026-11-09T00:30:00Z = 09:30 KST
     const p = fmt.parts(Date.UTC(2026, 10, 9, 0, 30));
     expect(p).toMatchObject({ year: 2026, month: 11, day: 9, hour: 9, minute: 30, weekday: 1 });
-    expect(fmt.crosshairLabel(Date.UTC(2026, 10, 9, 0, 30), true)).toBe('2026.11.09 (월) 09:30');
+    expect(fmt.crosshairLabel(Date.UTC(2026, 10, 9, 0, 30), true)).toBe('월 2026-11-09 09:30');
   });
 
   it('weights boundaries by significance', () => {

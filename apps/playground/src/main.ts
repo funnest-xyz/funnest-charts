@@ -51,6 +51,20 @@ const widget = createTradingChart($('chart'), {
         rc.painter.text(d.style?.text || '텍스트', x, y, rc.color, 'left', 'middle');
       },
     },
+    // A vertical line whose date stays on the time axis (rc.timeBadge), as TradingView's does.
+    {
+      type: 'vline',
+      name: { ko: '수직선', en: 'Vertical line' },
+      group: 'level',
+      icon: '<path d="M10 3v14"/>',
+      clicks: 1,
+      distance: (g, x) => Math.abs(x - g.points[0]![0]),
+      render: (d, rc) => {
+        const x = rc.points[0]![0];
+        rc.painter.vLine(x, 0, rc.coords.height, rc.color);
+        rc.timeBadge(x, d.points[0]!.time, rc.color);
+      },
+    },
   ],
   // Host CSS variables: the widget follows the page's [data-theme] switch automatically.
   theme: {

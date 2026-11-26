@@ -3,7 +3,7 @@ import { shownOnInterval, type IntervalVisibility } from '../intervals.js';
 import type { Locale } from '../model/time-format.js';
 import type { Painter } from '../render/painter.js';
 import type { Palette } from '../render/renderer.js';
-import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext, type PaneCoords } from './types.js';
+import { newId, type AxisBadge, type ObjectHit, type ObjectRenderContext, type PaneCoords, type TimeAxisBadge } from './types.js';
 
 /** Built-in drawing tools. */
 export type BuiltinDrawingType = 'trendline' | 'horizontal' | 'fibonacci';
@@ -177,6 +177,8 @@ export interface DrawingRenderContext extends DrawingGeometry {
   barIndexAt(time: number): number;
   /** Adds a price-axis badge (drawn above the axis labels, clamped to the pane). */
   badge(y: number, text: string, bg: string, fg?: string): void;
+  /** Adds a date on the time axis at x (a vertical line's, always shown): the chart formats `time` as the crosshair's. */
+  timeBadge(x: number, time: number, bg: string, fg?: string): void;
 }
 
 /**
@@ -219,6 +221,16 @@ export interface DrawingDefinition {
    * finishes it. `clicks` is ignored.
    */
   freehand?: boolean;
+  /**
+   * Has no color, line width or line style of its own (an emoji, a picture): the widget's
+   * selection bar leaves those out.
+   */
+  plain?: boolean;
+  /**
+   * Listed as a tile in its group's menu — the icon alone, the name as its tooltip — so many
+   * tools fit (an emoji picker). Consecutive tiles share a grid.
+   */
+  tile?: boolean;
   /** Has text (`style.text`): the widget offers a text field for it when selected. */
   text?: boolean;
   /**
@@ -780,7 +792,7 @@ export class DrawingManager {
 
   // ── Rendering ─────────────────────────────────────────────────────
 
-  render(rc: ObjectRenderContext, badges: AxisBadge[], bars: readonly Bar[] = [], barIndexAt: (time: number) => number = () => -1): void {
+  render(rc: ObjectRenderContext, badges: AxisBadge[], bars: readonly Bar[] = [], barIndexAt: (time: number) => number = () => -1, timeBadges: TimeAxisBadge[] = []): void {
     const shown = this.hiddenAll ? [] : this.drawings.filter((d) => !d.style?.hidden && shownOnInterval(d.style?.intervals, this.resolution));
     const all = this.draft ? [...shown, this.draft.drawing] : shown;
     const c = rc.coords;
@@ -805,6 +817,7 @@ export class DrawingManager {
           bars,
           barIndexAt,
           badge: (y, text, bg, fg = '#FFFFFF') => badges.push({ y, text, bg, fg }),
+          timeBadge: (x, time, bg, fg = '#FFFFFF') => timeBadges.push({ x, time, bg, fg }),
         });
       } finally {
         rc.painter.ctx.restore();
