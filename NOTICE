@@ -1,9 +1,30 @@
 Funnest Charts
 Copyright 2026 Funnest
 
-This product includes software developed by the Funnest Charts project.
+This product includes software developed by the Funnest Charts project
+(https://charts.funnest.xyz/).
 
-Trademarks: "Funnest", "Funnest Charts" and the Funnest logos (the brand/ directory and
-the logo marks in the code) are trademarks of Funnest. The Apache License 2.0 covers the
-code only and grants no rights to these names or logos (Section 6). Forks and
-redistributions must not use them to identify their own products.
+Attribution notice
+------------------
+This NOTICE file is part of the attribution notices that Section 4(d) of the Apache
+License 2.0 asks every redistribution and Derivative Work to keep. Any product, website or
+application that includes Funnest Charts (any @funnest/charts package, or code taken from
+this repository), in source or object form, and that is made available to users must
+display the following attribution, with a link to https://charts.funnest.xyz/, on or next
+to every chart it shows:
+
+    Charts by Funnest (https://charts.funnest.xyz/)
+
+The trading chart of @funnest/charts-ui does this for you: its logo badge at the bottom
+left of the chart (the `attribution` option, on by default) shows the Funnest logo and
+links to https://charts.funnest.xyz/. Keep it on. If you turn it off, or use only the
+engine (@funnest/charts) or the SVG charts (@funnest/charts-viz), show the attribution and
+the link yourself, on or next to each chart.
+
+Trademarks
+----------
+"Funnest", "Funnest Charts" and the Funnest logos (the brand/ directory and the logo marks
+in the code) are trademarks of Funnest. The Apache License 2.0 covers the code only and
+grants no rights to these names or logos (Section 6), except this one: you may show the
+logo badge as shipped, unchanged, to give the attribution above. Forks and
+redistributions must not use the names or logos to identify their own products.

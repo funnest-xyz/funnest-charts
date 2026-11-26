@@ -109,11 +109,11 @@ SVG 차트 컴포넌트는 페이지의 `color-scheme`과 `--fnv-*` CSS 변수�
 <FnChart datafeed={myDatafeed} symbol="005930" locale="ko" strings={{ addIndicator: '보조지표' }} />
 ```
 
-## 차트 로고
+## 차트 로고 (표시 의무)
 
-트레이딩 차트 왼쪽 아래에 작은 Funnest 로고가 보여요.\
-`attribution: false`로 끌 수 있어요.\
-무료로 쓰신다면 켜두시는 게 프로젝트에 가장 큰 응원이 돼요.
+트레이딩 차트 왼쪽 아래에 작은 Funnest 로고가 보이고, 누르면 [charts.funnest.xyz](https://charts.funnest.xyz/)로 가요.\
+Funnest Charts를 넣은 서비스는 차트마다 그 위나 바로 옆에 이 표시를 남겨야 해요([NOTICE](NOTICE), Apache-2.0 4조 d항). 로고를 켜 두면 그걸로 충분해요.\
+`attribution: false`로 로고를 끄거나 `@funnest/charts`, `@funnest/charts-viz`만 쓴다면, 차트마다 그 위나 바로 옆에 "Charts by Funnest"와 https://charts.funnest.xyz/ 링크를 직접 넣어 주세요.
 
 ## 개발
 
@@ -142,5 +142,5 @@ pnpm build
 
 ## 라이선스
 
-코드는 [Apache-2.0](LICENSE)이에요.\
+코드는 [Apache-2.0](LICENSE)이고, [NOTICE](NOTICE)의 표시 의무가 함께 있어요. 넣어 쓰는 서비스는 차트마다 "Charts by Funnest"와 링크를 보여야 해요(로고를 켜 두면 돼요).\
 Funnest 이름과 로고는 상표라서 라이선스에 포함되지 않아요([NOTICE](NOTICE)).

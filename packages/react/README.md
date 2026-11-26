@@ -32,4 +32,4 @@ Components: `LineChart`, `AreaChart`, `BarChart`, `PercentageBarChart`, `Cartesi
 
 - Docs: https://charts.funnest.xyz/docs/
 - GitHub: https://github.com/funnest-xyz/funnest-charts ([한국어](https://github.com/funnest-xyz/funnest-charts/blob/main/README.ko.md))
-- License: Apache-2.0
+- License: Apache-2.0, with an attribution notice ([NOTICE](NOTICE)): show "Charts by Funnest" and a link to https://charts.funnest.xyz/ on or next to every chart

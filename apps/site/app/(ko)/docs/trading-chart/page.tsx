@@ -54,7 +54,7 @@ widget.destroy();`}</Code>
           { name: 'storageKey', type: 'string | null', def: "'funnest-charts'", desc: '즐겨찾기·최근 검색 저장 키. null이면 저장 안 함.' },
           { name: 'symbolLogo', type: 'boolean', def: 'true', desc: 'SymbolInfo.logoUrl 로고 표시(없으면 이니셜).' },
           { name: 'drawingToolbar', type: 'boolean', def: 'true', desc: '왼쪽 그리기 도구 막대.' },
-          { name: 'attribution', type: 'boolean', def: 'true', desc: '왼쪽 아래 작은 Funnest 로고.' },
+          { name: 'attribution', type: 'boolean', def: 'true', desc: '왼쪽 아래 작은 Funnest 로고. 끄면 차트마다 "Charts by Funnest"와 링크를 직접 넣어야 해요(NOTICE).' },
           { name: 'trading', type: 'TradingAdapter', desc: '평단가, 주문, 체결 내역을 차트에 표시.' },
         ]}
       />
@@ -146,7 +146,7 @@ import { useChartEvent } from '@funnest/charts-react';
 useChartEvent('quoteChange', (quote) => setPrice(quote.price));
 useChartEvent('symbolChange', (info) => setTitle(info.name));`}</Code>
 
-      <Callout>무료로 쓰신다면 왼쪽 아래 로고(attribution)를 켜두시는 게 프로젝트에 가장 큰 응원이 돼요.</Callout>
+      <Callout>Funnest Charts를 넣은 서비스는 차트마다 Funnest 표시를 남겨야 해요(NOTICE, Apache-2.0 4조 d항). 왼쪽 아래 로고(attribution)를 켜 두면 그걸로 충분해요.</Callout>
 
       <NextLinks
         items={[

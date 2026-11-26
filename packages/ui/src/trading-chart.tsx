@@ -80,7 +80,9 @@ export interface TradingChartOptions extends Omit<ChartOptions, 'datafeed'> {
   chartType?: ChartType;
   /**
    * Funnest logo badge in the bottom-left corner of the chart, linking to charts.funnest.xyz.
-   * Default true. Free to turn off (Apache-2.0); keeping it on is how you say thanks.
+   * Default true. It is how a product meets the attribution notice in NOTICE (Apache-2.0
+   * Section 4(d)); turned off, show "Charts by Funnest" with a link to https://charts.funnest.xyz/
+   * on or next to every chart yourself.
    */
   attribution?: boolean;
   /**

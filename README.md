@@ -110,11 +110,11 @@ import { STRINGS } from '@funnest/charts-ui';
 <FnChart datafeed={myDatafeed} symbol="AAPL" locale="en" strings={{ addIndicator: 'Add study' }} />
 ```
 
-## Logo badge
+## Logo badge (required attribution)
 
-The trading chart shows a small Funnest logo in its bottom-left corner.\
-Turn it off with `attribution: false`.\
-If you use Funnest Charts for free, keeping it on is the best way to support the project.
+The trading chart shows a small Funnest logo in its bottom-left corner, linking to [charts.funnest.xyz](https://charts.funnest.xyz/).\
+Products that include Funnest Charts must show this attribution on or next to every chart ([NOTICE](NOTICE), Apache-2.0 Section 4(d)), and keeping the badge on does it for you.\
+If you turn it off with `attribution: false`, or use only `@funnest/charts` or `@funnest/charts-viz`, show "Charts by Funnest" with a link to https://charts.funnest.xyz/ on or next to each chart yourself.
 
 ## Development
 
@@ -143,5 +143,5 @@ Bump the versions in `packages/*/package.json`, commit, then push a tag such as 
 
 ## License
 
-Code is [Apache-2.0](LICENSE).\
+Code is [Apache-2.0](LICENSE), with the attribution notice in [NOTICE](NOTICE): products that include it show "Charts by Funnest" and a link on or next to every chart (the logo badge does this).\
 The Funnest name and logos are trademarks and are not covered by the license ([NOTICE](NOTICE)).
