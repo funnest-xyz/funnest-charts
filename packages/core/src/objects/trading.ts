@@ -399,10 +399,12 @@ export class TradingLayer {
         const font = ctx.font;
         ctx.font = `700 ${Math.round(markR * 1.25)}px ${font.replace(/^.*?\d+(\.\d+)?px\s*/, '') || 'sans-serif'}`;
         const letter = buy ? 'B' : 'S';
-        const m = ctx.measureText(letter);
-        ctx.fillStyle = '#FFFFFF';
+        // Align first: measureText's bounding box is relative to the current textAlign / baseline,
+        // which still holds whatever was drawn last (0.10.7 measured before setting them).
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
+        const m = ctx.measureText(letter);
+        ctx.fillStyle = '#FFFFFF';
         if (Number.isFinite(m.actualBoundingBoxAscent) && m.actualBoundingBoxAscent > 0) {
           const left = m.actualBoundingBoxLeft;
           const right = m.actualBoundingBoxRight;
