@@ -162,6 +162,41 @@ describe('DrawingManager', () => {
   });
 });
 
+describe('handles that set settings (dragHandle)', () => {
+  it('a knob drag changes options, not points; other handles still move points', () => {
+    const knob: DrawingDefinition = {
+      type: 'knob-test',
+      name: { ko: '노브', en: 'Knob' },
+      clicks: 1,
+      handles: (g, d) => {
+        const [x, y] = g.points[0]!;
+        const size = Number(d.style?.options?.size ?? 20);
+        return [[x, y], [x + size, y]];
+      },
+      dragHandle: (g, _d, index, x) => (index === 1 ? { size: Math.round(x - g.points[0]![0]) } : null),
+      distance: (g, x, y) => Math.hypot(x - g.points[0]![0], y - g.points[0]![1]),
+      render: () => {},
+    };
+    const m = new DrawingManager(() => {}, new Map([['knob-test', knob]]));
+    m.setTool('knob-test');
+    m.createAt(coords, 100, 500);
+    const d = m.drawings[0]!;
+    const at = { ...d.points[0]! };
+    m.select(d.id);
+    expect(m.hitTest(coords, 120, 500, 3)).toEqual({ kind: 'drawing', id: d.id, part: 1 });
+    m.beginDrag(coords, d.id, 1, 120, 500);
+    m.dragTo(coords, 160, 470);
+    m.endDrag(true);
+    expect(m.drawings[0]!.style?.options?.size).toBe(60);
+    expect(m.drawings[0]!.points).toEqual([at]);
+    m.beginDrag(coords, d.id, 0, 100, 500);
+    m.dragTo(coords, 130, 500);
+    m.endDrag(true);
+    expect(m.drawings[0]!.points[0]!.price).toBe(at.price);
+    expect(m.drawings[0]!.points[0]!.time).not.toBe(at.time);
+  });
+});
+
 describe('TradingLayer orders', () => {
   it('moves an order on drag and reverts when onMove returns false', async () => {
     const layer = new TradingLayer(() => {});

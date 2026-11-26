@@ -214,8 +214,18 @@ export interface DrawingDefinition {
   create?(placed: DrawingPoint[], coords: PaneCoords): DrawingPoint[];
   /** Keeps points consistent after point `index` was dragged (e.g. target and stop share a time). */
   constrain?(points: DrawingPoint[], index: number): DrawingPoint[];
-  /** Drag handle positions; dragging handle i moves point i. Default: the points. */
-  handles?(geometry: DrawingGeometry): [number, number][];
+  /**
+   * Drag handle positions; dragging handle i moves point i (or, with `dragHandle`, sets options).
+   * `drawing` is the one shown, for handles that depend on its settings (a size, a turn).
+   * Default: the points.
+   */
+  handles?(geometry: DrawingGeometry, drawing: Drawing): [number, number][];
+  /**
+   * Dragging handle `index` to (x, y) sets settings instead of moving a point — e.g. an emoji's
+   * corner knob giving its size and turn. Return the options to set (kept in `style.options`), or
+   * null to move point `index` as usual.
+   */
+  dragHandle?(geometry: DrawingGeometry, drawing: Drawing, index: number, x: number, y: number): Record<string, DrawingOptionValue> | null;
   /**
    * Drawn by dragging: every pointer move adds a point (a brush); releasing (or clicking again)
    * finishes it. `clicks` is ignored.
@@ -742,7 +752,7 @@ export class DrawingManager {
     const def = this.registry.get(d.type);
     const g = this.geometry(c, d);
     // A brush has thousands of points: it moves as a whole, without handles.
-    return def?.handles ? def.handles(g) : def?.freehand ? [] : g.points;
+    return def?.handles ? def.handles(g, d) : def?.freehand ? [] : g.points;
   }
 
   hitTest(c: PaneCoords, x: number, y: number, tolerance: number): ObjectHit | null {
@@ -774,8 +784,15 @@ export class DrawingManager {
     const d = drag && this.drawings.find((x) => x.id === drag.id);
     if (!drag || !d) return;
     if (typeof drag.part === 'number') {
-      d.points[drag.part] = c.pointAt(x, y);
       const def = this.registry.get(d.type);
+      // A handle that sets settings (size, turn): the drawing stays where it is.
+      const options = def?.dragHandle?.(this.geometry(c, d), d, drag.part, x, y);
+      if (options) {
+        d.style = { ...d.style, options: { ...d.style?.options, ...options } };
+        this.onChange('preview');
+        return;
+      }
+      d.points[drag.part] = c.pointAt(x, y);
       if (def?.constrain) d.points = def.constrain(d.points, drag.part);
     } else {
       const dx = x - drag.x;
