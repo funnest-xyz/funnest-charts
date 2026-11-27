@@ -95,6 +95,8 @@ const SYMBOLS: Record<string, MockSymbol> = {
       pricePrecision: 2,
       tickSize: 0.01,
       type: 'crypto',
+      // Tick bars too (the demo's are a second apart; a real feed's come as fast as trades do).
+      supportedResolutions: ['10T', '100T', '1000T', '1', '3', '5', '15', '30', '60', '240', '1D', '1W', '1M'],
     },
     basePrice: 98_450,
     dailyVol: 0.025,

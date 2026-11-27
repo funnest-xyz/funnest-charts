@@ -14,12 +14,13 @@ const multi = createMultiChart(document.getElementById('chart')!, {
   datafeed,
   colorScheme: 'dark',
   layout: (params.get('layout') as LayoutId | null) ?? '4-grid',
+  // ?panes=2: only the first two given (the rest come from splitting, as copies of the active chart).
   panes: [
     { symbol: 'DEMO:005930', resolution: '1D' },
     { symbol: 'DEMO:000660', resolution: '1D' },
     { symbol: 'UPBIT:KRW-BTC', resolution: '60' },
     { symbol: 'UPBIT:KRW-ETH', resolution: '60' },
-  ],
+  ].slice(0, Number(params.get('panes') ?? 4)),
 });
 Object.assign(window, { multi });
 

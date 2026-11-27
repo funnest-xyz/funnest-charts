@@ -9,6 +9,7 @@ import { Slot } from './slot.js';
 import { SymbolAvatar } from './symbol-avatar.js';
 import { SymbolSearch } from './symbol-search.js';
 import { ToolsMenu } from './tools-menu.js';
+import { IndicatorTemplates } from './indicator-templates.js';
 
 export function Toolbar({ ctx }: { ctx: WidgetContext }) {
   const s = useStore(ctx.store);
@@ -62,6 +63,7 @@ export function Toolbar({ ctx }: { ctx: WidgetContext }) {
           <IndicatorIcon />
           <span>{t.indicators}</span>
         </button>
+        <IndicatorTemplates ctx={ctx} />
         <ToolsMenu ctx={ctx} />
       </div>
       <div class="fnc-sep" />

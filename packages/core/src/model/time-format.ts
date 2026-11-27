@@ -82,11 +82,11 @@ export class TimeFormatter {
   }
 
   /** Full label for the crosshair, e.g. "2026.11.09 (월) 14:30". */
-  crosshairLabel(time: number, intraday: boolean): string {
+  crosshairLabel(time: number, intraday: boolean, seconds = false): string {
     // TradingView's order, the weekday first: '수 2026-07-01', 'Wed 2026-07-01 09:30'.
     const p = this.parts(time);
     const date = `${WEEKDAYS[this.locale][p.weekday]} ${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
-    return intraday ? `${date} ${pad2(p.hour)}:${pad2(p.minute)}` : date;
+    return intraday ? `${date} ${pad2(p.hour)}:${pad2(p.minute)}${seconds ? `:${pad2(p.second)}` : ''}` : date;
   }
 
   tickLabel(p: TimeParts, weight: number): string {

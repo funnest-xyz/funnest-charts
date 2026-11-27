@@ -5,10 +5,21 @@ const MINUTE = 60_000;
 export const DAY_MS = 86_400_000;
 
 /**
+ * Trades per bar of a tick interval ('100T' → 100), or null for a time interval. A tick bar closes
+ * after that many trades, however long it took: it has no fixed length.
+ */
+export function tickCount(resolution: Resolution): number | null {
+  const match = /^(\d+)T$/i.exec(resolution.trim());
+  return match ? Number(match[1]) : null;
+}
+
+/**
  * Approximate duration of a resolution string.
- * Bare numbers are minutes ('1', '15', '240'); suffixes: S (seconds), D, W, M (months ≈ 30d).
+ * Bare numbers are minutes ('1', '15', '240'); suffixes: S (seconds), D, W, M (months ≈ 30d),
+ * T (ticks: no fixed length — a second, for what needs a number: paging and ordering).
  */
 export function resolutionToMs(resolution: Resolution): number {
+  if (tickCount(resolution) !== null) return 1000;
   const match = /^(\d*)([SDWM]?)$/i.exec(resolution.trim());
   if (!match) throw new Error(`funnest-charts: invalid resolution "${resolution}"`);
   const n = match[1] ? Number(match[1]) : 1;
@@ -35,6 +46,8 @@ export function isIntradayResolution(resolution: Resolution): boolean {
  * Short labels are for the toolbar chips, long ones for the interval menu.
  */
 export function resolutionLabel(resolution: Resolution, locale: Locale, form: 'short' | 'long' = 'short'): string {
+  const ticks = tickCount(resolution);
+  if (ticks !== null) return locale === 'ko' ? `${ticks}틱` : `${ticks}T`;
   const match = /^(\d*)([SDWM]?)$/i.exec(resolution.trim());
   if (!match) return resolution;
   const n = match[1] ? Number(match[1]) : 1;

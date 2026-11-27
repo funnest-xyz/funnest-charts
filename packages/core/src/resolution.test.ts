@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isIntradayResolution, resolutionToMs } from './resolution.js';
+import { isIntradayResolution, resolutionLabel, resolutionToMs, tickCount } from './resolution.js';
 
 describe('resolution', () => {
   it('parses TradingView-style resolutions', () => {
@@ -27,5 +27,20 @@ describe('fallbackResolution', () => {
     expect(fallbackResolution('3M', ['1D', '1W'])).toBe('1W');
     expect(fallbackResolution('5', undefined)).toBe('5');
     expect(fallbackResolution('1', ['1D', '1W'])).toBe('1D');
+  });
+});
+
+describe('tick intervals', () => {
+  it('reads the trade count of a tick interval, and nothing else as one', () => {
+    expect(tickCount('100T')).toBe(100);
+    expect(tickCount('10t')).toBe(10);
+    expect(tickCount('100')).toBeNull();
+    expect(tickCount('1D')).toBeNull();
+  });
+  it('is intraday, about a second for paging, and labelled in ticks', () => {
+    expect(resolutionToMs('100T')).toBe(1000);
+    expect(isIntradayResolution('1000T')).toBe(true);
+    expect(resolutionLabel('100T', 'ko')).toBe('100틱');
+    expect(resolutionLabel('100T', 'en')).toBe('100T');
   });
 });

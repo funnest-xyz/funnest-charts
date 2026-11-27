@@ -56,7 +56,7 @@ import {
   type LegendRow,
 } from './render/screenshot-legend.js';
 import { alignCloses } from './compare-align.js';
-import { DAY_MS, isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution.js';
+import { DAY_MS, isIntradayResolution, resolutionLabel, resolutionToMs, tickCount } from './resolution.js';
 import { sessionStatus } from './session.js';
 import { lightTheme, type ThemeTokens } from './theme.js';
 import type { Bar, ConnectionState, Datafeed, Quote, Resolution, SymbolInfo, TickSize, Unsubscribe } from './types.js';
@@ -1094,7 +1094,7 @@ export class Chart {
     if (!d || d.style?.hidden || d.type === 'horizontal' || this.store.length === 0) return [];
     const intraday = this.isIntraday();
     const times = [...new Set(d.points.map((q) => q.time))];
-    return times.map((time) => ({ x: this.timeScale.indexToX(this.indexOfTimeFloat(time)), label: this.formatter.crosshairLabel(time, intraday) }));
+    return times.map((time) => ({ x: this.timeScale.indexToX(this.indexOfTimeFloat(time)), label: this.formatter.crosshairLabel(time, intraday, this.subMinute()) }));
   }
 
   /** Inverse of indexToTime(). */
@@ -2375,7 +2375,7 @@ export class Chart {
       formatPrice: (p) => formatPrice(p, this.pricePrecision),
       formatVolume: (v) => formatCompact(v, this.locale),
       color: (v) => resolveIndicatorColor(v, frame.palette.up, frame.palette.down, (c) => this.colors.color(c)),
-      formatCrosshairTime: (t) => this.formatter.crosshairLabel(t, this.isIntraday()),
+      formatCrosshairTime: (t) => this.formatter.crosshairLabel(t, this.isIntraday(), this.subMinute()),
       labels: LABELS[this.locale],
       chartType: this.chartType,
       replaySelecting: this.replaySelecting,
@@ -2429,8 +2429,19 @@ export class Chart {
     return title || replay ? { title, replay } : null;
   }
 
-  /** Approximate ms per bar: the resolution when known, else the smallest recent gap. */
+  /** Seconds or tick bars: times read to the second. */
+  private subMinute(): boolean {
+    return !!this.resolution && (tickCount(this.resolution) !== null || /^\d+S$/i.test(this.resolution));
+  }
+
+  /** Approximate ms per bar: the resolution when known (a tick bar's: the recent average), else the smallest recent gap. */
   private barInterval(): number {
+    if (this.resolution && tickCount(this.resolution) !== null) {
+      const bars = this.store.bars;
+      const from = Math.max(0, bars.length - 50);
+      const span = bars.length > 1 ? bars[bars.length - 1]!.time - bars[from]!.time : 0;
+      return span > 0 ? span / (bars.length - 1 - from) : 1000;
+    }
     if (this.resolution) return resolutionToMs(this.resolution);
     const bars = this.store.bars;
     let gap = Infinity;
@@ -2874,6 +2885,8 @@ export class Chart {
     const info = this.symbol;
     if (!s.countdown || !s.lastPriceLine || this.replayState || !this.resolution || !info || !last) return null;
     let end: number | null = null;
+    // A tick bar closes on its trade count, not on the clock: nothing to count down.
+    if (tickCount(this.resolution) !== null) return null;
     if (isIntradayResolution(this.resolution)) {
       end = last.time + resolutionToMs(this.resolution);
     } else if (resolutionToMs(this.resolution) === DAY_MS) {

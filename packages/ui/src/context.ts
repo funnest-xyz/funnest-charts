@@ -143,7 +143,7 @@ export type ToolsMenuItems = (chart: Chart) => ToolsMenuItem[];
 export type LegendValues = 'always' | 'crosshair';
 
 export interface IntervalGroup {
-  id: 'minutes' | 'hours' | 'days';
+  id: 'ticks' | 'minutes' | 'hours' | 'days';
   intervals: Resolution[];
 }
 

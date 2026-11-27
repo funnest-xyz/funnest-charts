@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { derivedBase, resolutionToMs, type Resolution } from '@funnest/charts';
+import { derivedBase, resolutionToMs, tickCount, type Resolution } from '@funnest/charts';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { IntervalGroup, WidgetContext } from '../context.js';
 import { resolutionLabel, stringsOf, type Strings } from '../i18n.js';
@@ -8,6 +8,7 @@ import { useStore } from '../store.js';
 import { useKeepInView } from './keep-in-view.js';
 
 const GROUP_LABEL: Record<IntervalGroup['id'], keyof Strings> = {
+  ticks: 'intervalTicks',
   minutes: 'intervalMinutes',
   hours: 'intervalHours',
   days: 'intervalDays',
@@ -51,7 +52,9 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
 
   const supported = s.symbol?.supportedResolutions;
   // Sent by the feed, or made from one it sends (2시간 from 1시간…).
-  const isSupported = (r: Resolution) => !supported || supported.includes(r) || !!derivedBase(r, supported);
+  // Tick bars only where the feed lists them (every feed can make minutes; few can make ticks).
+  const isSupported = (r: Resolution) => (tickCount(r) !== null ? !!supported?.includes(r) : !supported || supported.includes(r) || !!derivedBase(r, supported));
+  const groups = ctx.intervalGroups.filter((g) => g.id !== 'ticks' || g.intervals.some(isSupported));
   const listed = new Set(ctx.intervalGroups.flatMap((g) => g.intervals));
   const custom = s.customIntervals.filter((r) => !listed.has(r)).sort((a, b) => resolutionToMs(a) - resolutionToMs(b));
   const order = [...ctx.intervalGroups.flatMap((g) => g.intervals), ...custom];
@@ -101,7 +104,7 @@ export function IntervalPicker({ ctx }: { ctx: WidgetContext }) {
       </button>
       {open && (
         <div class="fnc-menu fnc-interval-menu" role="menu" ref={menuRef}>
-          {ctx.intervalGroups.map((group) => (
+          {groups.map((group) => (
             <div class="fnc-menu-group" role="group" aria-label={t[GROUP_LABEL[group.id]]}>
               <div class="fnc-menu-title">{t[GROUP_LABEL[group.id]]}</div>
               {group.intervals.map((r) => {

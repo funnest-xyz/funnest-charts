@@ -23,8 +23,9 @@ import { bindWidgetKeys, createShell, type ColorScheme, type TradingChartSlots }
 
 export type { ColorScheme, TradingChartSlots } from './shell.js';
 
-/** Interval menu: 분 | 시간 | 일. '12M' is shown as 1년. */
+/** Interval menu: 틱 | 분 | 시간 | 일. '12M' is shown as 1년. 틱 shows only on a feed that lists tick intervals. */
 export const DEFAULT_INTERVAL_GROUPS: readonly IntervalGroup[] = [
+  { id: 'ticks', intervals: ['10T', '100T', '1000T'] },
   { id: 'minutes', intervals: ['1', '5', '15', '30'] },
   { id: 'hours', intervals: ['60', '240'] },
   { id: 'days', intervals: ['1D', '1W', '1M', '3M', '6M', '12M'] },

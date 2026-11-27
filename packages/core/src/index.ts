@@ -25,7 +25,7 @@ export type { DirectionPreset, ThemeTokens } from './theme.js';
 export { createTheme, darkTheme, directionColors, lightTheme } from './theme.js';
 export type { FormatPriceOptions } from './price.js';
 export { decimalsOf, formatCompact, formatPrice, krxTickSize, resolveTickSize, roundToTick } from './price.js';
-export { isIntradayResolution, resolutionLabel, resolutionToMs } from './resolution.js';
+export { isIntradayResolution, resolutionLabel, resolutionToMs, tickCount } from './resolution.js';
 export type { ChartType } from './render/renderer.js';
 export type {
   BuiltinDrawingType,

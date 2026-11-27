@@ -287,17 +287,27 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
     }
   }
 
-  /** Creates panes up to `count`, new ones copying the active pane's symbol and interval. */
+  /**
+   * Creates panes up to `count`. One given in `panes` opens as given; one made by splitting further
+   * is a copy of the active pane — its symbol, interval, chart type, settings and indicators (not
+   * its drawings, which belong to the symbol), so a new chart doesn't come up bare. A saved layout
+   * loaded afterwards still sets every pane as it was saved.
+   */
   function ensurePanes(count: number) {
     for (let i = panes.length; i < count; i++) {
       const src = panes[store.get().active] ?? panes[0];
-      const spec = paneSpecs[i] ?? {
+      const given = paneSpecs[i];
+      const spec = given ?? {
         symbol: src?.chart.symbolInfo?.symbol ?? paneSpecs[0]!.symbol,
         resolution: src?.chart.currentResolution ?? src?.store.get().resolution ?? resolution,
       };
       const pane = makePane(i, spec);
-      // Widget-wide looks (the watermarks) follow the pane it was split from.
-      if (src) {
+      if (!src) continue;
+      if (!given && src.chart.symbolInfo) {
+        const state = src.chart.save();
+        void pane.chart.load({ ...state, drawings: {} });
+      } else {
+        // Widget-wide looks (the watermarks) follow the pane it was split from.
         const { symbolWatermark, replayWatermark } = src.chart.settings;
         pane.chart.setSettings({ symbolWatermark, replayWatermark });
       }

@@ -1113,6 +1113,11 @@ const CSS = /* css */ `
 .fnc-tools-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 0 6px; }
 .fnc-tools-seg svg { width: 16px; height: 16px; flex: none; }
 .fnc-template-menu { min-width: 220px; }
+.fnc-indtpl-menu { width: 280px; max-height: 60vh; overflow-y: auto; }
+.fnc-indtpl-menu .fnc-menu-note { line-height: 1.5; }
+.fnc-indtpl-item { flex-direction: column; align-items: flex-start !important; gap: 1px !important; padding-top: 6px; padding-bottom: 6px; }
+.fnc-indtpl-name { font-weight: 600; }
+.fnc-template-row .fnc-menu-item .fnc-indtpl-sub { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--fnc-text-2); }
 .fnc-levels-menu { min-width: 340px; }
 .fnc-level-text { flex: 1; min-width: 0; width: 110px; height: 28px; padding: 0 8px; font-size: 13px; }
 .fnc-options-menu { min-width: 280px; max-height: min(70vh, 560px); overflow-y: auto; }
