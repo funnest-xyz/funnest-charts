@@ -306,6 +306,9 @@ const TRENDLINE_OPTIONS: DrawingOption[] = [
   },
 ];
 
+/** 수평선's ⚙: its price on the price axis (TradingView's 'Price label'). */
+const HORIZONTAL_OPTIONS: DrawingOption[] = [{ key: 'priceLabel', label: L('가격 라벨', 'Price label'), kind: 'toggle', default: true }];
+
 /** "3일 4시간" / "3d 4h": the span between two times, in its two largest units. */
 function spanText(ms: number, en: boolean): string {
   const m = Math.round(Math.abs(ms) / 60_000);
@@ -468,6 +471,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     note: 'line',
     group: 'level',
     clicks: 1,
+    options: HORIZONTAL_OPTIONS,
     // The anchor's time doesn't matter; keep the handle inside the plot.
     handles: (g) => [[Math.min(g.coords.plotWidth - 24, Math.max(24, p0(g)[0])), p0(g)[1]]],
     distance: (g, _x, y) => Math.abs(y - p0(g)[1]),
@@ -476,7 +480,7 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
       const dash = g.dash();
       if (g.width(1) === 1 && !dash.length) painter.hLine(y, 0, coords.plotWidth, color);
       else painter.line(0, y, coords.plotWidth, y, color, g.width(1), dash);
-      badge(y, coords.formatPrice(d.points[0]!.price), color);
+      if (g.option<boolean>('priceLabel')) badge(y, coords.formatPrice(d.points[0]!.price), color);
     },
   },
   {
