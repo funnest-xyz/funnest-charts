@@ -283,8 +283,55 @@ const L = (ko: string, en: string) => ({ ko, en });
 const TRENDLINE_OPTIONS: DrawingOption[] = [
   { key: 'extendLeft', label: L('왼쪽으로 연장', 'Extend left'), kind: 'toggle', default: false },
   { key: 'extendRight', label: L('오른쪽으로 연장', 'Extend right'), kind: 'toggle', default: false },
-  { key: 'stats', label: L('가격 변화 · 봉 수 표시', 'Show price change and bars'), kind: 'toggle', default: false },
+  { key: 'arrowStart', label: L('시작점 화살표', 'Arrow at the start'), kind: 'toggle', default: false },
+  { key: 'arrowEnd', label: L('끝점 화살표', 'Arrow at the end'), kind: 'toggle', default: false },
+  { key: 'middle', label: L('가운데 점', 'Middle point'), kind: 'toggle', default: false },
+  { key: 'priceLabels', label: L('가격 라벨', 'Price labels'), kind: 'toggle', default: false },
+  { key: 'stats', label: L('통계 표시', 'Show stats'), kind: 'toggle', default: false },
+  { key: 'statsPrice', label: L('통계: 가격 변화', 'Stats: price range'), kind: 'toggle', default: true },
+  { key: 'statsPercent', label: L('통계: 변화율', 'Stats: percent change'), kind: 'toggle', default: true },
+  { key: 'statsBars', label: L('통계: 봉 수', 'Stats: bars range'), kind: 'toggle', default: true },
+  { key: 'statsTime', label: L('통계: 기간', 'Stats: date / time range'), kind: 'toggle', default: false },
+  { key: 'statsAngle', label: L('통계: 각도', 'Stats: angle'), kind: 'toggle', default: false },
+  {
+    key: 'statsPosition',
+    label: L('통계 위치', 'Stats position'),
+    kind: 'choice',
+    default: 'end',
+    choices: [
+      { value: 'end', label: L('끝점', 'End') },
+      { value: 'middle', label: L('가운데', 'Middle') },
+      { value: 'start', label: L('시작점', 'Start') },
+    ],
+  },
 ];
+
+/** "3일 4시간" / "3d 4h": the span between two times, in its two largest units. */
+function spanText(ms: number, en: boolean): string {
+  const m = Math.round(Math.abs(ms) / 60_000);
+  const parts: [number, string, string][] = [
+    [Math.floor(m / 1440), '일', 'd'],
+    [Math.floor((m % 1440) / 60), '시간', 'h'],
+    [m % 60, '분', 'm'],
+  ];
+  const shown = parts.filter(([n]) => n > 0).slice(0, 2);
+  return shown.length ? shown.map(([n, ko, e]) => `${n}${en ? e : ko}`).join(' ') : en ? '0m' : '0분';
+}
+
+/** A filled arrowhead at `tip`, pointing away from `from`. */
+function arrowHead(p: Painter, tip: [number, number], from: [number, number], color: string, size: number): void {
+  const a = Math.atan2(tip[1] - from[1], tip[0] - from[0]);
+  const { ctx } = p;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(tip[0], tip[1]);
+  ctx.lineTo(tip[0] - size * Math.cos(a - 0.45), tip[1] - size * Math.sin(a - 0.45));
+  ctx.lineTo(tip[0] - size * Math.cos(a + 0.45), tip[1] - size * Math.sin(a + 0.45));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
 const TRENDLINE = { options: TRENDLINE_OPTIONS };
 const H_CHOICES = [
   { value: 'left', label: L('왼쪽', 'Left') },
@@ -321,6 +368,7 @@ const FIB_OPTIONS: DrawingOption[] = [
   { key: 'textV', label: L('레벨 문자 세로 위치', 'Level text: up / down'), kind: 'choice', default: 'top', choices: V_CHOICES },
   { key: 'fontSize', label: L('폰트 크기', 'Font size'), kind: 'number', default: 12, min: 8, max: 32, step: 1, unit: 'px' },
   { key: 'log', label: L('로그 스케일 레벨', 'Levels on a log scale'), kind: 'toggle', default: false },
+  { key: 'oneColor', label: L('한 가지 색 (모든 레벨을 그림 색으로)', 'One color (every level in the drawing color)'), kind: 'toggle', default: false },
 ];
 /** More retracement levels TradingView offers, off until turned on. */
 const FIB_MORE_LEVELS = [1.272, 1.414, 1.618, 2, 2.272, 2.414, 2.618, 3, 3.272, 3.414, 3.618, 4, 4.236, 4.272, 4.414, 4.618, 4.764];
@@ -376,18 +424,41 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
     render: (d, rc) => {
       const { painter, color } = rc;
       const [a, b] = extendedSegment(p0(rc), p1(rc), rc.option<boolean>('extendLeft'), rc.option<boolean>('extendRight'));
-      painter.line(...a, ...b, color, rc.width(2), rc.dash());
-      if (rc.option<boolean>('stats') && d.points.length >= 2) {
+      const width = rc.width(2);
+      painter.line(...a, ...b, color, width, rc.dash());
+      const start = p0(rc);
+      const end = p1(rc);
+      const two = d.points.length >= 2;
+      // Arrowheads at the points that were placed (not at the far ends of an extension).
+      const head = 7 + width * 2;
+      if (two && rc.option<boolean>('arrowStart')) arrowHead(painter, start, end, color, head);
+      if (two && rc.option<boolean>('arrowEnd')) arrowHead(painter, end, start, color, head);
+      if (two && rc.option<boolean>('middle')) painter.circle((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, 3.5, rc.palette.background, color);
+      if (rc.option<boolean>('priceLabels')) for (const q of d.points.slice(0, 2)) rc.badge(rc.coords.priceToY(q.price), rc.coords.formatPrice(q.price), color);
+      if (rc.option<boolean>('stats') && two) {
         const [q0, q1] = d.points as [DrawingPoint, DrawingPoint];
+        const en = rc.coords.locale === 'en';
         const diff = q1.price - q0.price;
         const pct = q0.price ? (diff / q0.price) * 100 : 0;
         const bars = Math.round(rc.coords.timeToIndex(q1.time) - rc.coords.timeToIndex(q0.time));
         const sign = (v: number) => (v > 0 ? '+' : '');
-        const text = `${sign(diff)}${rc.coords.formatPrice(diff)} (${sign(pct)}${pct.toFixed(2)}%) · ${bars}${rc.coords.locale === 'en' ? ' bars' : '봉'}`;
-        const [x, y] = p1(rc);
-        const w = Math.ceil(painter.measure(text)) + 16;
-        const above = p1(rc)[1] <= p0(rc)[1];
-        painter.pill([{ text, bg: color, fg: '#FFFFFF' }], x - w / 2, clampY(rc, y + (above ? -16 : 16)), 20);
+        // On screen, up is +: the angle a reader sees.
+        const angle = (Math.atan2(start[1] - end[1], end[0] - start[0]) * 180) / Math.PI;
+        const parts = [
+          rc.option<boolean>('statsPrice') ? `${sign(diff)}${rc.coords.formatPrice(diff)}` : '',
+          rc.option<boolean>('statsPercent') ? `${sign(pct)}${pct.toFixed(2)}%` : '',
+          rc.option<boolean>('statsBars') ? `${bars}${en ? ' bars' : '봉'}` : '',
+          rc.option<boolean>('statsTime') ? spanText(q1.time - q0.time, en) : '',
+          rc.option<boolean>('statsAngle') ? `${angle.toFixed(1)}°` : '',
+        ].filter(Boolean);
+        if (parts.length) {
+          const text = parts.join(' · ');
+          const where = rc.option<string>('statsPosition');
+          const [x, y] = where === 'start' ? start : where === 'middle' ? [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2] : end;
+          const w = Math.ceil(painter.measure(text)) + 16;
+          const above = end[1] <= start[1];
+          painter.pill([{ text, bg: color, fg: '#FFFFFF' }], x - w / 2, clampY(rc, y + (above ? -16 : 16)), 20);
+        }
       }
     },
   },
@@ -444,7 +515,8 @@ export const BUILTIN_DRAWINGS: readonly DrawingDefinition[] = [
       const log = rc.option<boolean>('log');
       const priceOf = (v: number) => fibPrice(a!, b!, v, log);
       const { ctx } = p;
-      const levels = rc.levels();
+      // 한 가지 색: every level in the drawing's color.
+      const levels = rc.option<boolean>('oneColor') ? rc.levels().map((l) => ({ ...l, color: rc.color })) : rc.levels();
       const width = rc.width(1);
       const dash = rc.dash();
       // Shaded between neighbouring levels (by value, whatever order they were set in).
