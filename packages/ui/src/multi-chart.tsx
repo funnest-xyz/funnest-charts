@@ -206,6 +206,9 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
     setSync: (patch) => setSync(patch),
     activate: (index) => activate(index),
     toggleMaximize: (index) => toggleMaximize(index),
+    applySettings: (patch) => {
+      for (const p of panes) p.chart.setSettings(patch);
+    },
   };
 
   // ── Panes ──────────────────────────────────────────────────────────
@@ -292,7 +295,12 @@ export function createMultiChart(container: HTMLElement, options: MultiChartOpti
         symbol: src?.chart.symbolInfo?.symbol ?? paneSpecs[0]!.symbol,
         resolution: src?.chart.currentResolution ?? src?.store.get().resolution ?? resolution,
       };
-      makePane(i, spec);
+      const pane = makePane(i, spec);
+      // Widget-wide looks (the watermarks) follow the pane it was split from.
+      if (src) {
+        const { symbolWatermark, replayWatermark } = src.chart.settings;
+        pane.chart.setSettings({ symbolWatermark, replayWatermark });
+      }
     }
   }
 

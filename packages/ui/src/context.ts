@@ -2,6 +2,7 @@ import type {
   Chart,
   ChartContextMenu,
   ChartLayout,
+  ChartSettings,
   ChartType,
   CompareInfo,
   CursorMode,
@@ -240,4 +241,6 @@ export interface MultiControls {
   setSync(patch: Partial<LayoutSync>): void;
   activate(index: number): void;
   toggleMaximize(index?: number): void;
+  /** Applies a settings patch to every pane (widget-wide looks such as the watermarks). */
+  applySettings(patch: Partial<ChartSettings>): void;
 }

@@ -136,12 +136,16 @@ export function SettingsDialog({ ctx }: { ctx: WidgetContext }) {
   ];
   const shown: Tab = tabs.some(([k]) => k === tab) ? tab : 'look';
 
+  // The watermarks are one look for the whole widget: in a split view every pane shows them.
+  const setRow = (key: ToggleRow['key'], on: boolean) =>
+    ctx.multi && WATERMARK_ROWS.some((r) => r.key === key) ? ctx.multi.applySettings({ [key]: on }) : set({ [key]: on });
+
   const toggles = (rows: ToggleRow[]) =>
     rows.map(({ key, label, hint }) => (
       <label class="fnc-row fnc-toggle-row">
         <span class="fnc-toggle-label">{t[label]}</span>
         {hint && <Info text={t[hint]} />}
-        <input type="checkbox" role="switch" class="fnc-switch" checked={settings[key]} onChange={(e) => set({ [key]: e.currentTarget.checked })} />
+        <input type="checkbox" role="switch" class="fnc-switch" checked={settings[key]} onChange={(e) => setRow(key, e.currentTarget.checked)} />
       </label>
     ));
 
