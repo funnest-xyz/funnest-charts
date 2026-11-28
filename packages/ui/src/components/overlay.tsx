@@ -259,7 +259,8 @@ function Legend({ ctx }: { ctx: WidgetContext }) {
   if (bar && (ctx.legendValues === 'always' || hover)) {
     const cls = dirClass(bar.close - bar.open);
     const change = prev ? bar.close - prev.close : 0;
-    const pct = prev && prev.close ? (change / prev.close) * 100 : 0;
+    // Against the size of the previous close (a spread can be below zero: −30 → −28 is up).
+    const pct = prev && prev.close ? (change / Math.abs(prev.close)) * 100 : 0;
     const sign = change > 0 ? '+' : '';
     values = (
       <div class={ctx.legendValues === 'crosshair' ? 'fnc-legend-values fnc-legend-values-float' : 'fnc-legend-values'}>

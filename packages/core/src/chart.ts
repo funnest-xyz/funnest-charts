@@ -1152,7 +1152,8 @@ export class Chart {
     if (bar) {
       const c = dir(bar.close - bar.open);
       const change = prev ? bar.close - prev.close : 0;
-      const pct = prev && prev.close ? (change / prev.close) * 100 : 0;
+      // Against the size of the previous close (a spread can be below zero).
+      const pct = prev && prev.close ? (change / Math.abs(prev.close)) * 100 : 0;
       const sign = change > 0 ? '+' : '';
       const groups: LegendGroup[] = [
         [label(`${words.open} `), value(fmt(bar.open), c)],
