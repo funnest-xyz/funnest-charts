@@ -840,14 +840,7 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
     p.text(badge.text, labelX, y, badge.fg);
   }
 
-  // Pre-market / after-hours badge (under the last price's if they meet)
-  if (extShown) {
-    const y = Math.min(main.height - BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, extY));
-    p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, extColor);
-    p.text(main.format(ext!.price), labelX, y, '#FFFFFF');
-  }
-
-  // Last price badge (on top: the most important number on the axis)
+  // Last price badge (over everything but the pre-market / after-hours one)
   if (last && lastY >= 0 && lastY <= main.height) {
     // With a countdown the badge grows downward: price on top, time left below.
     const h = f.countdown ? BADGE_HEIGHT * 2 - 4 : BADGE_HEIGHT;
@@ -860,6 +853,14 @@ export function drawMain(layer: CanvasLayer, m: RenderModel): void {
       p.text(f.countdown, labelX, y + BADGE_HEIGHT - 4, '#FFFFFF');
       p.ctx.restore();
     }
+  }
+
+  // Pre-market / after-hours badge, over the last price's where they meet: outside the regular
+  // session it's the price trading now (the close under it is the session's last).
+  if (extShown) {
+    const y = Math.min(main.height - BADGE_HEIGHT / 2, Math.max(BADGE_HEIGHT / 2, extY));
+    p.roundRect(f.plotWidth + 2, y - BADGE_HEIGHT / 2, f.width - f.plotWidth - 4, BADGE_HEIGHT, 4, extColor);
+    p.text(main.format(ext!.price), labelX, y, '#FFFFFF');
   }
 
   // Time axis labels (not under the selected drawing's dates: those win, as on TradingView).
